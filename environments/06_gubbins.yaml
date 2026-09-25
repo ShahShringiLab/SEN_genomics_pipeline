@@ -1,0 +1,9 @@
+name: sen_gubbins
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - gubbins=3.4.3
+  - veryfasttree=4.0.5
+  - iqtree=2.4.0
+  - parallel=20251122
