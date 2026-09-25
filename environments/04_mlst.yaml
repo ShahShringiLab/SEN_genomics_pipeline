@@ -1,0 +1,7 @@
+name: sen_mlst
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - mlst=2.33.1
+  - parallel=20260422
