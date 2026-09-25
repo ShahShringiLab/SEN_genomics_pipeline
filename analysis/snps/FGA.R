@@ -3,7 +3,11 @@ library(tidyverse)
 # =========================
 # CONFIRMED PATHS
 # =========================
-base_dir <- "/home/samuelajulo/SENBio/Final/iqtree_final/FGA"
+sen_root <- Sys.getenv("SEN_ROOT", unset = normalizePath(getwd(), mustWork = FALSE))
+base_dir <- Sys.getenv(
+  "SEN_FGA_DIR",
+  unset = file.path(sen_root, "iqtree_final", "FGA")
+)
 
 eggnog_file <- file.path(base_dir, "FGA_SplitClade1AB_Annotations.tabular")
 master_file <- file.path(base_dir, "Folder_Master_Defining_Genes.csv")
