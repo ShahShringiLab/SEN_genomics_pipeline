@@ -1,9 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+
+require_cmd abricate
+require_cmd parallel
 
 # 1. Setup Paths
-BASE_DIR="/home/samuelajulo/SENBio/Final"
-ASSEMBLY_DIR="$BASE_DIR/shovill_assemblies"
-ABRICATE_BASE_OUT="$BASE_DIR/abricate_results"
+BASE_DIR="$SEN_ROOT"
+ASSEMBLY_DIR="${SEN_ABRICATE_ASSEMBLY_DIR:-$BASE_DIR/shovill_assemblies}"
+ABRICATE_BASE_OUT="${SEN_ABRICATE_OUT:-$BASE_DIR/abricate_results}"
 
 # ----------------------------------------------------
 # CLEAN OUTPUT FOLDER BEFORE RUN (with safety guard)
@@ -37,7 +43,7 @@ for DB in "${DATABASES[@]}"; do
     
     # 2. Run Abricate
     # We use -j 16 to protect your IQ-TREE memory
-    find "$ASSEMBLY_DIR" -name "contigs.fa" | parallel -j 16 "
+    find "$ASSEMBLY_DIR" -name "contigs.fa" | parallel -j "${SEN_ABRICATE_JOBS:-16}" "
         sample=\$(basename {//})
         output=\"$DB_OUT_DIR/\${sample}_\${DB}.tsv\"
         
