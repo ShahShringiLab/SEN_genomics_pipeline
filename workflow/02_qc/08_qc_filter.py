@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+
 import pandas as pd
 import re
 import sys
@@ -10,9 +12,10 @@ from pathlib import Path
 # CONFIGURATION
 # ============================================================
 
-BASE = Path("/home/samuelajulo/SENBio/Final")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BASE = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
 
-META_FILE = BASE / "SEN_Genomes.csv"
+META_FILE = Path(os.environ.get("SEN_METADATA_FILE", BASE / "metadata" / "SEN_Genomes.csv"))
 
 COV_FILE = (
     BASE /
