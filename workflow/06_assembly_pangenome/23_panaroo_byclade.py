@@ -5,6 +5,7 @@ import os
 import time
 import re
 import warnings
+from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 
 warnings.simplefilter("ignore")
@@ -30,11 +31,12 @@ from statsmodels.stats.multitest import multipletests
 # -------------------------
 # CONFIGURATION
 # -------------------------
-WD             = "/home/samuelajulo/SENBio/Final"
-PA_MATRIX_PATH = f"{WD}/Panaroo_Run/results/gene_presence_absence.csv"
-PA_DATA_PATH   = f"{WD}/Panaroo_Run/results/gene_data.csv"
-METADATA_PATH  = f"{WD}/ITOL/Clade_metadata.txt"
-OUTROOT        = f"{WD}/iqtree_final/Panaroo_byclade_robust"
+REPO_ROOT      = Path(__file__).resolve().parents[2]
+WD             = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
+PA_MATRIX_PATH = os.environ.get("SEN_PANAROO_MATRIX", str(WD / "Panaroo_Run" / "results" / "gene_presence_absence.csv"))
+PA_DATA_PATH   = os.environ.get("SEN_PANAROO_GENE_DATA", str(WD / "Panaroo_Run" / "results" / "gene_data.csv"))
+METADATA_PATH  = os.environ.get("SEN_CLADE_METADATA", str(WD / "metadata" / "final_clade_metadata.tsv"))
+OUTROOT        = os.environ.get("SEN_PANAROO_CLADE_OUT", str(WD / "iqtree_final" / "Panaroo_byclade_robust"))
 
 ACCESSORY_MIN_FREQ = 0.01
 ACCESSORY_MAX_FREQ = 0.99
