@@ -1,0 +1,16 @@
+name: sen_stats
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pandas
+  - numpy
+  - scipy
+  - statsmodels
+  - matplotlib
+  - seaborn
+  - openpyxl
+  - pyarrow
+  - pillow
+  - r-base=4.5.2
+  - r-tidyverse
