@@ -9,7 +9,9 @@ import pandas as pd
 # =============================================================================
 # CONFIG
 # =============================================================================
-BASE = Path("/home/samuelajulo/SENBio/Final/iqtree_final/Snps_clade_integrated")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SEN_ROOT = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
+BASE = Path(os.environ.get("SEN_SNP_INTEGRATED_ROOT", SEN_ROOT / "iqtree_final" / "Snps_clade_integrated"))
 OUT_SUB = "master_defining_package"
 TARGET_PREFIX = "Definer_Strict_"
 
