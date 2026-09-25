@@ -1,0 +1,9 @@
+name: sen_shovill
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - shovill=1.0.9
+  - skesa=2.5.1
+  - spades=4.0.0
+  - parallel=20251122
