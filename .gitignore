@@ -1,0 +1,61 @@
+# Raw reads and sequencing intermediates
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.sra
+
+# Alignments / mappings / variant-call intermediates
+*.bam
+*.bai
+*.sam
+*.vcf.gz
+*.bcf
+
+# Assembly and annotation bulk outputs
+shovill_out/
+shovill_output/
+prokka_annotations/
+panaroo_output/
+quast_results/
+*_quast_results/
+
+# Phage / genomic-island generated workspaces
+Phage_phasterrun/
+phage_results/
+Pangenome_phage_SEN/
+Genomic_island/
+
+# Large workflow result trees
+results/
+output/
+outputs/
+tmp/
+temp/
+logs/
+
+# Tool-generated files
+*.ckp.gz
+*.mldist
+*.bionj
+*.splits.nex
+*.log
+*.html
+*.png
+*.pdf
+
+# Backups / scratch
+*.bak
+*.backup
+*.before_*
+*~
+__pycache__/
+*.pyc
+
+# Local machine configuration
+config/paths.env
+.env
+
+# Conda / Python
+.venv/
+venv/
