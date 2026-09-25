@@ -1,0 +1,6 @@
+sample_id	clade	platform	library_layout	source_group	qr_group	assembly	biosample	role
+SRR1033488	Clade 1A	ILLUMINA	PAIRED	Other-US	QR	GCA_008003705.1	SAMN02345321	isolate
+SRR1220773	Clade 1B	ILLUMINA	PAIRED	Human	QR	GCA_011450195.1	SAMN02711372	isolate
+SRR10007520	Clade 2	ILLUMINA	PAIRED	Human	NON-QR	GCA_008169905.1	SAMN12611308	isolate
+SRR10005236	Clade 3	ILLUMINA	PAIRED	Chicken-US	QR	GCA_008167045.1	SAMN12604793	isolate
+Reference	Reference	NA	NA	NA	NA	NC_011294.1	NA	reference
