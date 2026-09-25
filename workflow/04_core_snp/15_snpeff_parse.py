@@ -2,11 +2,13 @@ import os
 import glob
 import pandas as pd
 import re
+from pathlib import Path
 
 # 1. SETUP
-WD = "/home/samuelajulo/SENBio/Final"
-OUT_DIR = f"{WD}/Snippy_output"
-FINAL_REPORT = f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BASE = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
+OUT_DIR = Path(os.environ.get("SEN_SNIPPY_OUT", BASE / "Snippy_output"))
+FINAL_REPORT = OUT_DIR / "SENBIO_RECOVERED_REPORT.csv"
 
 def parse_snpeff_vcf(vcf_path, sample_id):
     """
