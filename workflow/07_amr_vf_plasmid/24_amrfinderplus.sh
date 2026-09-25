@@ -1,5 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
 # =========================================================
 # 06_amrfinderplus.sh  (ALL_ASSEMBLIES version)
@@ -11,17 +13,17 @@ set -euo pipefail
 # -------------------------
 # CONFIG
 # -------------------------
-BASE_DIR="/home/samuelajulo/SENBio/Final"
+BASE_DIR="$SEN_ROOT"
 
 # ✅ Use all_assemblies now
-ASSEMBLY_DIR="$BASE_DIR/all_assemblies"
+ASSEMBLY_DIR="${SEN_AMR_ASSEMBLY_DIR:-$BASE_DIR/all_assemblies}"
 
-OUT_DIR="$BASE_DIR/AMRFinderplus"
+OUT_DIR="${SEN_AMRFINDER_OUT:-$BASE_DIR/AMRFinderplus}"
 LOG_DIR="$OUT_DIR/logs"
 
 # Threadripper tuning (JOBS * THREADS ≈ 128)
-JOBS=64
-THREADS=2
+JOBS="${SEN_AMRFINDER_JOBS:-64}"
+THREADS="${SEN_AMRFINDER_THREADS:-2}"
 
 ORG="Salmonella"
 MIN_FASTA_BYTES=1000
