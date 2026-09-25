@@ -1,32 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# ==============================================================================
-# IQ-TREE 2: CLEANED FINAL TREE (3,307 TAXA)
-# ==============================================================================
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
-INPUT_FILE="gubbin/clean_final_alignment.fasta"
-OUTDIR="iqtree"
+require_cmd iqtree2
+
+GUBBINS_DIR="${SEN_GUBBINS_OUT:-$SEN_ROOT/gubbin}"
+INPUT_FILE="${SEN_IQTREE_INPUT:-$GUBBINS_DIR/clean_final_alignment.fasta}"
+OUTDIR="${SEN_IQTREE_OUT:-$SEN_ROOT/iqtree_final}"
+PREFIX="${SEN_IQTREE_PREFIX:-SSLAB_FINAL}"
+CORES="${SEN_IQTREE_THREADS:-64}"
+MEMORY="${SEN_IQTREE_MEMORY:-180G}"
+MODEL="${SEN_IQTREE_MODEL:-MFP+ASC}"
+BOOTSTRAPS="${SEN_IQTREE_BOOTSTRAPS:-1000}"
+
+require_file "$INPUT_FILE"
 mkdir -p "$OUTDIR"
 
-CORES=64
-MEMORY="180G"
+echo "[INFO] IQ-TREE input: $INPUT_FILE"
+echo "[INFO] Model: $MODEL | UFBoot: $BOOTSTRAPS | BNNI enabled"
 
-echo "Starting IQ-TREE 2: Model Selection + ML Tree + 1000 UFBoot..."
+iqtree2 -s "$INPUT_FILE"   -pre "$OUTDIR/$PREFIX"   -st DNA   -m "$MODEL"   -bb "$BOOTSTRAPS"   -bnni   -nt "$CORES"   -mem "$MEMORY"
 
-# Using MFP+ASC:
-# 1. MFP = ModelFinder Plus (picks best model automatically)
-# 2. +ASC = Ascertainment Bias Correction (REQUIRED for SNP alignments)
-# 3. -bb 1000 = Ultrafast Bootstrap
-# 4. -bnni = Optimizes tree topology to be more accurate
-
-iqtree2 -s "$INPUT_FILE" \
-  -pre "${OUTDIR}/SSLAB_FINAL" \
-  -st DNA \
-  -m MFP+ASC \
-  -bb 1000 \
-  -bnni \
-  -nt "$CORES" \
-  -mem "$MEMORY"
-
-echo "Analysis complete. Check ${OUTDIR}/SSLAB_FINAL.treefile"
+echo "[INFO] Analysis complete: $OUTDIR/$PREFIX.treefile"
