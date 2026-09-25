@@ -1,0 +1,7 @@
+name: sen_prokka
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - prokka=1.14.6
+  - parallel=20251122
