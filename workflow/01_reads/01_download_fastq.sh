@@ -1,51 +1,44 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+
+require_cmd prefetch
+require_cmd fasterq-dump
+require_cmd parallel
+require_cmd pigz
+
 echo "=== FASTQ DOWNLOAD STARTED: $(date) ==="
-source ~/.bashrc
-eval "$(conda shell.bash hook)"
-conda activate senbio
 
-# directories
-WD=/home/samuelajulo/SENBio/Final
-SRR_LIST=$WD/SRR_list.clean.txt
-SRA_DIR=$WD/sra_raw
-FASTQ_DIR=$WD/fastq
-TMP_DIR=$WD/tmp
-LOGS=$WD/logs
+SRR_LIST="${SEN_SRR_LIST:-$SEN_ROOT/SRR_list.clean.txt}"
+SRA_DIR="${SEN_SRA_DIR:-$SEN_ROOT/sra_raw}"
+FASTQ_DIR="${SEN_RAW_READS}"
+TMP_DIR="${SEN_TMP_DIR:-$SEN_ROOT/tmp}"
+LOGS="${SEN_LOG_DIR:-$SEN_ROOT/logs}"
 
+require_file "$SRR_LIST"
 mkdir -p "$SRA_DIR" "$FASTQ_DIR" "$TMP_DIR" "$LOGS"
 
-# Tune for your Threadripper (balanced CPU+IO)
-PREFETCH_JOBS=24          # network bound
-DUMP_JOBS=12              # CPU+IO bound
-THREADS_PER_DUMP=12       # 12*12=144 threads total (good for 128C)
+PREFETCH_JOBS="${SEN_PREFETCH_JOBS:-24}"
+DUMP_JOBS="${SEN_DUMP_JOBS:-12}"
+THREADS_PER_DUMP="${SEN_THREADS_PER_DUMP:-12}"
 
+echo "[INFO] SEN_ROOT: $SEN_ROOT"
+echo "[INFO] SRR list: $SRR_LIST"
 echo "[INFO] Prefetch jobs: $PREFETCH_JOBS"
 echo "[INFO] fasterq-dump jobs: $DUMP_JOBS"
 echo "[INFO] Threads per dump: $THREADS_PER_DUMP"
-
-###########################################
-# STEP 1 — PARALLEL PREFETCH (.sra files)
-###########################################
-echo "[STEP 1] Downloading SRA files in parallel..."
 
 cat "$SRR_LIST" | parallel -j "$PREFETCH_JOBS" --eta --linebuffer "
   echo '[DL] {}'
   prefetch {} --output-directory '$SRA_DIR' >> '$LOGS/prefetch.log' 2>&1 || echo '[WARN] prefetch failed {}' >> '$LOGS/prefetch_failed.txt'
 "
 
-###########################################
-# STEP 2 — PARALLEL CONVERSION TO FASTQ
-###########################################
-echo "[STEP 2] Extracting FASTQ using fasterq-dump..."
-
 find "$SRA_DIR" -type f -name "*.sra" | parallel -j "$DUMP_JOBS" --eta --linebuffer "
   SRA={}
   SRR=\$(basename \"\$SRA\" .sra)
   OUTDIR='$FASTQ_DIR/'\"\$SRR\"
 
-  # skip if already done
   if ls \"\$OUTDIR\"/*_1.fastq.gz >/dev/null 2>&1 || ls \"\$OUTDIR\"/*_1.fastq >/dev/null 2>&1; then
     echo '[SKIP] '\$SRR
     exit 0
@@ -63,4 +56,3 @@ find "$SRA_DIR" -type f -name "*.sra" | parallel -j "$DUMP_JOBS" --eta --linebuf
 
 echo "=== FASTQ DOWNLOAD COMPLETE: $(date) ==="
 echo "[INFO] Done. FASTQs in: $FASTQ_DIR"
-
