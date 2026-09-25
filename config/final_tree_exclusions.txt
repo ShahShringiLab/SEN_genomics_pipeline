@@ -1,0 +1,6 @@
+# Historical samples removed after Gubbins before final IQ-TREE reconstruction.
+# One accession per line. Preserved from the frozen SENBio-Final workflow.
+SRR15168826
+SRR34428946
+SRR3634462
+SRR5459684
