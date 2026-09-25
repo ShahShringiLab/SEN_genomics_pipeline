@@ -1,0 +1,6 @@
+name: sen_iqtree
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - iqtree=2.2.6
