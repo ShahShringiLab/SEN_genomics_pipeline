@@ -1,17 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==============================================================================
 # SNPEFF DATABASE BUILDER - MINIMAL CONFIG VERSION
 # ==============================================================================
-set -e
-set -o pipefail
+set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+
+require_cmd snpEff
+require_cmd snippy-vcf_to_tab
+require_cmd parallel
 
 # 1. CONFIGURATION
-WD="/home/samuelajulo/SENBio/Final"
-DB_DIR="${WD}/snpEff_manual"
-OUT_DIR="${WD}/Snippy_output"
-REF_FA="${WD}/reference/reference.fa"
-REF_GBK="${WD}/reference/reference.gbk"
-REF_GFF="${WD}/reference/reference.gff"
+DB_DIR="${SEN_SNPEFF_DIR:-$SEN_ROOT/snpEff_manual}"
+OUT_DIR="${SEN_SNIPPY_OUT:-$SEN_ROOT/Snippy_output}"
+REF_FA="${SEN_REFERENCE_FA:-$SEN_REFERENCE_DIR/reference.fa}"
+REF_GBK="${SEN_REFERENCE_GBK:-$SEN_REFERENCE_DIR/reference.gbk}"
+REF_GFF="${SEN_REFERENCE_GFF:-$SEN_REFERENCE_DIR/reference.gff}"
+
+require_file "$REF_FA"
+require_file "$REF_GBK"
+require_file "$REF_GFF"
 
 # 2. STEP 1: BUILD THE DATABASE
 echo "[1/2] Building SnpEff database from your .gbk reference..."
