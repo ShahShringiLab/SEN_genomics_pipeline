@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
 require_cmd skesa
 require_cmd sistr
 require_cmd parallel
 
 BASE="$SEN_ROOT"
-IN="\${SEN_KRAKEN_CLEAN_DIR:-$SEN_ROOT/Kraken_cleanup/clean_trimmed_fastq}"
+IN="${SEN_KRAKEN_CLEAN_DIR:-$SEN_ROOT/Kraken_cleanup/clean_trimmed_fastq}"
 
-OUT_ROOT="\${SEN_SISTR_OUT:-$SEN_ROOT/sistr_results_run}"
+OUT_ROOT="${SEN_SISTR_OUT:-$SEN_ROOT/sistr_results_run}"
 OUT_FASTA="$OUT_ROOT/mini_assemblies"
 OUT_CSV="$OUT_ROOT/individual_csvs"
 OUT_LOGS="$OUT_ROOT/skesa_logs"
-JOBS="\${SEN_SISTR_JOBS:-20}"
-SKESA_CORES="\${SEN_SKESA_CORES:-4}"
-SKESA_MEMORY="\${SEN_SKESA_MEMORY_GB:-8}"
+JOBS="${SEN_SISTR_JOBS:-20}"
+SKESA_CORES="${SEN_SKESA_CORES:-4}"
+SKESA_MEMORY="${SEN_SKESA_MEMORY_GB:-8}"
 
 echo "=== SISTR PIPELINE STARTED: $(date) ==="
 echo "[INFO] IN: $IN"
@@ -57,7 +57,7 @@ cd "$BASE"
 MASTER_REPORT="$OUT_ROOT/sistr_master_summary.csv"
 FIRST_FILE="$(find "$OUT_CSV" -type f -name "*.csv" | head -n 1 || true)"
 
-if [[ -n "\${FIRST_FILE:-}" ]]; then
+if [[ -n "${FIRST_FILE:-}" ]]; then
   head -n 1 "$FIRST_FILE" > "$MASTER_REPORT"
   find "$OUT_CSV" -type f -name "*.csv" -exec tail -n +2 {} + >> "$MASTER_REPORT"
   echo "SUCCESS: Master report created at $MASTER_REPORT"
