@@ -1,0 +1,8 @@
+name: sen_amr_abricate
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - ncbi-amrfinderplus=4.2.5
+  - abricate=1.2.0
+  - parallel=20251122
