@@ -1,0 +1,8 @@
+name: sen_snippy
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - snippy=4.6.0
+  - snpeff=5.1
+  - parallel=20251122
