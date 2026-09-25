@@ -25,12 +25,13 @@ command -v conda >/dev/null 2>&1 || {
 if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
   echo "[INFO] Creating $ENV_NAME from $ENV_YAML ..."
 
-  if command -v mamba >/dev/null 2>&1; then
-    echo "[INFO] Using mamba solver."
-    mamba env create -f "$ENV_YAML"
-  else
-    echo "[INFO] Using conda libmamba solver."
+  echo "[INFO] Using conda libmamba solver."
+  if conda env create --help 2>&1 | grep -q -- '--solver'; then
     conda env create --solver=libmamba -f "$ENV_YAML"
+  else
+    echo "[ERROR] This Conda installation does not expose --solver=libmamba." >&2
+    echo "[ERROR] Please update Conda or install conda-libmamba-solver in base." >&2
+    exit 1
   fi
 fi
 
