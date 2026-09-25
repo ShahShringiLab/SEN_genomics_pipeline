@@ -1,7 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/home/samuelajulo/SENBio/Final"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+
+BASE_DIR="$SEN_ROOT"
 
 TREE_DIR="${BASE_DIR}/iqtree_final"
 TREEFILE="${TREE_DIR}/SSLAB_FINAL.treefile"
