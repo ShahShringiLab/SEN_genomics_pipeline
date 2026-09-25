@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
 require_cmd SeqSero2_package.py
 require_cmd parallel
 
-IN="\${SEN_TRIMMED_READS}"
-OUT="\${SEN_SEQSERO2_OUT:-$SEN_ROOT/seqsero2_results}"
-JOBS="\${SEN_SEQSERO2_JOBS:-30}"
+IN="${SEN_TRIMMED_READS}"
+OUT="${SEN_SEQSERO2_OUT:-$SEN_ROOT/seqsero2_results}"
+JOBS="${SEN_SEQSERO2_JOBS:-30}"
 
 mkdir -p "$OUT"
 
