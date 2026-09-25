@@ -3,6 +3,7 @@ import subprocess
 import sys
 import os
 import re
+from pathlib import Path
 import itertools
 import warnings
 
@@ -40,13 +41,15 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # =============================================================================
 # CONFIG
 # =============================================================================
-BASE_DIR = "/home/samuelajulo/SENBio/Final"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BASE_DIR = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 
 resfinder_report_path = os.path.join(
     BASE_DIR, "abricate_results", "resfinder", "master_resfinder_report.tsv"
 )
 
 metadata_path_candidates = [
+    os.environ.get("SEN_CLADE_METADATA", os.path.join(BASE_DIR, "metadata", "final_clade_metadata.tsv")),
     os.path.join(BASE_DIR, "iqtree_final", "ITOL", "Clade_metadata.txt"),
     os.path.join(BASE_DIR, "ITOL", "Clade_metadata.txt"),
     os.path.join(BASE_DIR, "iqtree", "ITOL", "Clade_metadata.txt"),
