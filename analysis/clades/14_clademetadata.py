@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 import pandas as pd
 
 # =============================================================================
@@ -20,7 +21,8 @@ import pandas as pd
 # =============================================================================
 
 # 1) Paths
-BASE_DIR = "/home/samuelajulo/SENBio/Final"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BASE_DIR = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 ITOL_DIR = os.path.join(BASE_DIR, "ITOL")
 TREEFILE = os.path.join(BASE_DIR, "iqtree_final", "SSLAB_FINAL.treefile")
 
