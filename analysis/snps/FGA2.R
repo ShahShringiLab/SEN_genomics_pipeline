@@ -31,9 +31,17 @@ library(grid)
 # PATHS
 # ============================================================
 
-fga_dir <- "/home/samuelajulo/SENBio/Final/iqtree_final/FGA"
+sen_root <- Sys.getenv("SEN_ROOT", unset = normalizePath(getwd(), mustWork = FALSE))
 
-snps_root <- "/home/samuelajulo/SENBio/Final/iqtree_final/Snps_clade_integrated"
+fga_dir <- Sys.getenv(
+  "SEN_FGA_DIR",
+  unset = file.path(sen_root, "iqtree_final", "FGA")
+)
+
+snps_root <- Sys.getenv(
+  "SEN_SNP_INTEGRATED_ROOT",
+  unset = file.path(sen_root, "iqtree_final", "Snps_clade_integrated")
+)
 
 master_root <- file.path(
   fga_dir,
