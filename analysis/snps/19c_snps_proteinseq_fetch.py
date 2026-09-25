@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import os
 import re
+from pathlib import Path
 import pandas as pd
 
-GBK_FILE = "/home/samuelajulo/SENBio/Final/reference/reference.gbk"
-SEARCH_ROOT = "/home/samuelajulo/SENBio/Final/iqtree_final/Snps_clade_integrated"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SEN_ROOT = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
+GBK_FILE = os.environ.get("SEN_REFERENCE_GBK", str(SEN_ROOT / "reference" / "reference.gbk"))
+SEARCH_ROOT = os.environ.get("SEN_SNP_INTEGRATED_ROOT", str(SEN_ROOT / "iqtree_final" / "Snps_clade_integrated"))
 TARGET_PREFIXES = ("Definer_Strict_", "Significant_All_")
 
 def parse_genbank_proteins(gbk_path):
