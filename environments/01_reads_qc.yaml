@@ -1,0 +1,12 @@
+name: sen_reads_qc
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - sra-tools=3.2.1
+  - fastp=1.0.1
+  - fastqc=0.12.1
+  - multiqc=1.14
+  - seqkit=2.12.0
+  - parallel=20251122
+  - pigz
