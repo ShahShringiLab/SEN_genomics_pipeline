@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
+from pathlib import Path
 import pandas as pd
 from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
@@ -8,7 +9,8 @@ from statsmodels.stats.multitest import multipletests
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-WD               = "/home/samuelajulo/SENBio/Final"
+REPO_ROOT        = Path(__file__).resolve().parents[2]
+WD               = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 GUBBINS_DIR      = f"{WD}/gubbin_out"
 METADATA_FILE    = f"{WD}/ITOL/Clade_metadata.txt"
 OUTPUT_ROOT      = f"{WD}/iqtree_final/Snps_clade_integrated"
