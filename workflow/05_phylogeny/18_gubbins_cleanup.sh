@@ -1,19 +1,44 @@
-# 1. Create the exclusion list
-cat <<EOF > failed_samples.txt
-SRR15168826
-SRR34428946
-SRR3634462
-SRR5459684
-EOF
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 2. Filter the FASTA (using awk for safety)
-# This keeps only sequences whose headers ARE NOT in the failed_samples file
-awk 'BEGIN{while((getline < "failed_samples.txt") > 0) f[">"$1]=1} /^>/ {skip=(f[$1])} !skip' \
-  gubbin/senbio_res.filtered_polymorphic_sites.fasta > gubbin/clean_final_alignment.fasta
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
-# 3. Verify the count (should be 3307)
-echo "Original count: $(grep -c ">" gubbin/senbio_res.filtered_polymorphic_sites.fasta)"
-echo "Cleaned count: $(grep -c ">" gubbin/clean_final_alignment.fasta)"
+GUBBINS_DIR="${SEN_GUBBINS_OUT:-$SEN_ROOT/gubbin}"
+INPUT_ALIGNMENT="${SEN_GUBBINS_FILTERED_ALIGNMENT:-$GUBBINS_DIR/senbio_res.filtered_polymorphic_sites.fasta}"
+OUTPUT_ALIGNMENT="${SEN_CLEAN_ALIGNMENT:-$GUBBINS_DIR/clean_final_alignment.fasta}"
+EXCLUSION_FILE="${SEN_FINAL_TREE_EXCLUSIONS:-$REPO_ROOT/config/final_tree_exclusions.txt}"
 
-# 4. Kickstart IQ-TREE (Update your 11_iqtree.sh to use clean_final_alignment.fasta first!)
-bash 11_iqtree.sh
+require_file "$INPUT_ALIGNMENT"
+require_file "$EXCLUSION_FILE"
+
+tmp_exclusions="$(mktemp)"
+trap 'rm -f "$tmp_exclusions"' EXIT
+
+grep -vE '^[[:space:]]*(#|$)' "$EXCLUSION_FILE" | tr -d '\r' | sort -u > "$tmp_exclusions"
+
+awk -v ex="$tmp_exclusions" '
+BEGIN {
+  while ((getline line < ex) > 0) {
+    excluded[">" line] = 1
+  }
+}
+/^>/ {
+  key=$1
+  skip=(key in excluded)
+}
+!skip
+' "$INPUT_ALIGNMENT" > "$OUTPUT_ALIGNMENT"
+
+orig=$(grep -c '^>' "$INPUT_ALIGNMENT" || true)
+clean=$(grep -c '^>' "$OUTPUT_ALIGNMENT" || true)
+removed=$((orig-clean))
+
+echo "[INFO] Original alignment sequences: $orig"
+echo "[INFO] Cleaned alignment sequences:  $clean"
+echo "[INFO] Removed:                      $removed"
+echo "[INFO] Output: $OUTPUT_ALIGNMENT"
+
+if [[ "$clean" -eq 0 ]]; then
+  echo "[ERROR] Cleaned alignment is empty." >&2
+  exit 1
+fi
