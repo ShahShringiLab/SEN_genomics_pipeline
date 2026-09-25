@@ -24,7 +24,14 @@ command -v conda >/dev/null 2>&1 || {
 
 if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
   echo "[INFO] Creating $ENV_NAME from $ENV_YAML ..."
-  conda env create -f "$ENV_YAML"
+
+  if command -v mamba >/dev/null 2>&1; then
+    echo "[INFO] Using mamba solver."
+    mamba env create -f "$ENV_YAML"
+  else
+    echo "[INFO] Using conda libmamba solver."
+    conda env create --solver=libmamba -f "$ENV_YAML"
+  fi
 fi
 
 mkdir -p "$WORKDIR"
