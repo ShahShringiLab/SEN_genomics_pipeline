@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
 # ==============================================================================
 # ULTRAFAST + STABLE Massive Salmonella Assembly (PURE READS; Kraken-cleaned)
 # Uses your previous directory layout:
-#   INPUT_DIR=/home/samuelajulo/SENBio/Final/Kraken_cleanup/clean_trimmed_fastq
 #   OUTPUT_DIR=shovill_assemblies
 #   FINAL_CONTIGS=Final_Contigs_Only
 # Optimized scheduling: 24 jobs x 5 threads (120 threads) + safety checks
@@ -14,10 +15,10 @@ set -euo pipefail
 # ---------------------------
 # 0) CONFIG (MATCHES YOUR PREVIOUS WORKING PATHS)
 # ---------------------------
-INPUT_DIR="/home/samuelajulo/SENBio/Final/Kraken_cleanup/clean_trimmed_fastq"
-OUTPUT_DIR="shovill_assemblies"
-FINAL_CONTIGS="Final_Contigs_Only"
-MANIFEST="samples_pure.tsv"
+INPUT_DIR="${SEN_KRAKEN_CLEAN_DIR:-$SEN_ROOT/Kraken_cleanup/clean_trimmed_fastq}"
+OUTPUT_DIR="${SEN_SHOVILL_OUT:-$SEN_ROOT/shovill_assemblies}"
+FINAL_CONTIGS="${SEN_FINAL_CONTIGS_DIR:-$SEN_ROOT/Final_Contigs_Only}"
+MANIFEST="${SEN_SHOVILL_MANIFEST:-$SEN_ROOT/samples_pure.tsv}"
 
 # Throughput tuning
 CONCURRENT_JOBS=24
@@ -31,7 +32,7 @@ ASSEMBLER="spades"          # fallback: skesa
 SPADES_OPTS=""
 
 # Paths
-WD="$(pwd)"
+WD="$SEN_ROOT"
 RUN_ID="$(date +%F_%H%M%S)"
 LOG_DIR="$WD/logs"
 JOBLOG="$WD/parallel_joblog_${RUN_ID}.tsv"
