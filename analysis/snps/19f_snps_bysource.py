@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import re
+from pathlib import Path
 import pandas as pd
 from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
@@ -8,11 +9,12 @@ from statsmodels.stats.multitest import multipletests
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-WD = "/home/samuelajulo/SENBio/Final"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+WD = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 
 GUBBINS_DIR   = f"{WD}/gubbin_out"
 MASTER_REPORT = f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv"
-CLADE_META    = f"{WD}/ITOL/Clade_metadata.txt"
+CLADE_META    = os.environ.get("SEN_CLADE_METADATA", f"{WD}/metadata/final_clade_metadata.tsv")
 SOURCE_FILE   = f"{WD}/itol_1_source.txt"
 
 OUTPUT_ROOT   = f"{WD}/iqtree_final/SNPs_by_source_modest_variation"
