@@ -27,11 +27,13 @@ paired-end correction.
 
 **Scripts:** `04_estimate_coverage.sh`, `05_two_step_filter.sh`,
 `06_kraken_cleanup.sh`, `07_presnippy_qc.py`, `08_qc_filter.py`  
-**Environment:** `environments/02_kraken.yaml` plus Python runtime where
-required  
+**Environment:** `environments/02_kraken.yaml`  
 **Input:** trimmed paired FASTQs and configured Kraken2 database  
 **Output:** Enterobacteriaceae-retained paired reads under
 `Kraken_cleanup/clean_trimmed_fastq` and QC tables  
+**Extraction implementation:** KrakenTools `extract_kraken_reads.py` is supplied
+by the reproducible Kraken environment; the missing historical local helper is
+not required in the publication-facing pipeline.  
 **Key contract:** TaxID 543 is retained; downstream study inclusion requires
 post-filter depth >=30x. Historical QC scripts contain additional diagnostics;
 the final manuscript inclusion rule must remain distinguishable from those
