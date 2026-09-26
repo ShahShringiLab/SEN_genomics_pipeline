@@ -76,3 +76,32 @@ The second runner validates KrakenTools extraction, post-filter depth >=30x,
 SeqSero2, SKESA/SISTR dual Enteritidis typing, and MLST for all four smoke
 isolates. It uses project-local temporary storage and laptop-safe parallelism by
 default.
+
+
+## Fresh-machine behavior
+
+The smoke workflow is being designed so that a fresh Linux/WSL machine can
+clone the repository and run the pipeline without manually hunting for
+databases. External scientific assets are pinned and bootstrapped by repository
+scripts.
+
+For Kraken2, if no complete `SEN_KRAKEN_DB` is already configured,
+`run_kraken_typing.sh` automatically downloads and verifies the pinned
+Kraken2 Standard snapshot defined in `config/database_sources.env`.
+
+The full Standard database is intentionally used by default rather than a
+reduced MiniKraken database because the goal is publication-facing
+reproducibility. The pinned 2026-06-26 archive is approximately 80 GB compressed
+and the extracted index is approximately 103 GB, so first-time setup requires
+substantial disk space and download time. Subsequent runs reuse the installed
+database.
+
+The current one-command entry point is:
+
+```bash
+bash tests/smoke_test/run_smoke_pipeline.sh
+```
+
+As the remaining reference/SnpEff/AMR database contracts are finalized, their
+bootstrap stages will be added to this same entry point rather than requiring
+manual setup.
