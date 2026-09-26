@@ -36,10 +36,14 @@ if is_valid_db; then
   exit 0
 fi
 
-command -v wget >/dev/null 2>&1 || {
-  echo "[ERROR] wget is required for resumable database download." >&2
+if command -v aria2c >/dev/null 2>&1; then
+  DOWNLOAD_TOOL="aria2c"
+elif command -v wget >/dev/null 2>&1; then
+  DOWNLOAD_TOOL="wget"
+else
+  echo "[ERROR] aria2c or wget is required for database download." >&2
   exit 1
-}
+fi
 command -v tar >/dev/null 2>&1 || {
   echo "[ERROR] tar is required to unpack the Kraken2 database." >&2
   exit 1
@@ -67,11 +71,20 @@ echo "[INFO] URL:        $SEN_KRAKEN_DB_URL"
 echo "[INFO] Install to: $DB_DIR"
 echo "[INFO] Cache:      $CACHE_DIR"
 echo
-echo "[INFO] This is a large download (~80 GB compressed). wget -c will resume."
+echo "[INFO] This is a large download (~80 GB compressed)."
+echo "[INFO] Downloader:  $DOWNLOAD_TOOL"
 echo
 
-wget -c -O "$ARCHIVE" "$SEN_KRAKEN_DB_URL"
-wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
+if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
+  # Multi-connection, resumable download. Tune with SEN_ARIA2_CONNECTIONS.
+  ARIA2_CONNECTIONS="${SEN_ARIA2_CONNECTIONS:-16}"
+  aria2c -c     -x "$ARIA2_CONNECTIONS"     -s "$ARIA2_CONNECTIONS"     -k 4M     --file-allocation=none     --summary-interval=10     -d "$CACHE_DIR"     -o "$SEN_KRAKEN_DB_ARCHIVE"     "$SEN_KRAKEN_DB_URL"
+  aria2c -c -x 4 -s 4     --file-allocation=none     -d "$CACHE_DIR"     -o "$(basename "$MD5_FILE")"     "$SEN_KRAKEN_DB_MD5_URL"
+else
+  echo "[WARN] aria2c unavailable; falling back to single-connection wget."
+  wget -c -O "$ARCHIVE" "$SEN_KRAKEN_DB_URL"
+  wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
+fi
 
 echo "[INFO] Verifying archive checksum..."
 (
