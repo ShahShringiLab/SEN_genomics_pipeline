@@ -83,15 +83,26 @@ if [[ ! -d "$TRIM_DIR" ]] || [[ "$(find "$TRIM_DIR" -maxdepth 1 -name '*_trimmed
   exit 1
 fi
 
-# Kraken database can be supplied through the shell or config/paths.env.
+# Reuse an explicitly configured database when valid; otherwise bootstrap the
+# pinned publication-facing snapshot automatically.
 if [[ -z "${SEN_KRAKEN_DB:-}" && -f "$REPO_ROOT/config/paths.env" ]]; then
   # shellcheck disable=SC1091
   source "$REPO_ROOT/config/paths.env"
 fi
 
-if [[ -z "${SEN_KRAKEN_DB:-}" || ! -d "$SEN_KRAKEN_DB" ]]; then
-  echo "[ERROR] SEN_KRAKEN_DB is not set to a valid Kraken2 database directory." >&2
-  echo "[ERROR] Example: export SEN_KRAKEN_DB=/path/to/kraken_db" >&2
+DEFAULT_KRAKEN_DB="$WORKDIR/databases/kraken2/k2_standard_20260626"
+
+if [[ -z "${SEN_KRAKEN_DB:-}" ||       ! -s "${SEN_KRAKEN_DB:-}/hash.k2d" ||       ! -s "${SEN_KRAKEN_DB:-}/opts.k2d" ||       ! -s "${SEN_KRAKEN_DB:-}/taxo.k2d" ]]; then
+  echo "[INFO] No complete Kraken2 database configured."
+  echo "[INFO] Bootstrapping the pinned database snapshot automatically..."
+
+  conda run --no-capture-output -n "$KRAKEN_ENV"     env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR"     bash "$REPO_ROOT/scripts/setup_kraken_db.sh"
+
+  export SEN_KRAKEN_DB="$DEFAULT_KRAKEN_DB"
+fi
+
+if [[ ! -s "$SEN_KRAKEN_DB/hash.k2d" ||       ! -s "$SEN_KRAKEN_DB/opts.k2d" ||       ! -s "$SEN_KRAKEN_DB/taxo.k2d" ]]; then
+  echo "[ERROR] Kraken2 database bootstrap did not produce a complete database." >&2
   exit 1
 fi
 
