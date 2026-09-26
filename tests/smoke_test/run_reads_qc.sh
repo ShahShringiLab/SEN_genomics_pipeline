@@ -22,9 +22,8 @@ command -v conda >/dev/null 2>&1 || {
   exit 1
 }
 
-if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+create_reads_env() {
   echo "[INFO] Creating $ENV_NAME from $ENV_YAML ..."
-
   echo "[INFO] Using conda libmamba solver."
   if conda env create --help 2>&1 | grep -q -- '--solver'; then
     conda env create --solver=libmamba -f "$ENV_YAML"
@@ -32,6 +31,18 @@ if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
     echo "[ERROR] This Conda installation does not expose --solver=libmamba." >&2
     echo "[ERROR] Please update Conda or install conda-libmamba-solver in base." >&2
     exit 1
+  fi
+}
+
+if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+  create_reads_env
+else
+  echo "[INFO] Validating existing $ENV_NAME ..."
+  if ! conda run -n "$ENV_NAME" python -c 'import pkg_resources' >/dev/null 2>&1 ||      ! conda run -n "$ENV_NAME" multiqc --version >/dev/null 2>&1; then
+    echo "[WARN] Existing $ENV_NAME is incompatible with the pinned smoke environment."
+    echo "[INFO] Rebuilding dedicated smoke environment..."
+    conda env remove -n "$ENV_NAME" -y
+    create_reads_env
   fi
 fi
 
