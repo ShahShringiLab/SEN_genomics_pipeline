@@ -6,11 +6,13 @@ cd "$REPO_ROOT"
 
 WORKDIR="${SEN_SMOKE_ROOT:-$REPO_ROOT/tests/smoke_test/work}"
 KRAKEN_ENV="${SEN_SMOKE_KRAKEN_ENV:-sen_kraken}"
-SEROTYPE_ENV="${SEN_SMOKE_SEROTYPE_ENV:-sen_serotyping}"
+SEQSERO_ENV="${SEN_SMOKE_SEQSERO_ENV:-sen_seqsero2}"
+SISTR_ENV="${SEN_SMOKE_SISTR_ENV:-sen_sistr}"
 MLST_ENV="${SEN_SMOKE_MLST_ENV:-sen_mlst}"
 
 KRAKEN_YAML="$REPO_ROOT/environments/02_kraken.yaml"
-SEROTYPE_YAML="$REPO_ROOT/environments/03_serotyping.yaml"
+SEQSERO_YAML="$REPO_ROOT/environments/03_seqsero2.yaml"
+SISTR_YAML="$REPO_ROOT/environments/03_sistr.yaml"
 MLST_YAML="$REPO_ROOT/environments/04_mlst.yaml"
 
 mkdir -p "$WORKDIR" "$WORKDIR/tmp" "$WORKDIR/tmp/kraken"
@@ -73,15 +75,13 @@ ensure_env() {
 }
 
 ensure_env "$KRAKEN_ENV" "$KRAKEN_YAML" kraken2
-ensure_env "$SEROTYPE_ENV" "$SEROTYPE_YAML" SeqSero2_package.py
-for cmd in skesa sistr; do
-  if ! conda run -n "$SEROTYPE_ENV" command -v "$cmd" >/dev/null 2>&1; then
-    echo "[WARN] $SEROTYPE_ENV is missing $cmd; rebuilding environment."
-    conda env remove -n "$SEROTYPE_ENV" -y
-    create_env "$SEROTYPE_ENV" "$SEROTYPE_YAML"
-    break
-  fi
-done
+ensure_env "$SEQSERO_ENV" "$SEQSERO_YAML" SeqSero2_package.py
+ensure_env "$SISTR_ENV" "$SISTR_YAML" skesa
+if ! conda run -n "$SISTR_ENV" command -v sistr >/dev/null 2>&1; then
+  echo "[WARN] $SISTR_ENV is missing sistr; rebuilding environment."
+  conda env remove -n "$SISTR_ENV" -y
+  create_env "$SISTR_ENV" "$SISTR_YAML"
+fi
 ensure_env "$MLST_ENV" "$MLST_YAML" mlst
 
 TRIM_DIR="$WORKDIR/trimmed_fastq"
