@@ -55,10 +55,11 @@ export SEN_TMP_DIR="$WORKDIR/tmp"
 
 echo "[INFO] TMPDIR:   $TMPDIR"
 
-# Laptop-safe defaults; override before launch if desired.
-export SEN_PREFETCH_JOBS="${SEN_PREFETCH_JOBS:-2}"
-export SEN_DUMP_JOBS="${SEN_DUMP_JOBS:-2}"
-export SEN_THREADS_PER_DUMP="${SEN_THREADS_PER_DUMP:-4}"
+# Download/conversion concurrency is auto-tuned by 01_download_fastq.sh unless
+# explicitly overridden here by the user.
+export SEN_PREFETCH_JOBS="${SEN_PREFETCH_JOBS:-}"
+export SEN_DUMP_JOBS="${SEN_DUMP_JOBS:-}"
+export SEN_THREADS_PER_DUMP="${SEN_THREADS_PER_DUMP:-}"
 export SEN_FASTP_JOBS="${SEN_FASTP_JOBS:-2}"
 export SEN_FASTP_THREADS_PER_JOB="${SEN_FASTP_THREADS_PER_JOB:-4}"
 export SEN_FASTQC_RAW_JOBS="${SEN_FASTQC_RAW_JOBS:-2}"
@@ -73,7 +74,7 @@ run_stage() {
   echo "--------------------------------------------------"
   echo "[STAGE] $label"
   echo "--------------------------------------------------"
-  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT"       SEN_SRR_LIST="$SEN_SRR_LIST"       SEN_PREFETCH_JOBS="$SEN_PREFETCH_JOBS"       SEN_DUMP_JOBS="$SEN_DUMP_JOBS"       SEN_THREADS_PER_DUMP="$SEN_THREADS_PER_DUMP"       SEN_FASTP_JOBS="$SEN_FASTP_JOBS"       SEN_FASTP_THREADS_PER_JOB="$SEN_FASTP_THREADS_PER_JOB"       SEN_FASTQC_RAW_JOBS="$SEN_FASTQC_RAW_JOBS"       SEN_FASTQC_TRIMMED_JOBS="$SEN_FASTQC_TRIMMED_JOBS"       SEN_FASTQC_THREADS_PER_JOB="$SEN_FASTQC_THREADS_PER_JOB"       SEN_COVERAGE_JOBS="$SEN_COVERAGE_JOBS"       bash "$script"
+  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT"       SEN_SRR_LIST="$SEN_SRR_LIST"       SEN_FASTP_JOBS="$SEN_FASTP_JOBS"       SEN_FASTP_THREADS_PER_JOB="$SEN_FASTP_THREADS_PER_JOB"       SEN_FASTQC_RAW_JOBS="$SEN_FASTQC_RAW_JOBS"       SEN_FASTQC_TRIMMED_JOBS="$SEN_FASTQC_TRIMMED_JOBS"       SEN_FASTQC_THREADS_PER_JOB="$SEN_FASTQC_THREADS_PER_JOB"       SEN_COVERAGE_JOBS="$SEN_COVERAGE_JOBS"       bash "$script"
 }
 
 run_stage "1/5 Download paired reads" "$REPO_ROOT/workflow/01_reads/01_download_fastq.sh"
