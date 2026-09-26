@@ -35,10 +35,14 @@ if ! conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
   fi
 fi
 
-mkdir -p "$WORKDIR"
+mkdir -p "$WORKDIR" "$WORKDIR/tmp"
 
 export SEN_ROOT="$WORKDIR"
 export SEN_SRR_LIST="$SRR_LIST"
+export TMPDIR="$WORKDIR/tmp"
+export SEN_TMP_DIR="$WORKDIR/tmp"
+
+echo "[INFO] TMPDIR:   $TMPDIR"
 
 # Laptop-safe defaults; override before launch if desired.
 export SEN_PREFETCH_JOBS="${SEN_PREFETCH_JOBS:-2}"
