@@ -117,3 +117,30 @@ SRA acquisition uses parallel `prefetch` plus parallel `fasterq-dump`, with
 concurrency derived conservatively from host CPU count. Users can still override
 `SEN_PREFETCH_JOBS`, `SEN_DUMP_JOBS`, and `SEN_THREADS_PER_DUMP` for a
 specific workstation or HPC node.
+
+
+## Intelligent resume and checkpoints
+
+Smoke stages are idempotent and resume-aware. Before running an expensive
+stage, the wrapper validates the complete expected output contract for every
+smoke sample. A stage is skipped only when those outputs are valid and its
+stored workflow/config signature matches the current scripts and environment
+definition.
+
+Validated outputs produced before checkpointing was introduced are adopted once
+by default, so an interrupted pilot can continue without recomputing completed
+work. If a scientific script or environment YAML changes later, the signature
+changes and that stage reruns automatically.
+
+Controls:
+
+```bash
+# Force every stage to rerun even when outputs/checkpoints are valid.
+SEN_FORCE_RERUN=1 bash tests/smoke_test/run_smoke_pipeline.sh
+
+# Require explicit checkpoints; do not adopt pre-existing outputs.
+SEN_ADOPT_EXISTING_OUTPUTS=0 bash tests/smoke_test/run_smoke_pipeline.sh
+```
+
+Checkpoint records live under
+`tests/smoke_test/work/.checkpoints/` by default.
