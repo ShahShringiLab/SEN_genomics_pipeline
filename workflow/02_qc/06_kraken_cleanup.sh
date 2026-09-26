@@ -20,8 +20,13 @@ REPORT_DIR="$BASE_OUT/kraken_reports"
 FINAL_LOG="$BASE_OUT/full_db_results.csv"
 
 PYTHON_EXEC="${SEN_PYTHON_EXEC:-python3}"
-EXTRACT_SCRIPT="${SEN_KRAKEN_EXTRACT_SCRIPT:-$SEN_ROOT/extract_kraken_reads_custom.py}"
-require_file "$EXTRACT_SCRIPT"
+EXTRACT_SCRIPT="${SEN_KRAKEN_EXTRACT_SCRIPT:-$(command -v extract_kraken_reads.py || true)}"
+
+if [[ -z "$EXTRACT_SCRIPT" ]]; then
+    echo "[ERROR] extract_kraken_reads.py not found in PATH." >&2
+    echo "[ERROR] Install/use environments/02_kraken.yaml, which includes KrakenTools." >&2
+    exit 1
+fi
 
 GENOME_SIZE="${SEN_GENOME_SIZE_BP:-4800000}"
 PARALLEL_JOBS="${SEN_KRAKEN_PARALLEL_JOBS:-24}"
@@ -60,7 +65,7 @@ process_sample() {
     kraken2 --db "$DB_PATH" --threads "$KRAKEN_THREADS" --paired --gzip-compressed \
       --memory-mapping --output "$kraken_out" --report "$report_file" "$fastq1" "$fastq2"
 
-    "$PYTHON_EXEC" "$EXTRACT_SCRIPT" -k "$kraken_out" --report "$report_file" \
+    "$PYTHON_EXEC" "$EXTRACT_SCRIPT" -k "$kraken_out" -r "$report_file" \
       -s1 "$fastq1" -s2 "$fastq2" -t "$TARGET_TAXID" --include-children --fastq-output \
       -o "$clean1" -o2 "$clean2"
 
