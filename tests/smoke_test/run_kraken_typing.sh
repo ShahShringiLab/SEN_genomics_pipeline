@@ -74,6 +74,14 @@ ensure_env() {
 
 ensure_env "$KRAKEN_ENV" "$KRAKEN_YAML" kraken2
 ensure_env "$SEROTYPE_ENV" "$SEROTYPE_YAML" SeqSero2_package.py
+for cmd in skesa sistr; do
+  if ! conda run -n "$SEROTYPE_ENV" command -v "$cmd" >/dev/null 2>&1; then
+    echo "[WARN] $SEROTYPE_ENV is missing $cmd; rebuilding environment."
+    conda env remove -n "$SEROTYPE_ENV" -y
+    create_env "$SEROTYPE_ENV" "$SEROTYPE_YAML"
+    break
+  fi
+done
 ensure_env "$MLST_ENV" "$MLST_YAML" mlst
 
 TRIM_DIR="$WORKDIR/trimmed_fastq"
