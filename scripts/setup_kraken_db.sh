@@ -15,7 +15,7 @@ source "$SOURCE_FILE"
 : "${SEN_KRAKEN_DB_DATE:=20260626}"
 : "${SEN_KRAKEN_DB_ARCHIVE:=k2_standard_20260626.tar.gz}"
 : "${SEN_KRAKEN_DB_URL:=https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20260626.tar.gz}"
-: "${SEN_KRAKEN_DB_MD5_URL:=https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20260626.tar.gz.md5}"
+: "${SEN_KRAKEN_DB_MD5_URL:=https://genome-idx.s3.amazonaws.com/kraken/standard_20260626/standard.md5}"
 
 SEN_ROOT="${SEN_ROOT:-$REPO_ROOT}"
 DB_PARENT="${SEN_DATABASE_DIR:-$SEN_ROOT/databases}"
@@ -23,7 +23,7 @@ KRAKEN_PARENT="$DB_PARENT/kraken2"
 DB_DIR="${SEN_KRAKEN_DB:-$KRAKEN_PARENT/k2_standard_${SEN_KRAKEN_DB_DATE}}"
 CACHE_DIR="${SEN_DB_CACHE_DIR:-$DB_PARENT/downloads}"
 ARCHIVE="$CACHE_DIR/$SEN_KRAKEN_DB_ARCHIVE"
-MD5_FILE="$ARCHIVE.md5"
+MD5_FILE="$DB_DIR/standard.md5"
 
 mkdir -p "$KRAKEN_PARENT" "$CACHE_DIR" "$DB_DIR"
 
@@ -79,21 +79,26 @@ if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
   # Multi-connection, resumable download. Tune with SEN_ARIA2_CONNECTIONS.
   ARIA2_CONNECTIONS="${SEN_ARIA2_CONNECTIONS:-16}"
   aria2c -c     -x "$ARIA2_CONNECTIONS"     -s "$ARIA2_CONNECTIONS"     -k 4M     --file-allocation=none     --summary-interval=10     -d "$CACHE_DIR"     -o "$SEN_KRAKEN_DB_ARCHIVE"     "$SEN_KRAKEN_DB_URL"
-  aria2c -c -x 4 -s 4     --file-allocation=none     -d "$CACHE_DIR"     -o "$(basename "$MD5_FILE")"     "$SEN_KRAKEN_DB_MD5_URL"
 else
   echo "[WARN] aria2c unavailable; falling back to single-connection wget."
   wget -c -O "$ARCHIVE" "$SEN_KRAKEN_DB_URL"
-  wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
 fi
-
-echo "[INFO] Verifying archive checksum..."
-(
-  cd "$CACHE_DIR"
-  md5sum -c "$(basename "$MD5_FILE")"
-)
 
 echo "[INFO] Extracting database..."
 tar -xzf "$ARCHIVE" -C "$DB_DIR"
+
+echo "[INFO] Downloading official extracted-file checksum manifest..."
+if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
+  aria2c -c -x 4 -s 4     --file-allocation=none     -d "$DB_DIR"     -o "$(basename "$MD5_FILE")"     "$SEN_KRAKEN_DB_MD5_URL"
+else
+  wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
+fi
+
+echo "[INFO] Verifying extracted Kraken2 database files..."
+(
+  cd "$DB_DIR"
+  md5sum -c "$(basename "$MD5_FILE")"
+)
 
 if ! is_valid_db; then
   echo "[ERROR] Extraction completed but required Kraken2 files are missing." >&2
