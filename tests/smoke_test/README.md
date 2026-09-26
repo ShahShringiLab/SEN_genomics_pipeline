@@ -105,3 +105,15 @@ bash tests/smoke_test/run_smoke_pipeline.sh
 As the remaining reference/SnpEff/AMR database contracts are finalized, their
 bootstrap stages will be added to this same entry point rather than requiring
 manual setup.
+
+
+## Download performance
+
+Large HTTP/S3 assets use `aria2c` when available, with resumable segmented
+downloads (16 connections by default), and fall back to `wget -c` only when
+necessary. Override the segment count with `SEN_ARIA2_CONNECTIONS`.
+
+SRA acquisition uses parallel `prefetch` plus parallel `fasterq-dump`, with
+concurrency derived conservatively from host CPU count. Users can still override
+`SEN_PREFETCH_JOBS`, `SEN_DUMP_JOBS`, and `SEN_THREADS_PER_DUMP` for a
+specific workstation or HPC node.
