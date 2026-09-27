@@ -1,37 +1,15 @@
 #!/usr/bin/env python3
-import subprocess
-import sys
 import os
 import re
 from pathlib import Path
 import itertools
 import warnings
 
-# =============================================================================
-# 1) DEPENDENCY MANAGER
-# =============================================================================
-def check_and_install_dependencies():
-    required = {
-        "pandas": "pandas",
-        "numpy": "numpy",
-        "matplotlib": "matplotlib",
-        "scipy": "scipy",
-        "statsmodels": "statsmodels",
-        "openpyxl": "openpyxl",
-    }
-    for imp, pip_name in required.items():
-        try:
-            __import__(imp)
-        except ImportError:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
-
-check_and_install_dependencies()
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from scipy.stats import chi2_contingency, fisher_exact
+from scipy.stats import chi2_contingency, fisher_exact, MonteCarloMethod
 from statsmodels.stats.multitest import multipletests
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -42,7 +20,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASE_DIR = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 SEN_GENOMES = os.environ.get("SEN_METADATA_FILE", os.path.join(BASE_DIR, "metadata", "SEN_Genomes.csv"))
-COLLECTION_YEAR_ITOL = os.path.join(BASE_DIR, "itol_4_collection_year.txt")
+COLLECTION_YEAR_ITOL = os.environ.get("SEN_COLLECTION_YEAR_ITOL", os.path.join(BASE_DIR, "itol_4_collection_year.txt"))
 
 metadata_path_candidates = [
     os.environ.get("SEN_CLADE_METADATA", os.path.join(BASE_DIR, "metadata", "final_clade_metadata.tsv")),
@@ -206,17 +184,25 @@ def group_rare_categories(series: pd.Series, min_total: int = 5, other_label: st
     return series.apply(lambda x: x if x in keep else other_label)
 
 def chi2_with_optional_montecarlo(table: np.ndarray):
-    chi2, p, dof, expected = chi2_contingency(table, correction=False)
-    method = "chi-square"
-    if np.any(expected < 5):
-        try:
-            chi2_mc, p_mc, dof_mc, _ = chi2_contingency(
-                table, correction=False, method="montecarlo", num_resamples=5000
-            )
-            return float(p_mc), "chi-square (montecarlo)", float(chi2_mc), int(dof_mc)
-        except Exception:
-            pass
-    return float(p), method, float(chi2), int(dof)
+    result = chi2_contingency(table, correction=False)
+    if np.any(result.expected_freq < 5):
+        mc = MonteCarloMethod(
+            n_resamples=5000,
+            rng=np.random.default_rng(12345),
+        )
+        mc_result = chi2_contingency(table, correction=False, method=mc)
+        return (
+            float(mc_result.pvalue),
+            "chi-square (montecarlo, 5000 resamples, seed=12345)",
+            float(mc_result.statistic),
+            np.nan,
+        )
+    return (
+        float(result.pvalue),
+        "chi-square",
+        float(result.statistic),
+        int(result.dof),
+    )
 
 def odds_ratio_with_haldene(a, b, c, d, add=0.5):
     return ((a + add) / (b + add)) / ((c + add) / (d + add))
