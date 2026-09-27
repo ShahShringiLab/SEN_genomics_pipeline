@@ -2,7 +2,7 @@
 
 Reproducible analysis workflow for the *Salmonella enterica* serovar Enteritidis (SEN) genomic analyses described in the associated manuscript.
 
-This repository is organized as a publication-facing pipeline rather than a historical working directory. It separates scientific analysis scripts, software environments, configuration, reference documentation, and validation tests.
+This repository contains the complete publication-facing implementation of the SEN genomic analysis workflow used for manuscript reproduction. It includes the full analysis code, pinned software environments, database/reference bootstrap utilities, canonical metadata, a four-genome end-to-end smoke test, downstream clade/SNP analyses, and fresh-Linux execution guides.
 
 ## Repository structure
 
@@ -114,10 +114,20 @@ The representative four-isolate smoke suite is documented in `tests/smoke_test/R
 The original working analysis repository is `ajulojays/SENBio-Final`. This repository is the cleaned, publication-facing implementation.
 
 
-## Publication freeze
+## Release status
 
-The repository has passed the representative end-to-end smoke workflow. Final
-publication merge additionally requires full-study statistical regeneration and
-historical-version reconciliation described in
-`docs/publication_audit.md`. Run `bash scripts/publication_audit.sh` for the
-static freeze gate.
+This repository is the complete manuscript-facing SEN pipeline implementation.
+
+The included smoke test and publication audit are the reproducibility checks for
+this release. Historical software-version differences and any manuscript-result
+reconciliation notes are documented transparently in
+`docs/publication_audit.md` and `docs/version_audit.md`; they do not indicate
+missing workflow stages.
+
+Run:
+
+```bash
+bash scripts/publication_audit.sh
+```
+
+to verify the repository's publication contracts on a fresh clone.
