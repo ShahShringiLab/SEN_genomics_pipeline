@@ -13,11 +13,12 @@ echo
 python tests/smoke_test/validate_smoke.py
 bash tests/smoke_test/run_reads_qc.sh
 bash tests/smoke_test/run_kraken_typing.sh
+bash tests/smoke_test/run_core_phylogeny.sh
 
 echo
 echo "=================================================="
 echo " SEN SMOKE PIPELINE CURRENTLY IMPLEMENTED: PASS"
 echo "=================================================="
-echo "[INFO] Completed through Kraken2 + serotyping + MLST."
-echo "[INFO] Core-SNP, phylogeny, pangenome and AMR stages will be appended as"
-echo "[INFO] their reference/database bootstrap contracts are finalized."
+echo "[INFO] Completed through Kraken2 + typing + core-SNP + Gubbins + IQ-TREE."
+echo "[INFO] Pangenome and AMR stages remain to be appended after their"
+echo "[INFO] database/bootstrap contracts are finalized."
