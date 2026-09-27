@@ -144,3 +144,34 @@ SEN_ADOPT_EXISTING_OUTPUTS=0 bash tests/smoke_test/run_smoke_pipeline.sh
 
 Checkpoint records live under
 `tests/smoke_test/work/.checkpoints/` by default.
+
+
+## Core-SNP and phylogeny block
+
+The next checkpointed smoke block is:
+
+```text
+P125109 / NC_011294.1 reference bootstrap
+→ Snippy per isolate
+→ snippy-core
+→ Gubbins recombination filtering
+→ historical final-tree exclusion step
+→ IQ-TREE 2.2.6 with ModelFinder+ASC, 1000 UFBoot2, BNNI
+```
+
+Run it alone with:
+
+```bash
+bash tests/smoke_test/run_core_phylogeny.sh
+```
+
+or run the currently implemented workflow from the beginning with:
+
+```bash
+bash tests/smoke_test/run_smoke_pipeline.sh
+```
+
+The reference bootstrap downloads the exact chromosome accession
+`NC_011294.1` from NCBI and validates the downloaded sequence before use.
+SnpEff functional annotation remains a separate downstream stage rather than
+being coupled to Snippy/core-alignment construction.
