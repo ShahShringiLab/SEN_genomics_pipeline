@@ -36,7 +36,7 @@ run_smart_snippy() {
     [[ -s "$R2" ]] || { echo "[ERROR] Missing R2 for $SN" >&2; return 1; }
 
     rm -rf "$SAMPLE_DIR"
-    snippy --cpus "$CPUS" --outdir "$SAMPLE_DIR" --ref "$REF"            --pe1 "$R1" --pe2 "$R2" --cleanup --quiet
+    snippy       --cpus "$CPUS"       --outdir "$SAMPLE_DIR"       --ref "$REF"       --pe1 "$R1"       --pe2 "$R2"       --mincov 10       --minqual 100       --mapqual 60       --basequal 13       --minfrac 0       --cleanup       --quiet
     [[ -s "${SAMPLE_DIR}/snps.tab" && -s "${SAMPLE_DIR}/snps.vcf" ]]
 }
 export -f run_smart_snippy
