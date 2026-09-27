@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import subprocess
-import sys
 import os
 import time
 import re
@@ -9,18 +7,6 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 
 warnings.simplefilter("ignore")
-
-# --- Dependency Check & Auto-Install ---
-def check_and_install():
-    req = ["pandas", "numpy", "scipy", "statsmodels", "pyarrow", "openpyxl", "matplotlib"]
-    for r in req:
-        try:
-            __import__(r if r != "statsmodels" else "statsmodels")
-        except ImportError:
-            print(f"📦 Installing missing package: {r} ...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", r])
-
-check_and_install()
 
 import numpy as np
 import pandas as pd
@@ -40,6 +26,7 @@ OUTROOT        = os.environ.get("SEN_PANAROO_CLADE_OUT", str(WD / "iqtree_final"
 
 ACCESSORY_MIN_FREQ = 0.01
 ACCESSORY_MAX_FREQ = 0.99
+MIN_TOTAL_PRESENT  = 10
 FDR_THRESHOLD      = 0.05
 UNASSIGNED_LABEL   = "Unassigned"
 REFERENCE_LABEL    = "Reference"
@@ -239,7 +226,11 @@ def build_binary_matrix_for_task(meta_df: pd.DataFrame, matrix_df: pd.DataFrame)
     counts_total = bin_subset.sum(axis=1)
     M = len(ordered_samples)
     freq_global = counts_total / M if M > 0 else 0
-    mask_acc = (freq_global >= ACCESSORY_MIN_FREQ) & (freq_global <= ACCESSORY_MAX_FREQ)
+    mask_acc = (
+        (freq_global >= ACCESSORY_MIN_FREQ) &
+        (freq_global <= ACCESSORY_MAX_FREQ) &
+        (counts_total >= MIN_TOTAL_PRESENT)
+    )
 
     return bin_subset, mask_acc, ordered_samples
 
