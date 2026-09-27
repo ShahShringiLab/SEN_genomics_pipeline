@@ -34,6 +34,9 @@ The smoke test should verify stage contracts and runtime behavior:
 10. Prokka
 11. Panaroo
 12. AMRFinderPlus and ABRicate
+13. clade-level downstream analyses (`analysis/clades`)
+14. accessory-gene clade analysis (`23_panaroo_byclade.py`)
+15. SNP downstream analyses (`analysis/snps`)
 
 The smoke test does **not** validate full-study biological results, clade
 frequencies, enrichment statistics, or the final 3,306-isolate phylogeny.
@@ -194,6 +197,9 @@ Reads/QC
 → Panaroo
 → AMRFinderPlus
 → ABRicate ResFinder/VFDB/PlasmidFinder
+→ analysis/clades runtime
+→ Panaroo-by-clade runtime
+→ analysis/snps runtime
 ```
 
 Frozen AMR database contracts:
@@ -208,3 +214,40 @@ The one-command smoke entry point remains:
 ```bash
 bash tests/smoke_test/run_smoke_pipeline.sh
 ```
+
+
+## Downstream analysis-layer smoke
+
+The smoke suite now includes the downstream analysis code rather than stopping
+at data generation. Run this block alone with:
+
+```bash
+bash tests/smoke_test/run_analysis_layer.sh
+```
+
+It constructs smoke-only analysis fixtures from the four validated isolates,
+then exercises:
+
+- `analysis/clades/14_clademetadata.py`
+- `analysis/clades/14b_cladesummary.py`
+- `analysis/clades/15_amr_byclade.py`
+- `analysis/clades/16_plasmid_byclade.py`
+- `analysis/clades/17_resfinder_byclade.py`
+- `analysis/clades/18_vfdb_byclade.py`
+- `workflow/06_assembly_pangenome/23_panaroo_byclade.py`
+- `analysis/snps/19b_snps_byclade.py`
+- `analysis/snps/19c_snps_proteinseq_fetch.py`
+- `analysis/snps/19d_snps_unmatched_query_rescue.py`
+- `analysis/snps/19e_snps_fga.py`
+- `analysis/snps/19f_snps_bysource.py`
+
+The two R scripts in `analysis/snps` (`FGA.R` and `FGA2.R`) are parsed
+during the smoke run to catch syntax/load failures. Their full biological
+analyses remain part of the full-study validation rather than being interpreted
+on four genomes.
+
+Because the smoke cohort has only four isolates, rules such as the >=10-genome
+minimum locus prevalence intentionally mean that many inferential result tables
+will be empty. A PASS means the analysis contracts, file handoffs, dependencies,
+and empty/small-cohort behavior work correctly; it does not imply biological
+significance.
