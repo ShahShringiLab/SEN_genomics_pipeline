@@ -3,6 +3,7 @@ import os
 import re
 from pathlib import Path
 import pandas as pd
+import numpy as np
 from scipy.stats import hypergeom
 from statsmodels.stats.multitest import multipletests
 
@@ -11,13 +12,14 @@ from statsmodels.stats.multitest import multipletests
 # =============================================================================
 REPO_ROOT        = Path(__file__).resolve().parents[2]
 WD               = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
-GUBBINS_DIR      = f"{WD}/gubbin_out"
-METADATA_FILE    = f"{WD}/ITOL/Clade_metadata.txt"
-OUTPUT_ROOT      = f"{WD}/iqtree_final/Snps_clade_integrated"
-MASTER_REPORT    = f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv"
+GUBBINS_DIR      = os.environ.get("SEN_GUBBINS_OUT", f"{WD}/gubbin")
+METADATA_FILE    = os.environ.get("SEN_CLADE_METADATA", f"{WD}/metadata/final_clade_metadata.tsv")
+OUTPUT_ROOT      = os.environ.get("SEN_SNP_CLADE_OUT", f"{WD}/iqtree_final/Snps_clade_integrated")
+MASTER_REPORT    = os.environ.get("SEN_SNP_MASTER_REPORT", f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv")
 
 # Statistics thresholds
 FDR_ALPHA        = 0.05
+MIN_TOTAL_PRESENT = 10
 DEF_IN_CLADE     = 40.0   # % presence in clade
 DEF_OUTSIDE      = 1.0    # % allowed outside clade
 UNASSIGNED_LABEL = "Unassigned"
@@ -224,11 +226,17 @@ def run_stats_pipeline(meta_df, anno_df, run_outdir):
         in_counts = counts[c].values
         total_k = counts["K_total"].values
 
-        p_vals = hypergeom.sf(in_counts - 1, M, total_k, n)
-        fdr = multipletests(p_vals, method="fdr_bh")[1]
+        eligible = (total_k >= MIN_TOTAL_PRESENT) & (total_k < M)
+        p_vals = np.full(len(total_k), np.nan, dtype=float)
+        p_vals[eligible] = hypergeom.sf(in_counts[eligible] - 1, M, total_k[eligible], n)
+
+        fdr = np.full(len(total_k), np.nan, dtype=float)
+        if np.any(eligible):
+            fdr[eligible] = multipletests(p_vals[eligible], method="fdr_bh")[1]
 
         res = counts.reset_index().merge(anno_lookup, on=["POS", "REF", "ALT"], how="left")
         res["fdr"] = fdr
+        res["eligible_for_test"] = eligible
         res["percent_in"] = (in_counts / n) * 100.0 if n > 0 else 0.0
         res["percent_out"] = ((total_k - in_counts) / (M - n) * 100.0) if (M - n) > 0 else 0.0
 
