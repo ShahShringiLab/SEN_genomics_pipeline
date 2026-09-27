@@ -360,7 +360,10 @@ def main():
 
     # Recombination filtering
     df["is_recombination"] = False
-    gff_path = os.path.join(GUBBINS_DIR, "senbio_clean.recombination_predictions.gff")
+    gff_path = os.environ.get(
+        "SEN_GUBBINS_RECOMB_GFF",
+        os.path.join(GUBBINS_DIR, "senbio_res.recombination_predictions.gff")
+    )
 
     if os.path.exists(gff_path):
         print(f"🧬 Flagging recombination from GFF: {gff_path}")
