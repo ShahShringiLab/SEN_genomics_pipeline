@@ -565,8 +565,4 @@ at each freeze gate.
 
 ## 38. Publication interpretation
 
-A fresh run from this repository uses the complete, pinned SEN workflow and
-the software/database versions defined for the current reproducible release.
-Key validated versions include MLST 2.33.1, Gubbins 3.4.3, and
-NCBI AMRFinderPlus 4.2.5. Version and database provenance for the release is
-recorded in the repository documentation.
+A fresh run from this repository uses the complete SEN workflow and the pinned software and database versions defined for the current release.
