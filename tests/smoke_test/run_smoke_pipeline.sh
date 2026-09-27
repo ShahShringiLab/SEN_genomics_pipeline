@@ -16,10 +16,11 @@ bash tests/smoke_test/run_kraken_typing.sh
 bash tests/smoke_test/run_core_phylogeny.sh
 bash tests/smoke_test/run_assembly_pangenome.sh
 bash tests/smoke_test/run_amr_vf_plasmid.sh
+bash tests/smoke_test/run_analysis_layer.sh
 
 echo
 echo "=================================================="
 echo " SEN END-TO-END SMOKE PIPELINE: PASS"
 echo "=================================================="
 echo "[INFO] Completed reads/QC, typing, core-SNP phylogeny, assembly/pangenome,"
-echo "[INFO] and AMR/virulence/plasmid screening."
+echo "[INFO] AMR/virulence/plasmid screening, clade analyses, and SNP analyses."
