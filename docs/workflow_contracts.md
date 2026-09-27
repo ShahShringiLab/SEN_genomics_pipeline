@@ -133,3 +133,12 @@ Gubbins and AMRFinderPlus.
 The smoke test validates execution contracts only. It is not expected to
 reproduce full-study phylogenetic topology, clade statistics or enrichment
 results from four isolates.
+
+
+### SISTR CLI migration correction
+
+The publication-facing SISTR stage uses `-i <fasta> <genome_name>` for explicit
+genome naming. Historical code used `-n <sample>`, but in `sistr_cmd`
+`-n/--novel-alleles` specifies a novel-alleles FASTA output path rather than a
+genome name. The corrected stage also preserves completed SKESA assemblies,
+reruns only missing SISTR results, and retains per-sample SISTR logs on failure.
