@@ -3,56 +3,52 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../lib/common.sh"
 
-BASE_DIR="$SEN_ROOT"
+TREEFILE="${SEN_TREEFILE:-${SEN_IQTREE_OUT:-$SEN_ROOT/iqtree_final}/SSLAB_FINAL.treefile}"
+CLADE_META="${SEN_CLADE_METADATA:-$SEN_ROOT/metadata/final_clade_metadata.tsv}"
 
-TREE_DIR="${BASE_DIR}/iqtree_final"
-TREEFILE="${TREE_DIR}/SSLAB_FINAL.treefile"
+require_file "$TREEFILE"
+require_file "$CLADE_META"
 
-ITOL_DIR="${BASE_DIR}/ITOL"
-CLADE1="${ITOL_DIR}/Clade1.txt"
-CLADE2="${ITOL_DIR}/Clade2.txt"
-CLADE3="${ITOL_DIR}/Clade3.txt"
-UNASSIGNED="${ITOL_DIR}/Unassigned.txt"
+tmp_tree="$(mktemp)"
+tmp_meta="$(mktemp)"
+tmp_dup="$(mktemp)"
+trap 'rm -f "$tmp_tree" "$tmp_meta" "$tmp_dup"' EXIT
 
-tmp_all="$(mktemp)"
-tmp_clades="$(mktemp)"
-trap 'rm -f "$tmp_all" "$tmp_clades"' EXIT
+grep -oE 'SRR[0-9]+' "$TREEFILE" | sort -u > "$tmp_tree"
 
-echo "[INFO] Using treefile: $TREEFILE"
-[[ -s "$TREEFILE" ]] || { echo "[ERROR] Missing/empty treefile: $TREEFILE" >&2; exit 1; }
+awk -F'\t' '
+  NR==1 {next}
+  $1 ~ /^SRR[0-9]+$/ {
+    if ($2!="Clade 1A" && $2!="Clade 1B" && $2!="Clade 2" && $2!="Clade 3" && $2!="Unassigned") {
+      print "[ERROR] invalid lineage for " $1 ": " $2 > "/dev/stderr"
+      bad=1
+    }
+    print $1
+  }
+  END {if (bad) exit 2}
+' "$CLADE_META" | sort > "$tmp_meta"
 
-# ----------------------------
-# 1) Extract ALL SRR leaf IDs from the treefile (ONLY SRRxxxx)
-# ----------------------------
-grep -oE 'SRR[0-9]+' "$TREEFILE" | sort -u > "$tmp_all"
+awk -F'\t' 'NR>1 && $1 ~ /^SRR[0-9]+$/ {n[$1]++} END {for (x in n) if (n[x]>1) print x}'   "$CLADE_META" | sort > "$tmp_dup"
 
-ALL_N=$(wc -l < "$tmp_all" | tr -d ' ')
-echo "[INFO] SRRs found in tree: $ALL_N"
+if [[ -s "$tmp_dup" ]]; then
+  echo "[ERROR] Duplicate SRR assignments in canonical clade metadata:" >&2
+  cat "$tmp_dup" >&2
+  exit 1
+fi
 
-# ----------------------------
-# 2) Build union of clade SRRs (sanitize: keep only SRR IDs)
-# ----------------------------
-for f in "$CLADE1" "$CLADE2" "$CLADE3"; do
-  [[ -s "$f" ]] || { echo "[ERROR] Missing/empty clade file: $f" >&2; exit 1; }
-done
+tree_n="$(wc -l < "$tmp_tree" | tr -d ' ')"
+meta_n="$(wc -l < "$tmp_meta" | tr -d ' ')"
 
-cat "$CLADE1" "$CLADE2" "$CLADE3" \
-  | tr -d '\r' \
-  | grep -oE 'SRR[0-9]+' \
-  | sort -u > "$tmp_clades"
+echo "[INFO] Tree SRR tips:            $tree_n"
+echo "[INFO] Canonical metadata SRRs:  $meta_n"
 
-CLADES_N=$(wc -l < "$tmp_clades" | tr -d ' ')
-echo "[INFO] Unique SRRs across clades: $CLADES_N"
+if ! diff -u "$tmp_tree" "$tmp_meta"; then
+  echo "[ERROR] Canonical clade metadata SRR set does not match the IQ-TREE SRR set." >&2
+  exit 1
+fi
 
-# ----------------------------
-# 3) Unassigned = all_in_tree - clades_union
-# ----------------------------
-comm -23 "$tmp_all" "$tmp_clades" > "$UNASSIGNED"
+echo "[INFO] Canonical lineage counts:"
+awk -F'\t' 'NR>1 {n[$2]++} END {for (x in n) print x "\t" n[x]}' "$CLADE_META" | sort
 
-UN_N=$(wc -l < "$UNASSIGNED" | tr -d ' ')
-echo "[INFO] Unassigned SRRs written: $UN_N -> $UNASSIGNED"
-
-# Optional: quick sanity sample
-echo "[INFO] First 10 unassigned:"
-head -n 10 "$UNASSIGNED" || true
-
+echo "[PASS] Final IQ-TREE SRR set exactly matches metadata/final_clade_metadata.tsv."
+echo "[INFO] Clade assignments are treated as frozen study metadata; this script does not re-derive them from historical ITOL lists."
