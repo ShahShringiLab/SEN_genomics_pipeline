@@ -125,6 +125,20 @@ echo "[STAGE] 3/3 Panaroo"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "panaroo" validate_panaroo     "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo.sh" "$PANAROO_YAML" "$SRR_LIST"; then
   ensure_env "$PANAROO_ENV" "$PANAROO_YAML" panaroo
+
+  # Panaroo 1.6.0 parses Prokka-derived temporary FASTA with SeqIO format
+  # "fasta". Biopython 1.87 made leading-comment handling an error, so reject
+  # environments that resolve that incompatible parser behavior.
+  if ! conda run -n "$PANAROO_ENV" python -c '
+import Bio, sys
+assert sys.version_info[:2] == (3, 10)
+assert Bio.__version__ == "1.86"
+' >/dev/null 2>&1; then
+    echo "[WARN] $PANAROO_ENV has an incompatible Python/Biopython runtime; rebuilding."
+    conda env remove -n "$PANAROO_ENV" -y
+    create_env "$PANAROO_ENV" "$PANAROO_YAML"
+  fi
+
   rm -rf "$SEN_PANAROO_OUT"
   conda run --no-capture-output -n "$PANAROO_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_PROKKA_OUT="$SEN_PROKKA_OUT"       SEN_PANAROO_OUT="$SEN_PANAROO_OUT" SEN_PANAROO_THREADS="$SEN_PANAROO_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo.sh"
   checkpoint_require_valid "panaroo" validate_panaroo
