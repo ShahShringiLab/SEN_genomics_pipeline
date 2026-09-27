@@ -62,3 +62,17 @@ venv/
 
 # Local validation scratch
 remaining_hardcoded_paths.txt
+
+# Local validation/runtime artifacts
+tests/smoke_test/work/
+conda_tool_inventory.tsv
+sen_environment_inventory.txt
+sen_tool_versions.txt
+software_versions.tsv
+
+# Local validation/runtime artifacts
+tests/smoke_test/work/
+conda_tool_inventory.tsv
+sen_environment_inventory.txt
+sen_tool_versions.txt
+software_versions.tsv
