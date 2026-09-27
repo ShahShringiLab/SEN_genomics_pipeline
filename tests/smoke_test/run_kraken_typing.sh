@@ -195,8 +195,11 @@ echo "--------------------------------------------------"
 if ! checkpoint_should_skip "sistr_skesa" validate_sistr \
     "$REPO_ROOT/workflow/03_typing/11_sistr.sh" "$SISTR_YAML" "$SRR_LIST"; then
   ensure_env "$SISTR_ENV" "$SISTR_YAML" skesa
-  if ! conda run -n "$SISTR_ENV" command -v sistr >/dev/null 2>&1; then
-    echo "[WARN] $SISTR_ENV is missing sistr; rebuilding."
+  if ! conda run -n "$SISTR_ENV" command -v sistr >/dev/null 2>&1 || \
+     ! conda run -n "$SISTR_ENV" python -c 'import pkg_resources' >/dev/null 2>&1 || \
+     ! conda run -n "$SISTR_ENV" python -c 'import sys; assert sys.version_info[:2] == (3,10)' >/dev/null 2>&1 || \
+     ! conda run -n "$SISTR_ENV" sistr --version >/dev/null 2>&1; then
+    echo "[WARN] $SISTR_ENV is incompatible with SISTR 1.1.3; rebuilding from $SISTR_YAML."
     conda env remove -n "$SISTR_ENV" -y
     create_env "$SISTR_ENV" "$SISTR_YAML"
   fi
