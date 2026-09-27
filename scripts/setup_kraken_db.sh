@@ -23,16 +23,21 @@ KRAKEN_PARENT="$DB_PARENT/kraken2"
 DB_DIR="${SEN_KRAKEN_DB:-$KRAKEN_PARENT/k2_standard_${SEN_KRAKEN_DB_DATE}}"
 CACHE_DIR="${SEN_DB_CACHE_DIR:-$DB_PARENT/downloads}"
 ARCHIVE="$CACHE_DIR/$SEN_KRAKEN_DB_ARCHIVE"
-MD5_FILE="$DB_DIR/standard.md5"
+MD5_FILE="$CACHE_DIR/standard_${SEN_KRAKEN_DB_DATE}.md5"
+VERIFY_MARKER="$DB_DIR/.sen_verified"
 
 mkdir -p "$KRAKEN_PARENT" "$CACHE_DIR" "$DB_DIR"
 
-is_valid_db() {
+core_db_present() {
   [[ -s "$DB_DIR/hash.k2d" && -s "$DB_DIR/opts.k2d" && -s "$DB_DIR/taxo.k2d" ]]
 }
 
-if is_valid_db; then
-  echo "[INFO] Kraken2 database already present: $DB_DIR"
+is_verified_db() {
+  core_db_present && [[ -s "$VERIFY_MARKER" ]]
+}
+
+if is_verified_db; then
+  echo "[INFO] Verified Kraken2 database already present: $DB_DIR"
   exit 0
 fi
 
@@ -49,19 +54,9 @@ command -v tar >/dev/null 2>&1 || {
   exit 1
 }
 command -v md5sum >/dev/null 2>&1 || {
-  echo "[ERROR] md5sum is required to verify the Kraken2 database archive." >&2
+  echo "[ERROR] md5sum is required to verify the Kraken2 database." >&2
   exit 1
 }
-
-# Full Standard 2026-06-26 is ~79.6 GB compressed and ~103 GB unpacked.
-# Keep a safety margin because download and extraction coexist temporarily.
-avail_kb="$(df -Pk "$DB_PARENT" | awk 'NR==2 {print $4}')"
-required_kb=$((190 * 1024 * 1024))
-if [[ "$avail_kb" -lt "$required_kb" ]]; then
-  echo "[ERROR] Less than ~190 GB free under $DB_PARENT." >&2
-  echo "[ERROR] The pinned full Kraken2 Standard database needs substantial temporary space." >&2
-  exit 1
-fi
 
 echo "=================================================="
 echo " Kraken2 database bootstrap"
@@ -70,38 +65,70 @@ echo "[INFO] Snapshot:   Standard $SEN_KRAKEN_DB_DATE"
 echo "[INFO] URL:        $SEN_KRAKEN_DB_URL"
 echo "[INFO] Install to: $DB_DIR"
 echo "[INFO] Cache:      $CACHE_DIR"
-echo
-echo "[INFO] This is a large download (~80 GB compressed)."
-echo "[INFO] Downloader:  $DOWNLOAD_TOOL"
+echo "[INFO] Downloader: $DOWNLOAD_TOOL"
 echo
 
-if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
-  # Multi-connection, resumable download. Tune with SEN_ARIA2_CONNECTIONS.
-  ARIA2_CONNECTIONS="${SEN_ARIA2_CONNECTIONS:-16}"
-  aria2c -c     -x "$ARIA2_CONNECTIONS"     -s "$ARIA2_CONNECTIONS"     -k 4M     --file-allocation=none     --summary-interval=10     -d "$CACHE_DIR"     -o "$SEN_KRAKEN_DB_ARCHIVE"     "$SEN_KRAKEN_DB_URL"
-else
-  echo "[WARN] aria2c unavailable; falling back to single-connection wget."
-  wget -c -O "$ARCHIVE" "$SEN_KRAKEN_DB_URL"
+if [[ ! -s "$MD5_FILE" ]]; then
+  echo "[INFO] Downloading official checksum manifest..."
+  if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
+    aria2c -c -x 4 -s 4 --file-allocation=none       -d "$CACHE_DIR" -o "$(basename "$MD5_FILE")" "$SEN_KRAKEN_DB_MD5_URL"
+  else
+    wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
+  fi
 fi
 
-echo "[INFO] Extracting database..."
-tar -xzf "$ARCHIVE" -C "$DB_DIR"
+if [[ ! -s "$ARCHIVE" ]]; then
+  # Full Standard 2026-06-26 is ~79.6 GB compressed and ~103 GB unpacked.
+  # Keep a safety margin because download and extraction coexist temporarily.
+  avail_kb="$(df -Pk "$DB_PARENT" | awk 'NR==2 {print $4}')"
+  required_kb=$((190 * 1024 * 1024))
+  if [[ "$avail_kb" -lt "$required_kb" ]]; then
+    echo "[ERROR] Less than ~190 GB free under $DB_PARENT." >&2
+    echo "[ERROR] The pinned full Kraken2 Standard database needs substantial temporary space." >&2
+    exit 1
+  fi
 
-echo "[INFO] Downloading official extracted-file checksum manifest..."
-if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
-  aria2c -c -x 4 -s 4     --file-allocation=none     -d "$DB_DIR"     -o "$(basename "$MD5_FILE")"     "$SEN_KRAKEN_DB_MD5_URL"
+  echo "[INFO] Downloading Kraken2 Standard archive (~80 GB compressed)..."
+  if [[ "$DOWNLOAD_TOOL" == "aria2c" ]]; then
+    ARIA2_CONNECTIONS="${SEN_ARIA2_CONNECTIONS:-16}"
+    aria2c -c       -x "$ARIA2_CONNECTIONS"       -s "$ARIA2_CONNECTIONS"       -k 4M       --file-allocation=none       --summary-interval=10       -d "$CACHE_DIR"       -o "$SEN_KRAKEN_DB_ARCHIVE"       "$SEN_KRAKEN_DB_URL"
+  else
+    echo "[WARN] aria2c unavailable; falling back to single-connection wget."
+    wget -c -O "$ARCHIVE" "$SEN_KRAKEN_DB_URL"
+  fi
 else
-  wget -O "$MD5_FILE" "$SEN_KRAKEN_DB_MD5_URL"
+  echo "[SKIP] Archive already present: $ARCHIVE"
+fi
+
+echo "[INFO] Verifying downloaded archive against official manifest..."
+archive_line="$(awk -v a="$SEN_KRAKEN_DB_ARCHIVE" '$2==a || $2=="*"a {print; exit}' "$MD5_FILE")"
+if [[ -z "$archive_line" ]]; then
+  echo "[ERROR] Official checksum manifest does not contain $SEN_KRAKEN_DB_ARCHIVE." >&2
+  exit 1
+fi
+(
+  cd "$CACHE_DIR"
+  printf '%s\n' "$archive_line" | md5sum -c -
+)
+
+if core_db_present; then
+  echo "[SKIP] Core Kraken2 database files already extracted."
+else
+  echo "[INFO] Extracting database..."
+  tar -xzf "$ARCHIVE" -C "$DB_DIR"
 fi
 
 echo "[INFO] Verifying extracted Kraken2 database files..."
+internal_manifest="$DB_DIR/.standard_internal.md5"
+awk -v a="$SEN_KRAKEN_DB_ARCHIVE" '$2!=a && $2!="*"a {print}' "$MD5_FILE" > "$internal_manifest"
 (
   cd "$DB_DIR"
-  md5sum -c "$(basename "$MD5_FILE")"
+  md5sum -c "$(basename "$internal_manifest")"
 )
+rm -f "$internal_manifest"
 
-if ! is_valid_db; then
-  echo "[ERROR] Extraction completed but required Kraken2 files are missing." >&2
+if ! core_db_present; then
+  echo "[ERROR] Required Kraken2 database files are missing after verification." >&2
   exit 1
 fi
 
@@ -111,11 +138,15 @@ snapshot_date=$SEN_KRAKEN_DB_DATE
 archive=$SEN_KRAKEN_DB_ARCHIVE
 source_url=$SEN_KRAKEN_DB_URL
 checksum_url=$SEN_KRAKEN_DB_MD5_URL
+verified_archive=md5
+verified_extracted_files=md5
 installed_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
+
+printf 'snapshot=%s\nverified_utc=%s\n'   "$SEN_KRAKEN_DB_DATE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$VERIFY_MARKER"
 
 if [[ "${SEN_KEEP_DB_ARCHIVE:-0}" != "1" ]]; then
   rm -f "$ARCHIVE"
 fi
 
-echo "[PASS] Kraken2 database ready: $DB_DIR"
+echo "[PASS] Kraken2 database ready and verified: $DB_DIR"
