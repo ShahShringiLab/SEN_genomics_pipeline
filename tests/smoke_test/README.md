@@ -175,3 +175,36 @@ The reference bootstrap downloads the exact chromosome accession
 `NC_011294.1` from NCBI and validates the downloaded sequence before use.
 SnpEff functional annotation remains a separate downstream stage rather than
 being coupled to Snippy/core-alignment construction.
+
+
+## End-to-end smoke status
+
+All currently publication-facing computational blocks now pass on the
+four-isolate smoke cohort:
+
+```text
+Reads/QC
+→ Kraken2
+→ SeqSero2 + SISTR + MLST
+→ Snippy + snippy-core
+→ Gubbins
+→ IQ-TREE
+→ Shovill
+→ Prokka
+→ Panaroo
+→ AMRFinderPlus
+→ ABRicate ResFinder/VFDB/PlasmidFinder
+```
+
+Frozen AMR database contracts:
+
+- AMRFinderPlus database: `2026-08-07.1`
+- ABRicate ResFinder: 3,206 sequences, 2025-Dec-5
+- ABRicate VFDB: 4,592 sequences, 2025-Dec-5
+- ABRicate PlasmidFinder: 488 sequences, 2025-Dec-5
+
+The one-command smoke entry point remains:
+
+```bash
+bash tests/smoke_test/run_smoke_pipeline.sh
+```
