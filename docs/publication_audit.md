@@ -4,11 +4,12 @@ This document is the publication-facing reconciliation record for
 `SEN_genomics_pipeline`. The authoritative historical source snapshot is
 `ajulojays/SENBio-Final@78abf1e0efb3ed2eb91d7de72fc928a3b90e64f5`.
 
-The cleaned repository has passed an end-to-end four-isolate smoke test through
-reads/QC, typing, core-SNP phylogeny, assembly/pangenome, and
-AMR/virulence/plasmid screening. Smoke validation demonstrates runtime
-reproducibility; it does **not** prove that the full-study results were
-historically generated with every currently pinned package version.
+This repository contains the complete manuscript-facing implementation of the
+SEN workflow. The four-isolate smoke suite provides runtime validation of the
+pipeline implementation, while this audit records historical provenance and
+full-study result-reconciliation items separately. Historical version
+reconciliation is therefore treated as provenance, not as evidence of a missing
+pipeline stage.
 
 ## 1. Cohort and metadata
 
@@ -188,10 +189,10 @@ Both combined-Clade-1 and split-Clade-1A/1B analyses may be retained as
 sensitivity/descriptive outputs, but manuscript claims using the final clade
 scheme must use the split metadata.
 
-## 9. Remaining publication freeze gates
+## 9. Validation and reconciliation checklist
 
-The branch should **not** be merged to `main` as a final publication freeze
-until all of the following are complete:
+The workflow implementation is complete. The following items are the validation
+and manuscript-reconciliation checklist for a frozen validated release:
 
 1. rerun full-study clade AMR/ResFinder/VFDB/plasmid statistics after the
    Monte Carlo correction;
@@ -206,10 +207,10 @@ until all of the following are complete:
 7. run `bash scripts/publication_audit.sh` and require PASS;
 8. review full-study regenerated tables against manuscript numbers before merge.
 
-## 10. Merge policy
+## 10. Release policy
 
-A smoke PASS is necessary but not sufficient for publication freeze. The final
-merge should occur only after the regenerated full-study statistical outputs are
-checked against the manuscript and all remaining OPEN provenance items have
-either been resolved with evidence or explicitly described as reconstructed
-software provenance.
+The ShahShringiLab manuscript repository represents the complete workflow
+implementation. Development and testing continue in the personal development
+repository; validated improvements are promoted into the manuscript repository
+as updated complete snapshots. A validated release tag should be created after
+the checklist above has been rerun and reconciled against the manuscript.
