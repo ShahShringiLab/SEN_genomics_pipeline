@@ -6,6 +6,7 @@ dependencies:
   - pandas
   - numpy
   - scipy=1.15.3
+  - blast
   - statsmodels
   - matplotlib
   - seaborn
