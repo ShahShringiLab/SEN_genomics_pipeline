@@ -66,7 +66,7 @@ Software environments are stored in `environments/`. Exact versions stated in th
 
 ## Configuration
 
-Scientific thresholds are centralized in `config/pipeline_config.yaml`. Machine-specific paths should not be committed. Use `config/paths.example.env` as the template for local/HPC paths.
+Publication-facing scientific thresholds are encoded explicitly in the relevant workflow/analysis scripts and audited by `scripts/validate_analysis_contracts.py`. Frozen external database releases are recorded in `config/database_sources.env`. Machine-specific paths should not be committed; use `config/paths.example.env` as the template for local/HPC paths.
 
 ## Validation
 
@@ -75,3 +75,12 @@ The first validation target is a smoke test using one representative genome from
 ## Provenance
 
 The original working analysis repository is `ajulojays/SENBio-Final`. This repository is the cleaned, publication-facing implementation.
+
+
+## Publication freeze
+
+The repository has passed the representative end-to-end smoke workflow. Final
+publication merge additionally requires full-study statistical regeneration and
+historical-version reconciliation described in
+`docs/publication_audit.md`. Run `bash scripts/publication_audit.sh` for the
+static freeze gate.
