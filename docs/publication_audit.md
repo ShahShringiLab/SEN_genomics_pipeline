@@ -74,8 +74,11 @@ relying on defaults:
 The reconstructed alignment toolchain is pinned to BWA 0.7.18, SAMtools 1.20
 and FreeBayes 1.3.6.
 
-SnpEff remains a separate downstream annotation stage and must be validated
-against the manuscript/reference database contract before final freeze.
+SnpEff remains a separate downstream annotation stage. The reconstructed
+workflow now builds its local SnpEff database directly from the bootstrapped
+P125109 / NC_011294.1 GenBank record and parses the annotated VCF directly.
+Historical SnpEff database/provenance should still be compared with manuscript
+records before final freeze.
 
 ## 4. Recombination filtering and final phylogeny
 
@@ -196,7 +199,7 @@ until all of the following are complete:
    filter;
 3. rerun or validate full-study Panaroo-by-clade outputs under the same locus
    filter;
-4. validate SnpEff annotation/database provenance;
+4. validate historical SnpEff annotation/database provenance against the reconstructed P125109 database;
 5. verify the full-study IQ-TREE report selected TVM+F+ASC+R2;
 6. resolve, or explicitly document in the manuscript, historical version
    discrepancies for MLST, Gubbins and AMRFinderPlus;
