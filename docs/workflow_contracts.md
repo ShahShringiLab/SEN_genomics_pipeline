@@ -104,11 +104,16 @@ clade and <=5% outside.
 **Input:** draft assemblies  
 **Output:** AMRFinderPlus reports and ABRicate ResFinder/VFDB/PlasmidFinder
 reports  
-**Key contract:** AMRFinderPlus runs with `--plus --organism Salmonella`.
-Binary presence in manuscript analyses is coverage >=80% and identity >=90%.
-The current AMRFinder workflow still performs `amrfinder -u`; this must be
-replaced by a documented/pinned database snapshot before final publication
-freeze.
+**Key contract:** AMRFinderPlus runs with `--plus --organism Salmonella`
+against an explicit frozen database directory; the analysis stage never performs
+a database update. Database bootstrap is separated into
+`scripts/setup_amr_databases.sh`, which captures the resolved AMRFinderPlus
+database release and full ABRicate database inventory as provenance. ABRicate
+runs ResFinder, VFDB and PlasmidFinder with the manuscript binary-presence
+thresholds encoded directly at screening time: coverage >=80% and identity
+>=90%. ABRicate database updates are not performed at runtime; the databases
+bundled with the pinned ABRicate package are inventoried and validated before
+screening.
 
 ## 10. Downstream clade/SNP statistics
 
