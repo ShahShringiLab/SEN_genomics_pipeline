@@ -116,13 +116,9 @@ The original working analysis repository is `ajulojays/SENBio-Final`. This repos
 
 ## Release status
 
-This repository is the complete manuscript-facing SEN pipeline implementation.
+This repository contains the complete manuscript-facing SEN pipeline implementation.
 
-The included smoke test and publication audit are the reproducibility checks for
-this release. Historical software-version differences and any manuscript-result
-reconciliation notes are documented transparently in
-`docs/publication_audit.md` and `docs/version_audit.md`; they do not indicate
-missing workflow stages.
+A fresh run from this repository uses the complete SEN workflow and the pinned software and database versions defined for the current release.
 
 Run:
 
