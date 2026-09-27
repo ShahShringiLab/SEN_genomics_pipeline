@@ -25,6 +25,7 @@ CACHE_DIR="${SEN_DB_CACHE_DIR:-$DB_PARENT/downloads}"
 ARCHIVE="$CACHE_DIR/$SEN_KRAKEN_DB_ARCHIVE"
 MD5_FILE="$CACHE_DIR/standard_${SEN_KRAKEN_DB_DATE}.md5"
 VERIFY_MARKER="$DB_DIR/.sen_verified"
+EXTRACT_MARKER="$DB_DIR/.sen_extracted"
 
 mkdir -p "$KRAKEN_PARENT" "$CACHE_DIR" "$DB_DIR"
 
@@ -53,6 +54,11 @@ command -v tar >/dev/null 2>&1 || {
   echo "[ERROR] tar is required to unpack the Kraken2 database." >&2
   exit 1
 }
+if command -v pigz >/dev/null 2>&1; then
+  EXTRACT_TOOL="pigz"
+else
+  EXTRACT_TOOL="gzip"
+fi
 command -v md5sum >/dev/null 2>&1 || {
   echo "[ERROR] md5sum is required to verify the Kraken2 database." >&2
   exit 1
@@ -111,20 +117,32 @@ fi
   printf '%s\n' "$archive_line" | md5sum -c -
 )
 
-if core_db_present; then
-  echo "[SKIP] Core Kraken2 database files already extracted."
+if [[ -s "$EXTRACT_MARKER" ]]; then
+  echo "[SKIP] Extraction marker present; reusing extracted Kraken2 database."
 else
   echo "[INFO] Extracting database..."
-  tar -xzf "$ARCHIVE" -C "$DB_DIR"
+  if [[ "$EXTRACT_TOOL" == "pigz" ]]; then
+    EXTRACT_THREADS="${SEN_PIGZ_EXTRACT_THREADS:-16}"
+    echo "[INFO] Parallel decompression: pigz -p $EXTRACT_THREADS"
+    pigz -p "$EXTRACT_THREADS" -dc "$ARCHIVE" | tar -xf - -C "$DB_DIR"
+  else
+    echo "[WARN] pigz unavailable; falling back to single-threaded gzip extraction."
+    tar -xzf "$ARCHIVE" -C "$DB_DIR"
+  fi
+  touch "$EXTRACT_MARKER"
 fi
 
 echo "[INFO] Verifying extracted Kraken2 database files..."
 internal_manifest="$DB_DIR/.standard_internal.md5"
 awk -v a="$SEN_KRAKEN_DB_ARCHIVE" '$2!=a && $2!="*"a {print}' "$MD5_FILE" > "$internal_manifest"
-(
+if ! (
   cd "$DB_DIR"
   md5sum -c "$(basename "$internal_manifest")"
-)
+); then
+  rm -f "$EXTRACT_MARKER" "$VERIFY_MARKER" "$internal_manifest"
+  echo "[ERROR] Extracted Kraken2 database verification failed." >&2
+  exit 1
+fi
 rm -f "$internal_manifest"
 
 if ! core_db_present; then
