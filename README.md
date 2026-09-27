@@ -19,6 +19,43 @@ SEN_genomics_pipeline/
 └── tests/
 ```
 
+## Reproduce the workflow on a fresh Linux machine
+
+Two execution paths are documented separately.
+
+### Four-genome smoke test
+
+Use this first on a new machine. It validates the complete local workflow,
+including downstream `analysis/clades` and `analysis/snps` runtime behavior.
+
+See: `docs/SMOKE_TEST_FRESH_LINUX.md`
+
+After installing Git and Conda, the principal command is:
+
+```bash
+bash tests/smoke_test/run_smoke_pipeline.sh
+```
+
+A successful run ends with:
+
+```text
+SEN END-TO-END SMOKE PIPELINE: PASS
+```
+
+### Full manuscript reproduction
+
+The full workflow begins with the canonical 3,434-SRR metadata cohort and uses
+the frozen historical final cohort of 3,306 study SRRs plus P125109 for the
+publication-facing downstream analyses.
+
+See: `docs/FULL_RUN_FRESH_LINUX.md`
+
+The full guide contains copy-paste commands for environment creation, SRA
+download, QC/typing, Kraken2, Snippy/SnpEff, Gubbins, IQ-TREE, Shovill,
+Prokka, Panaroo, AMRFinderPlus/ABRicate, clade statistics, SNP analyses, and
+the final publication audit. External EggNOG/PHASTER/HMMER steps are identified
+explicitly rather than silently substituted.
+
 ## Analysis workflow
 
 ### 1. Read retrieval, trimming, and quality control
@@ -70,7 +107,7 @@ Publication-facing scientific thresholds are encoded explicitly in the relevant 
 
 ## Validation
 
-The first validation target is a smoke test using one representative genome from each major SEN clade plus P125109. See `tests/smoke_test/README.md`.
+The representative four-isolate smoke suite is documented in `tests/smoke_test/README.md` and `docs/SMOKE_TEST_FRESH_LINUX.md`. Full manuscript-scale execution is documented in `docs/FULL_RUN_FRESH_LINUX.md`.
 
 ## Provenance
 
