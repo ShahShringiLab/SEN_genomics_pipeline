@@ -15,15 +15,17 @@ ITERATIONS="${SEN_GUBBINS_ITERATIONS:-3}"
 require_file "$ALN"
 mkdir -p "$OUT_DIR" "$TMP_DIR"
 
-if ! command -v veryfasttree >/dev/null 2>&1; then
-    if [[ -n "${SEN_VERYFASTTREE_DIR:-}" && -x "$SEN_VERYFASTTREE_DIR/VeryFastTree" ]]; then
-        export PATH="$SEN_VERYFASTTREE_DIR:$PATH"
-    elif [[ -x "$SEN_ROOT/veryfasttree/build/VeryFastTree" ]]; then
-        export PATH="$SEN_ROOT/veryfasttree/build:$PATH"
-    else
-        echo "[ERROR] veryfasttree not found on PATH." >&2
-        exit 1
-    fi
+if command -v VeryFastTree >/dev/null 2>&1; then
+    :
+elif command -v veryfasttree >/dev/null 2>&1; then
+    :
+elif [[ -n "${SEN_VERYFASTTREE_DIR:-}" && -x "$SEN_VERYFASTTREE_DIR/VeryFastTree" ]]; then
+    export PATH="$SEN_VERYFASTTREE_DIR:$PATH"
+elif [[ -x "$SEN_ROOT/veryfasttree/build/VeryFastTree" ]]; then
+    export PATH="$SEN_ROOT/veryfasttree/build:$PATH"
+else
+    echo "[ERROR] VeryFastTree/veryfasttree not found on PATH." >&2
+    exit 1
 fi
 
 export TMPDIR="$TMP_DIR"
