@@ -2,10 +2,10 @@ name: sen_stats
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python=3.10
   - pandas
   - numpy
-  - scipy
+  - scipy=1.15.3
   - statsmodels
   - matplotlib
   - seaborn
