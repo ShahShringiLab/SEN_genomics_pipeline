@@ -12,12 +12,12 @@ from statsmodels.stats.multitest import multipletests
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WD = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 
-GUBBINS_DIR   = f"{WD}/gubbin_out"
-MASTER_REPORT = f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv"
+GUBBINS_DIR   = os.environ.get("SEN_GUBBINS_OUT", f"{WD}/gubbin")
+MASTER_REPORT = os.environ.get("SEN_SNP_MASTER_REPORT", f"{WD}/Snippy_output/SENBIO_RECOVERED_REPORT.csv")
 CLADE_META    = os.environ.get("SEN_CLADE_METADATA", f"{WD}/metadata/final_clade_metadata.tsv")
-SOURCE_FILE   = f"{WD}/itol_1_source.txt"
+SOURCE_FILE   = os.environ.get("SEN_SOURCE_ITOL", f"{WD}/itol_1_source.txt")
 
-OUTPUT_ROOT   = f"{WD}/iqtree_final/SNPs_by_source_modest_variation"
+OUTPUT_ROOT   = os.environ.get("SEN_SNP_SOURCE_OUT", f"{WD}/iqtree_final/SNPs_by_source_modest_variation")
 
 # analysis scope
 FOCAL_CLADES  = {"Clade 2", "Clade 3"}
@@ -395,7 +395,10 @@ def main():
 
     # recombination flagging
     df["is_recombination"] = False
-    gff_path = os.path.join(GUBBINS_DIR, "senbio_clean.recombination_predictions.gff")
+    gff_path = os.environ.get(
+        "SEN_GUBBINS_RECOMB_GFF",
+        os.path.join(GUBBINS_DIR, "senbio_res.recombination_predictions.gff")
+    )
 
     if os.path.exists(gff_path):
         print(f"🧬 Flagging recombination from GFF: {gff_path}")
