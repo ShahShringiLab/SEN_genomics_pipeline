@@ -43,3 +43,19 @@ the analysis was in fact run with the currently observed version.
 The environment YAMLs in this repository are therefore **reconstruction
 starting points based on observed workstation packages**, not proof of the
 historical software versions used for every final result.
+
+
+## Panaroo/Biopython compatibility correction
+
+Fresh-machine smoke validation exposed a Panaroo 1.6.0 incompatibility when the
+environment resolved Python 3.13 with Biopython 1.87. Panaroo's Prokka-input
+parser creates temporary FASTA content that may contain leading comment text;
+Biopython 1.87 changed the plain `fasta` parser to reject such leading
+comments. The smoke failure occurred before graph construction while reading the
+four valid Prokka GFF inputs.
+
+The publication-facing Panaroo environment is therefore pinned to Python 3.10
+and Biopython 1.86 with Panaroo 1.6.0. This preserves Panaroo's expected FASTA
+parsing behavior without altering or sanitizing the Prokka GFF source files.
+The smoke runner checks this runtime explicitly and rebuilds incompatible
+pre-existing environments.
