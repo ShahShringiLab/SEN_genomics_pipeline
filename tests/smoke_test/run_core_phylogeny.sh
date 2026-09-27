@@ -129,6 +129,17 @@ echo "[STAGE] 2/5 Snippy + snippy-core"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "snippy_core" validate_snippy     "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"; then
   ensure_env "$SNIPPY_ENV" "$SNIPPY_YAML" snippy
+
+  if ! conda run -n "$SNIPPY_ENV" bash -lc '
+      samtools --version | head -n1 | grep -q "^samtools 1.20$" &&
+      bwa 2>&1 | grep -q "Version: 0.7.18" &&
+      freebayes --version 2>&1 | grep -q "v1.3.6"
+    '; then
+    echo "[WARN] $SNIPPY_ENV toolchain is incompatible with the pinned Snippy reconstruction; rebuilding."
+    conda env remove -n "$SNIPPY_ENV" -y
+    create_env "$SNIPPY_ENV" "$SNIPPY_YAML"
+  fi
+
   conda run --no-capture-output -n "$SNIPPY_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_REFERENCE_DIR="$SEN_REFERENCE_DIR"       SEN_REFERENCE_FNA="$SEN_REFERENCE_FNA" SEN_KRAKEN_CLEAN_DIR="$SEN_KRAKEN_CLEAN_DIR"       SEN_PASS_LIST="$SEN_PASS_LIST" SEN_SNIPPY_OUT="$SEN_SNIPPY_OUT"       SEN_SNIPPY_JOBS="$SEN_SNIPPY_JOBS"       SEN_SNIPPY_THREADS_PER_JOB="$SEN_SNIPPY_THREADS_PER_JOB"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh"
   checkpoint_require_valid "snippy_core" validate_snippy
   checkpoint_mark "snippy_core"     "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"
