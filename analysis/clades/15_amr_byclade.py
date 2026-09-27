@@ -1,30 +1,9 @@
 #!/usr/bin/env python3
-import subprocess
-import sys
 import os
 import re
 from pathlib import Path
 import itertools
 import warnings
-
-# --- 1) DEPENDENCY MANAGER ---
-def check_and_install_dependencies():
-    required = {
-        "pandas": "pandas",
-        "numpy": "numpy",
-        "seaborn": "seaborn",
-        "matplotlib": "matplotlib",
-        "scipy": "scipy",
-        "statsmodels": "statsmodels",
-        "openpyxl": "openpyxl",
-    }
-    for imp, pip_name in required.items():
-        try:
-            __import__(imp)
-        except ImportError:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
-
-check_and_install_dependencies()
 
 import pandas as pd
 import numpy as np
@@ -33,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
 from scipy.cluster.hierarchy import linkage, leaves_list
-from scipy.stats import chi2_contingency, fisher_exact
+from scipy.stats import chi2_contingency, fisher_exact, MonteCarloMethod
 from statsmodels.stats.multitest import multipletests
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -176,19 +155,34 @@ def read_master_tsv_robust(path: str, badlines_out: str):
     return pd.read_csv(path, sep="\t", low_memory=False)
 
 def chi2_with_optional_montecarlo(table: np.ndarray):
-    chi2, p, dof, expected = chi2_contingency(table, correction=False)
-    method = "chi-square"
+    result = chi2_contingency(table, correction=False)
+    expected = result.expected_freq
+
     if np.any(expected < 5):
-        try:
-            chi2_mc, p_mc, dof_mc, _ = chi2_contingency(
-                table, correction=False, method="montecarlo", num_resamples=5000
-            )
-            return float(p_mc), "chi-square (montecarlo)", float(chi2_mc), int(dof_mc)
-        except TypeError:
-            pass
-        except Exception:
-            pass
-    return float(p), method, float(chi2), int(dof)
+        # Fixed seed + fixed number of resamples makes sparse-count handling
+        # reproducible. SciPy >=1.15 requires a MonteCarloMethod instance.
+        mc = MonteCarloMethod(
+            n_resamples=5000,
+            rng=np.random.default_rng(12345),
+        )
+        mc_result = chi2_contingency(
+            table,
+            correction=False,
+            method=mc,
+        )
+        return (
+            float(mc_result.pvalue),
+            "chi-square (montecarlo, 5000 resamples, seed=12345)",
+            float(mc_result.statistic),
+            np.nan,
+        )
+
+    return (
+        float(result.pvalue),
+        "chi-square",
+        float(result.statistic),
+        int(result.dof),
+    )
 
 def odds_ratio_with_haldene(a, b, c, d, add=0.5):
     return ((a + add) / (b + add)) / ((c + add) / (d + add))
