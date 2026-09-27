@@ -3,13 +3,14 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  - python=3.10
   - panaroo=1.6.0
+  - biopython=1.86
   - prokka=1.13
   - mafft
   - cd-hit
   - blast
   - hmmer
-  - python
   - numpy
   - pandas
   - scipy
