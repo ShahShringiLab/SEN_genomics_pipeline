@@ -13,13 +13,12 @@ require_cmd parallel
 # 1. CONFIGURATION
 DB_DIR="${SEN_SNPEFF_DIR:-$SEN_ROOT/snpEff_manual}"
 OUT_DIR="${SEN_SNIPPY_OUT:-$SEN_ROOT/Snippy_output}"
-REF_FA="${SEN_REFERENCE_FA:-$SEN_REFERENCE_DIR/reference.fa}"
+REF_FA="${SEN_REFERENCE_FA:-${SEN_REFERENCE_FNA:-$SEN_REFERENCE_DIR/reference.fna}}"
 REF_GBK="${SEN_REFERENCE_GBK:-$SEN_REFERENCE_DIR/reference.gbk}"
 REF_GFF="${SEN_REFERENCE_GFF:-$SEN_REFERENCE_DIR/reference.gff}"
 
 require_file "$REF_FA"
 require_file "$REF_GBK"
-require_file "$REF_GFF"
 
 # 2. STEP 1: BUILD THE DATABASE
 echo "[1/2] Building SnpEff database from your .gbk reference..."
@@ -55,8 +54,13 @@ annotate_sample() {
         # Run SnpEff annotation
         snpEff -Xmx2g -c "$DB_CONFIG" -v ref "$RAW_VCF" > "$ANN_VCF"
         
-        # Convert to Tab
-        snippy-vcf_to_tab --vcf "$ANN_VCF" --ref "$REF_FA" --gff "$REF_GFF" > "$ANN_TAB"
+        # Optional annotated TAB export. The publication SNP parser consumes
+        # the annotated VCF directly, so a GFF is not required for a fresh run.
+        if [[ -s "$REF_GFF" ]]; then
+            snippy-vcf_to_tab --vcf "$ANN_VCF" --ref "$REF_FA" --gff "$REF_GFF" > "$ANN_TAB"
+        else
+            echo "[INFO] Reference GFF not present; skipping optional $ANN_TAB" >&2
+        fi
     fi
 }
 export -f annotate_sample
