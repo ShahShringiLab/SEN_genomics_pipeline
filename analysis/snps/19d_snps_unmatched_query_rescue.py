@@ -20,9 +20,9 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASE_DIR = Path(os.environ.get("SEN_ROOT", REPO_ROOT))
-REFERENCE_GBK = BASE_DIR / "reference" / "reference.gbk"
-ASSEMBLY_DIR = BASE_DIR / "all_assemblies"
-SEARCH_ROOT = BASE_DIR / "iqtree_final" / "Snps_clade_integrated"
+REFERENCE_GBK = Path(os.environ.get("SEN_REFERENCE_GBK", BASE_DIR / "reference" / "reference.gbk"))
+ASSEMBLY_DIR = Path(os.environ.get("SEN_FINAL_CONTIGS_DIR", BASE_DIR / "Final_Contigs_Only"))
+SEARCH_ROOT = Path(os.environ.get("SEN_SNP_INTEGRATED_ROOT", BASE_DIR / "iqtree_final" / "Snps_clade_integrated"))
 METADATA_FILE = Path(os.environ.get("SEN_CLADE_METADATA", BASE_DIR / "metadata" / "final_clade_metadata.tsv"))
 
 THREADS_PER_BLAST = 1
