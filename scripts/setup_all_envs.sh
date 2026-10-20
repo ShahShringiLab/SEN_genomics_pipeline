@@ -9,14 +9,25 @@ command -v conda >/dev/null 2>&1 || {
   exit 1
 }
 
-create_or_verify() {
+UPDATE_EXISTING="${SEN_UPDATE_EXISTING_ENVS:-1}"
+
+create_or_update() {
   local yaml="$1"
   local name
   name="$(awk '$1=="name:" {print $2; exit}' "$yaml")"
-  [[ -n "$name" ]] || { echo "[ERROR] no env name in $yaml" >&2; exit 1; }
+
+  [[ -n "$name" ]] || {
+    echo "[ERROR] no environment name found in $yaml" >&2
+    exit 1
+  }
 
   if conda env list | awk '{print $1}' | grep -qx "$name"; then
-    echo "[SKIP] $name already exists"
+    if [[ "$UPDATE_EXISTING" == "1" ]]; then
+      echo "[UPDATE] $name <- $yaml"
+      conda env update -n "$name" -f "$yaml"
+    else
+      echo "[VERIFY] $name already exists; update disabled"
+    fi
   else
     echo "[CREATE] $name <- $yaml"
     if conda env create --help 2>&1 | grep -q -- '--solver'; then
@@ -28,7 +39,7 @@ create_or_verify() {
 }
 
 for yaml in environments/*.yaml; do
-  create_or_verify "$yaml"
+  create_or_update "$yaml"
 done
 
-echo "[PASS] All declared SEN environments are present."
+echo "[PASS] All declared SEN environments are present and synchronized."
