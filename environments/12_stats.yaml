@@ -15,3 +15,5 @@ dependencies:
   - pillow
   - r-base=4.5.2
   - r-tidyverse
+  - r-lubridate
+  - r-patchwork

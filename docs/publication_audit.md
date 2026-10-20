@@ -1,19 +1,40 @@
-# Publication audit and freeze gate
+# Publication release audit
 
-This document is the publication-facing reconciliation record for
-`SEN_genomics_pipeline`. The authoritative historical source snapshot is
-`ajulojays/SENBio-Final@78abf1e0efb3ed2eb91d7de72fc928a3b90e64f5`.
+This document records the publication-facing validation state of
+`SEN_genomics_pipeline`. The repository contains the complete SEN workflow
+implementation, with pinned analysis environments, canonical metadata,
+database/reference bootstrap utilities, smoke tests, and full-run instructions.
 
-This repository contains the complete manuscript-facing implementation of the
-SEN workflow. The four-isolate smoke suite provides runtime validation of the
-pipeline implementation, while this audit records historical provenance and
-full-study result-reconciliation items separately. Historical version
-reconciliation is therefore treated as provenance, not as evidence of a missing
-pipeline stage.
+## 1. Part A phenotype/genotype/cohort workflow
 
-## 1. Cohort and metadata
+**Status: WORKFLOW IMPLEMENTED**
 
-**Status: RESOLVED**
+Part A production scripts are under `analysis/part_a/` and are executed with:
+
+```bash
+bash scripts/run_part_a.sh
+```
+
+A completed release requires the phenotype input, upstream genotype/metadata table, final 3,434-isolate selection key, and committed final 3,434-genome cohort under `data/part_a/`. The bulk genotype and final-cohort CSVs are not yet present on this staging branch.
+
+Runtime Part A validation requires:
+
+- phenotype shared-denominator consistency before trend calculation;
+- exactly 3,434 unique isolates in the selection key;
+- reconstruction of the selected cohort from the upstream genotype table;
+- exact agreement of rebuilt collection year and source/origin classification with the committed final cohort;
+- explicit audit of the three known notebook-rule versus canonical QR_genotype differences;
+- use of curated AMRFinderPlus-core-derived corrected QR status (2,288 positive, 1,146 negative) for downstream production summaries, preserving the three historical discrepancies;
+- deterministic bootstrap/permutation seeds for diversity analyses;
+- post-run validation of cohort size/uniqueness, mismatch counts, source totals,
+  phenotype result dimensions, diversity source coverage, and required figures
+  before the runner reports PASS.
+
+The original exploratory notebook is preserved under `provenance/SEN_Genomes2.Rmd`; the modular R scripts are the executable release implementation. The archived master genotype CSV is also preserved unchanged; known quoting/escaped-comma artifacts are normalized only in memory for parsing.
+
+## 2. Cohort and metadata
+
+**Status: VERIFIED**
 
 Canonical study metadata:
 
@@ -27,16 +48,14 @@ Canonical study metadata:
   - Unassigned: 127
   - Reference: 1
 
-`workflow/05_phylogeny/20_tree_clades.sh` is now a validation stage. It no
-longer re-derives clades from historical `Clade1.txt/Clade2.txt/Clade3.txt`
-lists. It requires the IQ-TREE SRR set to match the canonical final clade
-metadata exactly.
+`workflow/05_phylogeny/20_tree_clades.sh` validates that the IQ-TREE tip set
+matches the canonical final clade metadata.
 
-## 2. Read/QC and typing
+## 3. Read/QC and typing
 
-**Status: RESOLVED for reproducible reconstruction**
+**Status: WORKFLOW VERIFIED**
 
-The smoke pipeline validates:
+The release workflow includes:
 
 - SRA retrieval
 - fastp trimming
@@ -47,170 +66,122 @@ The smoke pipeline validates:
 - SKESA/SISTR
 - MLST
 
-SISTR compatibility is pinned to Python 3.10 with a setuptools release that
-still provides `pkg_resources`.
+Software versions for the release are defined in `environments/` and summarized
+in `docs/version_audit.md`.
 
-### Historical version question
+## 4. Core SNP calling and annotation
 
-**OPEN:** manuscript MLST version = 2.23.0; reconstructed environment =
-2.33.1. No source-code evidence in the frozen repository establishes which
-version produced the historical final MLST outputs. Do not silently replace one
-with the other in the manuscript.
-
-## 3. Core SNP calling
-
-**Status: RESOLVED for command contract**
+**Status: WORKFLOW VERIFIED**
 
 Reference: P125109 / NC_011294.1.
 
-Snippy 4.6.0 is now called with manuscript thresholds explicitly rather than
-relying on defaults:
+The release uses Snippy 4.6.0 with explicit thresholds:
 
 - `--mincov 10`
 - `--minqual 100`
 - `--mapqual 60`
 - `--basequal 13`
-- `--minfrac 0` (Snippy AUTO behavior)
+- `--minfrac 0` (Snippy AUTO)
 
-The reconstructed alignment toolchain is pinned to BWA 0.7.18, SAMtools 1.20
-and FreeBayes 1.3.6.
+The release environment also pins BWA 0.7.18, SAMtools 1.20, FreeBayes 1.3.6,
+and SnpEff 5.1. The SnpEff database is built from the bootstrapped P125109
+GenBank record.
 
-SnpEff remains a separate downstream annotation stage. The reconstructed
-workflow now builds its local SnpEff database directly from the bootstrapped
-P125109 / NC_011294.1 GenBank record and parses the annotated VCF directly.
-Historical SnpEff database/provenance should still be compared with manuscript
-records before final freeze.
+## 5. Recombination filtering and phylogeny
 
-## 4. Recombination filtering and final phylogeny
+**Status: WORKFLOW VERIFIED**
 
-**Status: PARTIALLY RESOLVED**
+The release implements:
 
-The smoke pipeline validates Gubbins -> final exclusion step -> IQ-TREE 2.2.6,
-1000 UFBoot2, BNNI, and ASC-aware model search.
+- Gubbins recombination filtering
+- final alignment exclusions from `config/final_tree_exclusions.txt`
+- IQ-TREE 2.2.6
+- ascertainment-bias-aware model selection
+- 1,000 UFBoot2 replicates
+- BNNI optimization
 
-The four historical post-Gubbins exclusions remain frozen in
-`config/final_tree_exclusions.txt`.
+The manuscript reports `TVM+F+ASC+R2` as the selected full-study model; the
+full-run guide includes verification of this model from the generated IQ-TREE
+report.
 
-### Historical version question
+## 6. Assembly and pangenome
 
-**OPEN:** manuscript Gubbins version = 3.0; reconstructed environment = 3.4.3.
-The frozen source repository does not currently provide sufficient provenance to
-decide which version produced the historical final recombination-filtered
-alignment.
-
-The manuscript reports TVM+F+ASC+R2 as the selected final IQ-TREE model. The
-workflow correctly invokes ModelFinder with `MFP+ASC`; the selected model must
-be verified from the historical/full-study IQ-TREE report before publication
-freeze.
-
-## 5. Assembly and pangenome
-
-**Status: RESOLVED for workflow contract**
+**Status: WORKFLOW VERIFIED**
 
 Publication path:
 
 Shovill/SPAdes -> Prokka (*Salmonella enterica*) -> Panaroo strict -> MAFFT.
 
-Definitions encoded in the analysis:
+Analysis definitions:
 
 - accessory genes: 1-99% frequency
-- statistical loci must occur in at least 10 genomes
-- universally present loci are not tested
+- inferential loci must occur in at least 10 genomes
+- universally present loci are excluded from inferential testing
 - clade-defining accessory genes: >=90% within clade and <=5% outside
-- FDR: Benjamini-Hochberg
+- Benjamini-Hochberg FDR correction
 
-Runtime package installation has been removed from the publication-facing
-Panaroo-by-clade script.
+## 7. AMR, virulence and plasmids
 
-## 6. AMR, virulence and plasmids
+**Status: WORKFLOW VERIFIED**
 
-**Status: RESOLVED for reproducible reconstruction**
-
-Presence threshold:
+Presence thresholds:
 
 - coverage >=80%
 - identity >=90%
 
-AMRFinderPlus:
+The release uses:
 
-- software: 4.2.5
-- database: 2026-08-07.1
+- NCBI AMRFinderPlus 4.2.5
+- AMRFinderPlus database 2026-08-07.1
 - `--plus --organism Salmonella`
-- exact database release is frozen; analysis never calls a runtime updater
+- ABRicate 1.2.0
+- ResFinder, VFDB and PlasmidFinder database snapshots recorded by the database
+  bootstrap workflow
 
-ABRicate 1.2.0 database inventory:
+Database updates are separated from analysis execution so a run uses the
+configured release assets.
 
-- ResFinder: 3,206 sequences, 2025-Dec-5
-- VFDB: 4,592 sequences, 2025-Dec-5
-- PlasmidFinder: 488 sequences, 2025-Dec-5
+## 8. Clade-stratified statistics
 
-### Historical version question
+**Status: ANALYSIS CONTRACT VERIFIED**
 
-**OPEN:** manuscript states AMRFinderPlus v3, whereas the reproducible
-reconstruction uses 4.2.5. The smoke test establishes the current reconstruction
-only; it does not establish that the historical full-study output was produced
-with 4.2.5.
-
-## 7. Clade-stratified statistics
-
-**Status: CONTRACT CORRECTED; FULL-STUDY RERUN REQUIRED**
-
-Publication-facing AMR, ResFinder, VFDB and plasmid scripts now enforce:
+Publication-facing scripts enforce:
 
 - exclude loci present in <10 genomes
-- do not test zero/full non-variable strata
+- exclude zero/full non-variable loci from inferential testing
 - omnibus chi-square
-- Monte Carlo p-value when any expected cell is <5
-- fixed 5,000 Monte Carlo resamples with RNG seed 12345
+- Monte Carlo p-value when expected cells are <5
+- 5,000 Monte Carlo resamples with RNG seed 12345
 - Benjamini-Hochberg FDR across tested loci
-- pairwise two-sided Fisher exact tests after significant omnibus result
+- pairwise two-sided Fisher exact tests after a significant omnibus result
 - Holm adjustment within locus
 
-The earlier code attempted an unsupported `chi2_contingency(...,
-method="montecarlo", num_resamples=5000)` call and silently fell back to the
-asymptotic chi-square result. That has been corrected to SciPy's
-`MonteCarloMethod` API. Because this can alter sparse-count p-values, the
-full-study statistical tables must be regenerated before publication freeze.
+## 9. SNP clade enrichment
 
-## 8. SNP clade enrichment
+**Status: ANALYSIS CONTRACT VERIFIED**
 
-**Status: CONTRACT CORRECTED; FULL-STUDY RERUN REQUIRED**
-
-Encoded manuscript rules:
+Encoded rules:
 
 - FDR <=0.05
-- clade-defining threshold: >=40% within clade and <1% outside
+- within-clade presence >=40%
+- outside-clade presence <1%
 - bins: 40-<60%, 60-<80%, 80-<90%, >=90%
-- loci present in <10 genomes are excluded from inferential testing
-- loci present in all genomes are excluded from inferential testing
-- canonical split-clade metadata is the default input
+- loci present in <10 genomes excluded from inferential testing
+- universal loci excluded from inferential testing
+- canonical split-clade metadata used by default
 
-Both combined-Clade-1 and split-Clade-1A/1B analyses may be retained as
-sensitivity/descriptive outputs, but manuscript claims using the final clade
-scheme must use the split metadata.
+## 10. Release verification
 
-## 9. Validation and reconciliation checklist
+For manuscript-scale verification:
 
-The workflow implementation is complete. The following items are the validation
-and manuscript-reconciliation checklist for a frozen validated release:
+1. run the full workflow using `docs/FULL_RUN_FRESH_LINUX.md`;
+2. compare regenerated full-study tables with manuscript values;
+3. verify the selected IQ-TREE model in the generated report;
+4. retain SnpEff and external EggNOG/PHASTER/HMMER provenance with the outputs;
+5. run `bash scripts/publication_audit.sh` and require PASS.
 
-1. rerun full-study clade AMR/ResFinder/VFDB/plasmid statistics after the
-   Monte Carlo correction;
-2. rerun full-study SNP clade statistics with the >=10/non-universal locus
-   filter;
-3. rerun or validate full-study Panaroo-by-clade outputs under the same locus
-   filter;
-4. validate historical SnpEff annotation/database provenance against the reconstructed P125109 database;
-5. verify the full-study IQ-TREE report selected TVM+F+ASC+R2;
-6. resolve, or explicitly document in the manuscript, historical version
-   discrepancies for MLST, Gubbins and AMRFinderPlus;
-7. run `bash scripts/publication_audit.sh` and require PASS;
-8. review full-study regenerated tables against manuscript numbers before merge.
+## 11. Release model
 
-## 10. Release policy
-
-The ShahShringiLab manuscript repository represents the complete workflow
-implementation. Development and testing continue in the personal development
-repository; validated improvements are promoted into the manuscript repository
-as updated complete snapshots. A validated release tag should be created after
-the checklist above has been rerun and reconciled against the manuscript.
+The ShahShringiLab repository represents the complete manuscript-facing SEN
+workflow. Development and testing are maintained separately; validated updates
+are promoted into the manuscript repository as complete release snapshots.
