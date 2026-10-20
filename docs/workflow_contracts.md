@@ -1,8 +1,22 @@
 # Workflow contracts
 
-This document defines the publication-facing handoff between stages. Paths are
-defaults; local/HPC paths can be overridden through `config/paths.env` or the
-corresponding `SEN_*` environment variables.
+This document defines the publication-facing handoff between stages. Paths are defaults; local/HPC paths can be overridden through `config/paths.env` or the corresponding `SEN_*` environment variables.
+
+## Part A1. Phenotype resistance trends
+
+**Script:** `analysis/part_a/01_phenotype_trends.R`  
+**Environment:** `environments/12_stats.yaml`  
+**Input:** `data/part_a/phenotype/FDASEN_AMRPhenotype2.csv`  
+**Output:** phenotype trend table and Human-versus-Chicken figures under `results/part_a/phenotype/`  
+**Key contract:** 2024 and 2025 are excluded from the plotted analysis; the historical shared denominator is used only after verifying that Ciprofloxacin-tested and DSC-tested counts are identical for each record; normal-approximation 95% confidence intervals are reproduced.
+
+## Part A2. Genotype epidemiology and final cohort
+
+**Scripts:** `analysis/part_a/02_build_final_cohort.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, `05_diversity_composition.R`  
+**Environment:** `environments/12_stats.yaml`  
+**Inputs:** master genotype/metadata table, final 3,434-isolate selection key, and committed final 3,434-genome cohort under `data/part_a/`  
+**Outputs:** rebuilt/validated final cohort, QR/FQR marker summaries, temporal/source tables, source/origin profiles, Hill-number diversity estimates, bootstrap confidence intervals and permutation tests under `results/part_a/`  
+**Key contract:** the final selection key contains 3,434 unique isolates. Collection year and source/origin classification rebuilt from upstream data must agree exactly with the committed final cohort. Production QR/FQR status is derived from the curated AMRFinderPlus `AMR genotypes core` field; three historical discrepancies with the committed `QR_genotype` are explicitly audited. The corrected binary status is used for downstream summaries (2,288 positive, 1,146 negative), while archived QR values remain preserved. The archived master CSV remains unchanged and parser normalization is performed only in memory. `scripts/validate_part_a_outputs.py` must pass before the Part A runner reports PASS. The final Part A cohort is the starting cohort for Part B.
 
 ## 1. Read retrieval
 
@@ -32,17 +46,14 @@ paired-end correction.
 **Output:** Enterobacteriaceae-retained paired reads under
 `Kraken_cleanup/clean_trimmed_fastq` and QC tables  
 **Extraction implementation:** KrakenTools `extract_kraken_reads.py` is supplied
-by the reproducible Kraken environment; the missing historical local helper is
-not required in the publication-facing pipeline.  
+by the reproducible Kraken environment.  
 **Key contract:** TaxID 543 is retained; downstream study inclusion requires
-post-filter depth >=30x. Historical QC scripts contain additional diagnostics;
-the final manuscript inclusion rule must remain distinguishable from those
-diagnostics.
+post-filter depth >=30x.
 
 ## 4. Species confirmation and typing
 
 **Scripts:** `10_seqsero2.sh`, `11_sistr.sh`, `12_mlst.sh`  
-**Environments:** `03_serotyping.yaml`, `04_mlst.yaml`  
+**Environments:** `03_seqsero2.yaml`, `03_sistr.yaml`, `04_mlst.yaml`  
 **Input:** trimmed reads for SeqSero2; Kraken-cleaned reads for SKESA/SISTR  
 **Output:** SeqSero2 summary, SISTR assemblies/report, MLST report  
 **Key contract:** study inclusion uses dual Enteritidis confirmation from
@@ -58,9 +69,8 @@ reference FASTA/GFF, SnpEff database
 **Output:** per-sample Snippy outputs, core alignment/VCF, annotated VCF and
 variant report  
 **Key contract:** P125109/NC_011294.1 is the reference. Publication thresholds
-are depth 10, VCF QUAL 100, MAPQ 60 and base quality 13; major-allele behavior
-must be audited against the actual historical Snippy invocation before final
-Methods freeze.
+are depth 10, VCF QUAL 100, MAPQ 60 and base quality 13. Snippy AUTO allele
+fraction behavior is invoked with `--minfrac 0`.
 
 ## 6. Recombination filtering and phylogeny
 
@@ -125,19 +135,8 @@ tables
 **Key manuscript contract:** chi-square omnibus testing, Monte Carlo treatment
 when expected counts are low, pairwise Fisher exact tests with Holm correction,
 FDR across loci, and exclusion of loci seen in <10 genomes or universally
-present loci. Each analysis script must be checked against this contract before
-the final statistical freeze.
+present loci.
 
-## Known unresolved provenance items
-
-Current workstation package versions do not prove the exact historical
-execution versions. The version discrepancies documented in
-`docs/version_audit.md` remain open provenance questions, especially MLST,
-Gubbins and AMRFinderPlus.
-
-The smoke test validates execution contracts only. It is not expected to
-reproduce full-study phylogenetic topology, clade statistics or enrichment
-results from four isolates.
 
 
 ### SISTR CLI migration correction

@@ -65,11 +65,12 @@ SOURCE_COLORS = {
 }
 
 QR_COLORS = {
-    "QS": "#d62728",
+    "QS/FQS": "#d62728",
     "S83Y": "#1f77b4",
     "D87Y": "#9467bd",
     "D87N": "#2ca02c",
     "D87G": "#ff7f0e",
+    "qnrB19": "#8c564b",
     "Others": "#7f7f7f",
     "Other": "#7f7f7f",
     "Unknown": "#c7c7c7",
@@ -124,26 +125,77 @@ def clean_source(x: str) -> str:
         return "International"
     return s
 
-def clean_qr_marker(qr_group, amr_pattern) -> str:
-    q = "" if pd.isna(qr_group) else str(qr_group).strip().upper()
-    if ("NON" in q) or (q in {"0", "NO", "FALSE", "N"}):
-        return "QS"
-    raw = "" if pd.isna(amr_pattern) else str(amr_pattern).strip().upper()
-    if raw in {"", "NAN", "NA", "NONE"}:
-        return "QS"
-    clean = (
-        raw.replace("GYRA_", "").replace("GYRA", "")
-           .replace("PARC_", "").replace("PARC", "")
-           .replace("PARG_", "").replace("PARG", "")
-           .replace(" ", "")
-    )
-    primary = {"S83Y", "D87Y", "D87N", "D87G"}
-    tokens = re.split(r"[;|,+/]+", clean)
-    tokens = [t for t in tokens if t]
-    for t in tokens:
-        if t in primary:
-            return t
-    return "Others" if tokens else "QS"
+# Three curated isolates are intentionally retained as QS/FQS despite a
+# gyrA_D87Y token in "AMR genotypes core". These were previously identified
+# as metadata/genotype mismatches and are kept here as explicit exceptions.
+CURATED_QS_FQS_OVERRIDES = {
+    "SRR15338589",
+    "SRR16764591",
+    "SRR16767069",
+}
+
+QR_PRIMARY_ORDER = ["S83Y", "D87Y", "D87N", "D87G", "qnrB19", "Others"]
+
+
+def derive_qr_markers(sample, amr_core):
+    """
+    Derive QR/FQR marker presence from the biologically explicit
+    'AMR genotypes core' field.
+
+    Returns:
+      primary_marker: one label for legacy/composition analyses
+      all_markers: semicolon-delimited non-mutually-exclusive markers
+      marker_count: number of detected marker groups
+
+    Marker groups:
+      S83Y, D87Y, D87N, D87G, qnrB19, Others
+    Genomes with no detected QR/FQR marker are labelled QS/FQS.
+    """
+    sample_id = normalize_sample_id(sample)
+    if sample_id in CURATED_QS_FQS_OVERRIDES:
+        return "QS/FQS", "QS/FQS", 0
+
+    raw = "" if pd.isna(amr_core) else str(amr_core).strip()
+    if raw.upper() in {"", "NAN", "NA", "NONE"}:
+        return "QS/FQS", "QS/FQS", 0
+
+    upper = raw.upper()
+    markers = []
+
+    explicit = [
+        ("S83Y", r"\bGYRA_S83Y(?:=POINT)?\b"),
+        ("D87Y", r"\bGYRA_D87Y(?:=POINT)?\b"),
+        ("D87N", r"\bGYRA_D87N(?:=POINT)?\b"),
+        ("D87G", r"\bGYRA_D87G(?:=POINT)?\b"),
+        ("qnrB19", r"\bQNRB19(?:=COMPLETE)?\b"),
+    ]
+
+    matched_spans = []
+    for label, pattern in explicit:
+        for m in re.finditer(pattern, upper):
+            if label not in markers:
+                markers.append(label)
+            matched_spans.append(m.span())
+
+    # Detect other plausible quinolone-resistance markers without treating
+    # unrelated AMR genes as QR/FQR markers.
+    qr_like = list(re.finditer(
+        r"\b(?:GYRA|GYRB|PARC|PARE)_[A-Z]\d+[A-Z](?:=POINT)?\b|\bQNR[A-Z0-9]+(?:=COMPLETE)?\b",
+        upper
+    ))
+
+    def covered(span):
+        return any(span[0] >= s0 and span[1] <= s1 for s0, s1 in matched_spans)
+
+    if any(not covered(m.span()) for m in qr_like):
+        markers.append("Others")
+
+    if not markers:
+        return "QS/FQS", "QS/FQS", 0
+
+    ordered = [m for m in QR_PRIMARY_ORDER if m in markers]
+    primary = ordered[0]
+    return primary, ";".join(ordered), len(ordered)
 
 def parse_collection_year_itol(path: str) -> pd.DataFrame:
     rows = []
@@ -248,7 +300,7 @@ def category_order_for_attr(attr_col: str, present_cats):
     present = set(present_cats)
 
     if attr_col == "QR_marker":
-        preferred = ["QS", "S83Y", "D87Y", "D87N", "D87G", "Others", "Other", "Unknown"]
+        preferred = ["QS/FQS", "S83Y", "D87Y", "D87N", "D87G", "qnrB19", "Others", "Other", "Unknown"]
         return [c for c in preferred if c in present] + sorted([c for c in present if c not in set(preferred)])
 
     if attr_col == "Clean_Source":
@@ -594,10 +646,30 @@ merged_raw = clade_df.merge(gen, on="Sample", how="left")
 merged_raw = merged_raw.merge(year_df[["Sample", "Collection_Year"]], on="Sample", how="left")
 
 merged_raw["Clean_Source"] = merged_raw["Source"].map(clean_source) if "Source" in merged_raw.columns else "Unknown"
-merged_raw["QR_marker"] = merged_raw.apply(
-    lambda r: clean_qr_marker(r.get("QR_group", np.nan), r.get("AMR_pattern", np.nan)),
-    axis=1
+
+# Preserve any source QR_marker field before writing the canonical marker.
+if "QR_marker" in merged_raw.columns:
+    merged_raw["QR_marker_source"] = merged_raw["QR_marker"]
+
+amr_core_col = "AMR genotypes core"
+if amr_core_col not in merged_raw.columns:
+    raise SystemExit(f"[ERROR] Required column missing from SEN metadata: {amr_core_col}")
+
+qr_info = merged_raw.apply(
+    lambda r: derive_qr_markers(r.get("Sample", np.nan), r.get(amr_core_col, np.nan)),
+    axis=1,
+    result_type="expand",
 )
+qr_info.columns = ["QR_marker", "QR_markers_present", "QR_marker_count"]
+merged_raw[["QR_marker", "QR_markers_present", "QR_marker_count"]] = qr_info
+
+# Binary presence columns preserve marker co-occurrence for downstream analyses.
+for marker in ["S83Y", "D87Y", "D87N", "D87G", "qnrB19", "Others"]:
+    col = f"QR_has_{marker}"
+    merged_raw[col] = merged_raw["QR_markers_present"].apply(
+        lambda x, m=marker: int(m in str(x).split(";"))
+    )
+
 merged_raw["Collection_Year"] = merged_raw["Collection_Year"].fillna("Unknown")
 
 merged_raw["Clean_Source"] = group_rare_categories(merged_raw["Clean_Source"], MIN_TOTAL_CATEGORY, "Other")
@@ -646,6 +718,10 @@ for scheme in schemes:
         else:
             current_df = scheme_df[scheme_df["Lineage"] != "Unassigned"].copy()
 
+        # Explicit clade label column for exported per-genome tables.
+        # This mirrors the active clade scheme while Lineage is retained for
+        # backward compatibility with existing analysis code.
+        current_df["Clade"] = current_df["Lineage"].fillna("Unassigned").astype(str)
         current_df["Lineage"] = pd.Categorical(current_df["Lineage"], categories=current_focus, ordered=True)
 
         save_table_both(current_df, os.path.join(folder_path, "Merged_Metadata"))

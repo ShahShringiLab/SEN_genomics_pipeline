@@ -1,0 +1,6469 @@
+---
+title: "SEN"
+author: "Samuel Ajulo"
+date: "2025-12-19"
+output: html_document
+---
+#This data-analysis is divided into 2 parts 
+#PartA.Phenotype Data and trentd analysis
+#PArtB. Genotpe data and trend analysis and genome selection
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#load required packages and call the necesary libraries
+```{r}
+# ================================
+# PACKAGES
+# ================================
+if (!requireNamespace("readr", quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+if (!requireNamespace("writexl", quietly = TRUE)) install.packages("writexl")
+if (!requireNamespace("dplyr", quietly = TRUE)) install.packages("dplyr")
+
+library(readr)
+library(readxl)
+library(writexl)
+library(dplyr)
+```
+#PART A.Phenotype Data and trentd analysis
+
+#plot for FQ-R Salmonella Enteritidis in Chicken and Human Sources 
+
+# remove 2025 and also 95% C.I
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+
+data <- read_csv(
+  "FDASEN_AMRPhenotype2.csv",
+  show_col_types = FALSE
+)
+
+trend <- data %>%
+  mutate(
+    Year = as.integer(Year),
+
+    Source = factor(
+      as.character(Source),
+      levels = c("Human", "Chicken")
+    ),
+
+    Cip_Resistant = as.numeric(Cip_Resistant),
+    Cip_Tested    = as.numeric(Cip_Tested),
+
+    DSC_Resistant = as.numeric(DSC_Resistant),
+    DSC_Tested    = as.numeric(DSC_Tested)
+  ) %>%
+
+  filter(
+    !is.na(Year),
+    !Year %in% c(2024, 2025)
+  ) %>%
+
+  mutate(
+
+    Tested = pmax(
+      Cip_Tested,
+      DSC_Tested,
+      na.rm = TRUE
+    ),
+
+    # =====================================================
+    # PHENOTYPE PERCENTAGES
+    # =====================================================
+
+    CipR_pct = if_else(
+      Tested > 0,
+      100 * Cip_Resistant / Tested,
+      NA_real_
+    ),
+
+    DSC_pct = if_else(
+      Tested > 0,
+      100 * DSC_Resistant / Tested,
+      NA_real_
+    ),
+
+    # Internal name = QRFQR
+    # Displayed name later = QR/FQR
+    QRFQR_pct = if_else(
+      Tested > 0,
+      100 * (Cip_Resistant + DSC_Resistant) / Tested,
+      NA_real_
+    ),
+
+
+    # =====================================================
+    # 95% CI — NORMAL APPROXIMATION
+    # =====================================================
+
+    CipR_se = if_else(
+      Tested > 0,
+      100 * sqrt(
+        (Cip_Resistant / Tested) *
+          (1 - (Cip_Resistant / Tested)) /
+          Tested
+      ),
+      NA_real_
+    ),
+
+    DSC_se = if_else(
+      Tested > 0,
+      100 * sqrt(
+        (DSC_Resistant / Tested) *
+          (1 - (DSC_Resistant / Tested)) /
+          Tested
+      ),
+      NA_real_
+    ),
+
+    QRFQR_se = if_else(
+      Tested > 0,
+      100 * sqrt(
+        (
+          ((Cip_Resistant + DSC_Resistant) / Tested) *
+            (1 - ((Cip_Resistant + DSC_Resistant) / Tested)) /
+            Tested
+        )
+      ),
+      NA_real_
+    ),
+
+
+    # =====================================================
+    # CONFIDENCE LIMITS
+    # =====================================================
+
+    CipR_lo = CipR_pct - 1.96 * CipR_se,
+    CipR_hi = CipR_pct + 1.96 * CipR_se,
+
+    DSC_lo = DSC_pct - 1.96 * DSC_se,
+    DSC_hi = DSC_pct + 1.96 * DSC_se,
+
+    QRFQR_lo = QRFQR_pct - 1.96 * QRFQR_se,
+    QRFQR_hi = QRFQR_pct + 1.96 * QRFQR_se
+  ) %>%
+
+  select(
+    Year,
+    Source,
+
+    QRFQR_pct,
+    QRFQR_lo,
+    QRFQR_hi,
+
+    DSC_pct,
+    DSC_lo,
+    DSC_hi,
+
+    CipR_pct,
+    CipR_lo,
+    CipR_hi
+  ) %>%
+
+  # =======================================================
+  # LONG FORMAT
+  #
+  # QRFQR is used internally because "/" in variable names
+  # would complicate parsing.
+  # =======================================================
+
+  pivot_longer(
+    cols = -c(Year, Source),
+
+    names_to = c(
+      "Metric",
+      ".value"
+    ),
+
+    names_pattern =
+      "^(QRFQR|DSC|CipR)_(pct|lo|hi)$"
+  ) %>%
+
+  mutate(
+
+    # =====================================================
+    # DISPLAY LABELS
+    # =====================================================
+
+    Metric = recode(
+      Metric,
+
+      QRFQR = "Nal-R/DSC or Cip-R",
+
+      DSC = "Nal-R/DSC",
+
+      CipR = "Cip-R"
+    ),
+
+    Metric = factor(
+      Metric,
+      levels = c(
+        "Nal-R/DSC or Cip-R",
+        "Nal-R/DSC",
+        "Cip-R"
+      )
+    ),
+
+    lo = pmax(
+      lo,
+      0,
+      na.rm = TRUE
+    )
+  ) %>%
+
+  group_by(
+    Source,
+    Metric
+  ) %>%
+
+  complete(
+    Year = full_seq(Year, 1)
+  ) %>%
+
+  ungroup()
+
+
+# =========================================================
+# SHAPES
+# =========================================================
+
+shape_map <- c(
+  "Nal-R/DSC or Cip-R" = 16,
+  "Nal-R/DSC"                   = 15,
+  "Cip-R"                       = 17
+)
+
+
+# =========================================================
+# PLOT
+# =========================================================
+
+p <- ggplot(
+  trend,
+  aes(
+    x = Year,
+    y = pct,
+    color = Source,
+    linetype = Metric
+  )
+) +
+
+  geom_ribbon(
+    aes(
+      ymin = lo,
+      ymax = hi,
+      fill = Source
+    ),
+    alpha = 0.15,
+    color = NA,
+    na.rm = TRUE
+  ) +
+
+  geom_line(
+    linewidth = 0.9,
+    na.rm = TRUE
+  ) +
+
+  geom_point(
+    aes(
+      shape = Metric
+    ),
+    size = 2.0,
+    na.rm = TRUE
+  ) +
+
+  scale_shape_manual(
+    values = shape_map
+  ) +
+
+  scale_color_manual(
+    values = c(
+      "Human" = "red",
+      "Chicken" = "blue"
+    )
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Human" = "red",
+      "Chicken" = "blue"
+    )
+  ) +
+
+  scale_x_continuous(
+    breaks = scales::pretty_breaks(12)
+  ) +
+
+  scale_y_continuous(
+    limits = c(0, NA),
+
+    expand = expansion(
+      mult = c(
+        0,
+        0.05
+      )
+    )
+  ) +
+
+  labs(
+    x = "Year of Isolation",
+    y = "Percentage (%)",
+
+    color = "Source",
+    fill = "Source",
+
+    linetype = "Phenotype",
+    shape = "Phenotype"
+
+    # title = "Quinolone/fluoroquinolone resistance trends (Human vs Chicken) with 95% CI"
+  ) +
+
+  theme_bw() +
+
+  theme(
+    plot.title = element_text(
+      size = 11,
+      hjust = 0.5
+    ),
+
+    axis.title.x = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    axis.title.y = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 8
+    ),
+
+    axis.text = element_text(
+      size = 9
+    ),
+
+    legend.title = element_text(
+      size = 9
+    ),
+
+    legend.text = element_text(
+      size = 9
+    ),
+
+    panel.grid.major.x = element_line(
+      linewidth = 0.5
+    ),
+
+    panel.grid.major.y = element_line(
+      linewidth = 0.5
+    ),
+
+    panel.grid.minor.x = element_line(
+      linewidth = 0.25
+    ),
+
+    panel.grid.minor.y = element_line(
+      linewidth = 0.25
+    )
+  )
+
+
+# =========================================================
+# PRINT
+# =========================================================
+
+print(p)
+
+
+# =========================================================
+# SAVE
+# =========================================================
+
+ggsave(
+  "FQ_trends_Human_vs_Chicken.png",
+  p,
+  width = 9,
+  height = 4.8,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_trends_Human_vs_Chicken.pdf",
+  p,
+  width = 9,
+  height = 4.8
+)
+
+ggsave(
+  "FQ_trends_Human_vs_Chicken.tif",
+  p,
+  width = 9,
+  height = 4.8
+)
+
+```
+
+
+#PArtB. Genotpe data and trend analysis and genome selection
+
+#1. load the Datasets 
+```{r}
+# ================================
+# READ FILE (choose ONE)
+# ================================
+
+# ---- A) If it's REALLY a CSV ----
+file_path <- "US-SEN_12192025.csv"
+SEN <- read_csv(file_path, col_types = cols(.default = col_character()))
+```
+
+#2. Filter all quinolone/fluoroquinole-resistance marker 
+```{r}
+library(dplyr)
+library(stringr)
+
+amr_col <- "AMR genotypes"
+
+# Broad QR marker regex (genes + QRDR mutations + PMQR + efflux/regulators)
+pattern_fqr_all <- paste0(
+  "(^|,)(",
+  # QRDR mutations
+  "gyr[a-b]_[^,=]+|par[c-e]_[^,=]+|",
+  # PMQR genes
+  "qnr[a-z0-9._-]*|aac\\(6'\\)-ib-cr|qep[a-z0-9._-]*|oqx[a-b]|",
+  # additional PMQR / emerging markers
+  "qnrvc[a-z0-9._-]*|crpP|",
+  # efflux & regulators often annotated as POINT
+  "acr[a-b]_[^,=]+|tolc_[^,=]+|ram[ar]_[^,=]+|mar[ar]_[^,=]+|sox[rs]_[^,=]+",
+  ")(?==)"
+)
+
+SEN <- SEN %>%
+  mutate(
+    amr_txt = str_to_lower(as.character(.data[[amr_col]])),
+    amr_txt = if_else(is.na(amr_txt), "", amr_txt),
+    FQR_genotype = if_else(
+      str_detect(amr_txt, regex(pattern_fqr_all, ignore_case = TRUE)),
+      1L, 0L
+    )
+  ) %>%
+  select(-amr_txt)
+
+
+SEN %>%
+  count(FQR_genotype)
+
+
+
+```
+#3. Frequency of all (Top100) FQR markers 
+```{r}
+
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+
+# =========================
+# CONFIG
+# =========================
+amr_col <- "AMR genotypes"
+id_col  <- "Isolate"   # CHANGE if needed
+
+# =========================
+# Pretty display casing for FQR markers (comprehensive for your list)
+# - gene family corrected (gyrA, qnrB, etc.)
+# - mutation part uppercased (e.g., gyrA_d87g -> gyrA_D87G)
+# - keeps underscore format: gyrA_D87G, qnrB19, qnrVC1
+# =========================
+pretty_token <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)
+  x <- str_replace_all(x, "\\s+", "")
+  x <- str_replace_all(x, "-", "_")
+
+  # replace only at start, keep remainder (e.g., qnrb19 -> qnrB19; gyra_d87g -> gyrA_d87g)
+  fix_start <- function(s, from, to) {
+    str_replace(s, paste0("^", from), to)
+  }
+
+  # chromosomal targets
+  x <- fix_start(x, "gyra", "gyrA")
+  x <- fix_start(x, "gyrb", "gyrB")
+  x <- fix_start(x, "parc", "parC")
+  x <- fix_start(x, "pare", "parE")
+  x <- fix_start(x, "pard", "parD")
+  x <- fix_start(x, "grla", "grlA")
+
+  # PMQR: qnr family
+  x <- fix_start(x, "qnras", "qnrAS")
+  x <- fix_start(x, "qnra",  "qnrA")
+  x <- fix_start(x, "qnrb",  "qnrB")
+  x <- fix_start(x, "qnrc",  "qnrC")
+  x <- fix_start(x, "qnrd",  "qnrD")
+  x <- fix_start(x, "qnre",  "qnrE")
+  x <- fix_start(x, "qnrs",  "qnrS")
+  x <- fix_start(x, "qnrvc", "qnrVC")
+
+  # qepA (and qep variants)
+  x <- fix_start(x, "qepa", "qepA")
+  x <- fix_start(x, "qep",  "qep")
+
+  # other families you listed / QR-linked
+  x <- fix_start(x, "nfxb", "nfxB")
+  x <- fix_start(x, "emrr", "emrR")
+  x <- fix_start(x, "norm", "norM")
+  x <- fix_start(x, "pmra", "pmrA")
+  x <- fix_start(x, "acrb", "acrB")
+  x <- fix_start(x, "smef", "smeF")
+
+  # prior extras
+  x <- fix_start(x, "acra", "acrA")
+  x <- fix_start(x, "tolc", "tolC")
+  x <- fix_start(x, "crpp", "crpP")
+  x <- fix_start(x, "oqxa", "oqxA")
+  x <- fix_start(x, "oqxb", "oqxB")
+  x <- fix_start(x, "rama", "ramA")
+  x <- fix_start(x, "ramr", "ramR")
+  x <- fix_start(x, "mara", "marA")
+  x <- fix_start(x, "marr", "marR")
+  x <- fix_start(x, "soxr", "soxR")
+  x <- fix_start(x, "soxs", "soxS")
+
+  # exact enzyme token (keep exact casing)
+  x <- str_replace_all(x, "^aac\\(6'\\)-ib-cr", "aac(6')-Ib-cr")
+
+  # uppercase mutation / suffix after first underscore if present: gyrA_d87g -> gyrA_D87G
+  parts <- str_split_fixed(x, "_", 2)
+  gene_part <- parts[, 1]
+  rest_part <- parts[, 2]
+  rest_part <- ifelse(rest_part == "", rest_part, toupper(rest_part))
+  x <- ifelse(rest_part == "", gene_part, paste0(gene_part, "_", rest_part))
+
+  x
+}
+
+# =========================
+# FQR marker regex (includes your 20 gene families + prior QR markers)
+# =========================
+fqr_regex <- regex(
+  paste0(
+    "^(",
+    "(gyr[a-b](?:_.+)?|par[c-e](?:_.+)?|grla(?:_.+)?)(?:$)|",
+    "(qnr(as|[a-z0-9._-]*))(?:$)|",
+    "(qnrvc[a-z0-9._-]*)(?:$)|",
+    "(qep[a-z0-9._-]*)(?:$)|",
+    "(nfxb(?:_.+)?|emrr(?:_.+)?|norm(?:_.+)?|pmra(?:_.+)?|acrb(?:_.+)?|smef(?:_.+)?)(?:$)|",
+    "(aac\\(6'\\)-ib-cr(?:_.+)?|oqx[a-b](?:_.+)?|crpp(?:_.+)?|acr[a-b](?:_.+)?|tolc(?:_.+)?|ram[ar](?:_.+)?|mar[ar](?:_.+)?|sox[rs](?:_.+)?)(?:$)",
+    ")"
+  ),
+  ignore_case = TRUE
+)
+
+# =========================
+# 1) Tokenize AMR genotypes
+# =========================
+SEN_tok <- SEN %>%
+  mutate(
+    isolate_id = as.character(.data[[id_col]]),
+    amr_txt = as.character(.data[[amr_col]]),
+    amr_txt = if_else(is.na(amr_txt), "", amr_txt),
+    token = str_extract_all(amr_txt, "[^,=\\s]+(?==)")
+  ) %>%
+  select(isolate_id, token) %>%
+  unnest_longer(token) %>%
+  mutate(
+    token = str_trim(token),
+    token = str_replace_all(token, "\\s+", "")
+  )
+
+# =========================
+# 2) Keep only FQR-related markers
+# =========================
+SEN_fqr_tokens <- SEN_tok %>%
+  filter(str_detect(token, fqr_regex)) %>%
+  mutate(
+    token_norm   = str_to_lower(token),
+    token_pretty = pretty_token(token_norm)
+  )
+
+# =========================
+# 3) TABLE: frequency, percent, 95% CI per marker + susceptible
+#    Denominator = number of UNIQUE isolates in SEN
+# =========================
+all_isolates <- SEN %>%
+  transmute(isolate_id = as.character(.data[[id_col]])) %>%
+  distinct()
+
+N_isolates <- nrow(all_isolates)
+
+isolates_any_marker <- SEN_fqr_tokens %>%
+  distinct(isolate_id)
+
+n_any  <- nrow(isolates_any_marker)
+n_susc <- N_isolates - n_any
+
+marker_table <- SEN_fqr_tokens %>%
+  distinct(isolate_id, token_pretty) %>%
+  count(token_pretty, name = "n_isolates") %>%
+  mutate(
+    Type = "QR/FQR marker",
+    N = N_isolates,
+    p = n_isolates / N,
+    pct = 100 * p,
+    se = sqrt(p * (1 - p) / N),
+    lo = pmax(0, 100 * (p - 1.96 * se)),
+    hi = pmin(100, 100 * (p + 1.96 * se))
+  ) %>%
+  bind_rows(
+    tibble(
+      token_pretty = "Q/FQ-susceptible",
+      n_isolates = n_susc,
+      Type = "Q/FQ-susceptible",
+      N = N_isolates,
+      p = n_susc / N_isolates,
+      pct = 100 * (n_susc / N_isolates),
+      se = sqrt((n_susc / N_isolates) * (1 - (n_susc / N_isolates)) / N_isolates),
+      lo = pmax(0, 100 * ((n_susc / N_isolates) - 1.96 * sqrt((n_susc / N_isolates) * (1 - (n_susc / N_isolates)) / N_isolates))),
+      hi = pmin(100, 100 * ((n_susc / N_isolates) + 1.96 * sqrt((n_susc / N_isolates) * (1 - (n_susc / N_isolates)) / N_isolates)))
+    )
+  ) %>%
+  arrange(desc(n_isolates))
+
+print(marker_table, n = Inf)
+
+write_csv(
+  marker_table %>% select(token_pretty, Type, n_isolates, N, pct, lo, hi),
+  "FQR_marker_frequency_percentage_95CI_with_susceptible.csv"
+)
+
+# =========================
+# 4) Plot: top 100 markers with count + (percent) labels
+#    - percent shown to 3 decimal places
+#    - if percent < 0.01% show "<0.01%"
+#    Susceptible bar is BLUE; all other bars are PINK3 (as you had)
+# =========================
+plot_df <- marker_table %>%
+  slice_head(n = 100) %>%
+  mutate(
+    token_pretty = factor(token_pretty, levels = rev(token_pretty)),
+    pct_label_plot = if_else(pct < 0.01, "<0.01%", sprintf("%.3f%%", pct)),
+    label_plot = paste0(n_isolates, " (", pct_label_plot, ")")
+  )
+
+p_tokens <- ggplot(plot_df, aes(x = token_pretty, y = n_isolates, fill = Type)) +
+  geom_col() +
+  geom_text(aes(label = label_plot), hjust = -0.1, size =3) +
+  coord_flip() +
+  scale_fill_manual(values = c("Q/FQ-susceptible" = "green4", "QR/FQR marker" = "red3")) +
+  scale_y_continuous(
+    limits = c(0, 22000),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
+  labs(x = "QR/FQR Markers", y = "Number of Genomes(n (%))") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 9, face = "bold"),
+    axis.title  = element_text(size = 10, face = "bold"),
+    legend.position = "none"
+  )
+
+print(p_tokens)
+
+ggsave("FQR_marker_counts_top100.png", p_tokens, width = 7.5, height = 10, dpi = 600)
+ggsave("FQR_marker_counts_top100.tif", p_tokens, width = 7.5, height = 10, dpi = 600, compression = "lzw")
+ggsave("FQR_marker_counts_top100.pdf", p_tokens, width = 7.5, height = 10)
+
+# =========================
+# 5) Per-isolate marker counts + print counts/percentages
+# =========================
+iso_marker_list <- SEN_fqr_tokens %>%
+  distinct(isolate_id, token_norm, token_pretty) %>%
+  group_by(isolate_id) %>%
+  summarise(
+    n_markers = n(),
+    markers = paste(sort(unique(token_pretty)), collapse = ";"),
+    .groups = "drop"
+  )
+
+marker_bins <- iso_marker_list %>%
+  mutate(bin = case_when(
+    n_markers == 1 ~ "1 marker",
+    n_markers == 2 ~ "2 markers",
+    n_markers >  2 ~ ">2 markers",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(bin)) %>%
+  count(bin, name = "n_isolates") %>%
+  mutate(
+    pct_isolates = 100 * n_isolates / sum(n_isolates),
+    bin = factor(bin, levels = c("1 marker", "2 markers", ">2 markers"))
+  ) %>%
+  arrange(bin)
+
+print(marker_bins, n = Inf)
+
+cat("\nMarker burden summary (FQR markers only):\n")
+marker_bins %>%
+  mutate(line = sprintf("%s: %d isolates (%.1f%%)", bin, n_isolates, pct_isolates)) %>%
+  pull(line) %>%
+  cat(sep = "\n")
+cat("\n")
+
+# =========================
+# 6) Table + CSV of isolates with >1 marker (and their markers)
+# =========================
+iso_gt1 <- iso_marker_list %>%
+  filter(n_markers > 1) %>%
+  arrange(desc(n_markers), isolate_id)
+
+print(iso_gt1, n = Inf)
+write_csv(iso_gt1, "isolates_more_than_one_FQR_marker.csv")
+
+# =========================
+# 7) Plot: marker-burden bins + save
+#    STRICTLY red3
+# =========================
+p_bins <- ggplot(marker_bins, aes(x = bin, y = n_isolates)) +
+  geom_col(fill = "red3") +
+  geom_text(
+    aes(label = sprintf("%d (%.2f%%)", n_isolates, pct_isolates)),
+    vjust = -0.3,
+    size = 3
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.08))
+  ) +
+  labs(
+    x = "Number of QR/FQR markers per isolate",
+    y = "Number of isolates"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 11, face = "bold"),
+    axis.text.y = element_text(size = 10, face = "bold"),
+    axis.title  = element_text(size = 10, face = "bold"),
+    legend.position = "none"
+  )
+
+print(p_bins)
+
+ggsave(
+  "FQR_marker_burden_bins.png",
+  p_bins,
+  width = 6.5,
+  height = 4.2,
+  dpi = 600
+)
+
+ggsave(
+  "FQR_marker_burden_bins.tif",
+  p_bins,
+  width = 6.5,
+  height = 4.2,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "FQR_marker_burden_bins.pdf",
+  p_bins,
+  width = 6.5,
+  height = 4.2
+)
+
+
+# ============================================================
+# 8) EXACTLY 2 QR/FQR MARKERS:
+#    Unique marker-combination counts
+# ============================================================
+
+combo_2 <- iso_marker_list %>%
+  filter(n_markers == 2) %>%
+  count(markers, name = "n_isolates") %>%
+  mutate(
+    pct = 100 * n_isolates / sum(n_isolates),
+    pct_label = sprintf("%.2f%%", pct),
+    label_plot = paste0(n_isolates, " (", pct_label, ")")
+  ) %>%
+  arrange(desc(n_isolates), markers)
+
+cat("\n============================================\n")
+cat("Unique combinations of exactly 2 QR/FQR markers\n")
+cat("============================================\n")
+
+print(combo_2, n = Inf)
+
+write_csv(
+  combo_2,
+  "FQR_exactly_2_marker_combinations.csv"
+)
+
+
+# Order combinations by frequency
+combo_2_plot <- combo_2 %>%
+  mutate(
+    markers = factor(
+      markers,
+      levels = rev(markers)
+    )
+  )
+
+
+# Dynamic plot height so labels remain readable
+height_2 <- max(
+  5,
+  0.28 * nrow(combo_2_plot) + 1.5
+)
+
+
+p_combo_2 <- ggplot(
+  combo_2_plot,
+  aes(x = markers, y = n_isolates)
+) +
+  geom_col(fill = "red3") +
+  geom_text(
+    aes(label = label_plot),
+    hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    x = "Unique combination of 2 QR/FQR markers",
+    y = "Number of isolates"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    axis.text.y = element_text(
+      size = 8,
+      face = "bold"
+    ),
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+print(p_combo_2)
+
+
+ggsave(
+  "FQR_exactly_2_marker_combinations.png",
+  p_combo_2,
+  width = 9,
+  height = height_2,
+  dpi = 600,
+  limitsize = FALSE
+)
+
+ggsave(
+  "FQR_exactly_2_marker_combinations.tif",
+  p_combo_2,
+  width = 9,
+  height = height_2,
+  dpi = 600,
+  compression = "lzw",
+  limitsize = FALSE
+)
+
+ggsave(
+  "FQR_exactly_2_marker_combinations.pdf",
+  p_combo_2,
+  width = 9,
+  height = height_2,
+  limitsize = FALSE
+)
+
+
+# ============================================================
+# 9) >2 QR/FQR MARKERS:
+#    Unique multi-marker combination counts
+# ============================================================
+
+combo_gt2 <- iso_marker_list %>%
+  filter(n_markers > 2) %>%
+  count(n_markers, markers, name = "n_isolates") %>%
+  mutate(
+    pct = 100 * n_isolates / sum(n_isolates),
+    pct_label = sprintf("%.2f%%", pct),
+    label_plot = paste0(n_isolates, " (", pct_label, ")")
+  ) %>%
+  arrange(desc(n_isolates), desc(n_markers), markers)
+
+cat("\n============================================\n")
+cat("Unique combinations of >2 QR/FQR markers\n")
+cat("============================================\n")
+
+print(combo_gt2, n = Inf)
+
+write_csv(
+  combo_gt2,
+  "FQR_greater_than_2_marker_combinations.csv"
+)
+
+
+# Order combinations by frequency
+combo_gt2_plot <- combo_gt2 %>%
+  mutate(
+    combination_label = paste0(
+      markers,
+      " [",
+      n_markers,
+      " markers]"
+    ),
+    combination_label = factor(
+      combination_label,
+      levels = rev(combination_label)
+    )
+  )
+
+
+# Dynamic plot height
+height_gt2 <- max(
+  5,
+  0.30 * nrow(combo_gt2_plot) + 1.5
+)
+
+
+p_combo_gt2 <- ggplot(
+  combo_gt2_plot,
+  aes(x = combination_label, y = n_isolates)
+) +
+  geom_col(fill = "red3") +
+  geom_text(
+    aes(label = label_plot),
+    hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    x = "Unique combination of >2 QR/FQR markers",
+    y = "Number of isolates"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    axis.text.y = element_text(
+      size = 7.5,
+      face = "bold"
+    ),
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+print(p_combo_gt2)
+
+
+ggsave(
+  "FQR_greater_than_2_marker_combinations.png",
+  p_combo_gt2,
+  width = 9,
+  height = height_gt2,
+  dpi = 600,
+  limitsize = FALSE
+)
+
+ggsave(
+  "FQR_greater_than_2_marker_combinations.tif",
+  p_combo_gt2,
+  width = 9,
+  height = height_gt2,
+  dpi = 600,
+  compression = "lzw",
+  limitsize = FALSE
+)
+
+ggsave(
+  "FQR_greater_than_2_marker_combinations.pdf",
+  p_combo_gt2,
+  width = 9,
+  height = height_gt2,
+  limitsize = FALSE
+)
+```
+
+
+#4. Downsize the QR-markers to focus on most important
+```{r}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+
+amr_col <- "AMR genotypes"
+
+# =========================
+# 1) TOKENIZE + keep ALL QR tokens (original chart data)
+# =========================
+SEN_tok <- SEN %>%
+  mutate(
+    amr_txt = as.character(.data[[amr_col]]),
+    amr_txt = if_else(is.na(amr_txt), "", amr_txt),
+    token = str_extract_all(amr_txt, "[^,=\\s]+(?==)")
+  ) %>%
+  select(token) %>%
+  unnest_longer(token) %>%
+  mutate(
+    token = str_trim(token),
+    token = str_replace_all(token, "\\s+", "")
+  )
+
+SEN_qr_tokens <- SEN_tok %>%
+  filter(
+    str_detect(
+      token,
+      regex(
+        "^(gyr[a-b]_.+|par[c-e]_.+|qnr[a-z0-9._-]*|qnrvc[a-z0-9._-]*|aac\\(6'\\)-ib-cr|qep[a-z0-9._-]*|oqx[a-b]|crpP|acr[a-b]_.+|tolc_.+|ram[ar]_.+|mar[ar]_.+|sox[rs]_.+)$",
+        ignore_case = TRUE
+      )
+    )
+  ) %>%
+  mutate(token_norm = str_to_lower(token))
+
+# =========================
+# 2) ORIGINAL CHART (top 100 unique tokens)
+# =========================
+qr_token_counts <- SEN_qr_tokens %>%
+  count(token_norm, name = "n") %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 100) %>%
+  mutate(token_norm = factor(token_norm, levels = rev(token_norm)))
+
+p_original <- ggplot(qr_token_counts, aes(x = token_norm, y = n, fill = token_norm)) +
+  geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 2.2) +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, 15000), expand = expansion(mult = c(0, 0.02))) +
+  labs(x = "Unique QR marker", y = "Count") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 6),
+    axis.title  = element_text(size = 8),
+    legend.position = "none"
+  )
+
+print(p_original)
+
+# =========================
+# 3) NEW CHART:
+#    keep top 5 gyrA tokens as-is, group the rest into families:
+#    gyrA_others, qnr_all, gyrB_all, parC_all, parD_all, parE_all, etc.
+# =========================
+
+# top 5 gyrA tokens (by count)
+top5_gyrA <- SEN_qr_tokens %>%
+  filter(str_detect(token_norm, "^gyra_")) %>%
+  count(token_norm, name = "n") %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 5) %>%
+  pull(token_norm)
+
+# relabel into grouped buckets
+SEN_qr_grouped <- SEN_qr_tokens %>%
+  mutate(
+    marker_group = case_when(
+      token_norm %in% top5_gyrA ~ token_norm,
+
+      str_detect(token_norm, "^gyra_") ~ "gyra_others",
+      str_detect(token_norm, "^gyrb_") ~ "gyrb_all",
+
+      str_detect(token_norm, "^parc_") ~ "parc_all",
+      str_detect(token_norm, "^pard_") ~ "pard_all",
+      str_detect(token_norm, "^pare_") ~ "pare_all",
+
+      str_detect(token_norm, "^qnrvc") ~ "qnrvc_all",
+      str_detect(token_norm, "^qnr")   ~ "qnr_all",
+
+      token_norm == "aac(6')-ib-cr"    ~ "aac(6')-ib-cr",
+      str_detect(token_norm, "^qep")   ~ "qep_all",
+      token_norm == "oqxa"             ~ "oqxa",
+      token_norm == "oqxb"             ~ "oqxb",
+      token_norm == "crpp"             ~ "crpp",
+
+      str_detect(token_norm, "^acra_") ~ "acra_all",
+      str_detect(token_norm, "^acrb_") ~ "acrb_all",
+      str_detect(token_norm, "^tolc_") ~ "tolc_all",
+
+      str_detect(token_norm, "^rama_") ~ "rama_all",
+      str_detect(token_norm, "^ramr_") ~ "ramr_all",
+      str_detect(token_norm, "^mara_") ~ "mara_all",
+      str_detect(token_norm, "^marr_") ~ "marr_all",
+      str_detect(token_norm, "^soxr_") ~ "soxr_all",
+      str_detect(token_norm, "^soxs_") ~ "soxs_all",
+
+      TRUE ~ "other_qr"
+    )
+  )
+
+qr_group_counts <- SEN_qr_grouped %>%
+  count(marker_group, name = "n") %>%
+  arrange(desc(n)) %>%
+  mutate(marker_group = factor(marker_group, levels = rev(marker_group)))
+
+p_grouped <- ggplot(qr_group_counts, aes(x = marker_group, y = n, fill = marker_group)) +
+  geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 2.6) +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, 15000), expand = expansion(mult = c(0, 0.02))) +
+  labs(x = "QR marker (top 5 gyrA kept, others grouped)", y = "Count") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 7),
+    axis.title  = element_text(size = 8),
+    legend.position = "none"
+  )
+
+print(p_grouped)
+
+
+
+```
+#5. A. Yearly distribute of all SEN sequenced isolates B. Yearly distribution stacked into QR and non-QR
+```{r}
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+
+# ============================================================
+# 1) ROBUSTLY EXTRACT COLLECTION YEAR
+# ============================================================
+
+SEN <- SEN %>%
+  mutate(
+    Collection_date_raw = as.character(`Collection date`),
+
+    Collection_date_clean = Collection_date_raw %>%
+      str_trim() %>%
+      str_replace_all("_", "-") %>%
+      str_replace_all("\\.", "/") %>%
+      str_replace_all("\\s+", " ") %>%
+      str_replace_all(
+        "(?i)^(na|n/a|none|unknown|unk|\\.)$",
+        NA_character_
+      ),
+
+    Collection_date_parsed = suppressWarnings(
+      parse_date_time(
+        Collection_date_clean,
+        orders = c(
+          "Ymd", "Y-m-d", "Y/m/d",
+          "mdY", "m/d/Y", "m-d-Y", "m.d.Y",
+          "dmY", "d/m/Y", "d-m-Y", "d.m.Y",
+          "b d Y", "d b Y", "B d Y", "d B Y",
+          "Y b d", "Y B d",
+          "b Y", "B Y",
+          "Y b", "Y B",
+          "Y"
+        ),
+        tz = "UTC",
+        exact = FALSE
+      )
+    ),
+
+    Collection_year = year(Collection_date_parsed),
+
+    # Fallback to any plausible four-digit year
+    Collection_year = if_else(
+      is.na(Collection_year),
+      suppressWarnings(
+        as.integer(
+          str_extract(
+            Collection_date_clean,
+            "(19|20)\\d{2}"
+          )
+        )
+      ),
+      Collection_year
+    )
+  )
+
+
+# ============================================================
+# 2) QUICK CHECK OF COLLECTION YEARS
+# ============================================================
+
+SEN %>%
+  count(Collection_year, sort = TRUE) %>%
+  print(n = Inf)
+
+
+# ============================================================
+# 3) DERIVE QR/FQR STATUS FROM YOUR EXISTING MARKER TABLE
+# ============================================================
+# SEN_fqr_tokens was created in your previous QR/FQR marker
+# extraction workflow.
+#
+# ≥1 detected QR/FQR marker = "QR/FQR marker"
+# no detected QR/FQR marker = "Q/FQ-susceptible"
+# ============================================================
+
+qr_isolates <- SEN_fqr_tokens %>%
+  distinct(isolate_id) %>%
+  mutate(QR_group = "QR/FQR marker")
+
+
+SEN_year <- SEN %>%
+  mutate(
+    isolate_id = as.character(.data[[id_col]])
+  ) %>%
+  left_join(
+    qr_isolates,
+    by = "isolate_id"
+  ) %>%
+  mutate(
+    QR_group = if_else(
+      is.na(QR_group),
+      "Q/FQ-susceptible",
+      QR_group
+    ),
+
+    QR_group = factor(
+      QR_group,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    )
+  )
+
+
+# Check classification
+SEN_year %>%
+  count(QR_group) %>%
+  print(n = Inf)
+
+
+# ============================================================
+# 4) FIGURE 1:
+#    NUMBER OF GENOMES BY COLLECTION YEAR
+# ============================================================
+
+yr_counts <- SEN_year %>%
+  filter(!is.na(Collection_year)) %>%
+  count(Collection_year, name = "n") %>%
+  complete(
+    Collection_year = seq(
+      min(Collection_year),
+      max(Collection_year)
+    ),
+    fill = list(n = 0)
+  ) %>%
+  arrange(Collection_year)
+
+
+p_years <- ggplot(
+  yr_counts,
+  aes(
+    x = factor(Collection_year),
+    y = n
+  )
+) +
+  geom_col(fill = "grey40") +
+  geom_text(
+    aes(label = ifelse(n == 0, "", n)),
+    vjust = -0.3,
+    size = 2.2
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.08))
+  ) +
+  labs(
+    x = "Collection year",
+    y = "Number of genomes"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 5
+    ),
+    axis.text.y = element_text(size = 7),
+    axis.title = element_text(
+      size = 8,
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+print(p_years)
+
+
+# ============================================================
+# 5) FIGURE 2:
+#    STACKED Q/FQ-SUSCEPTIBLE vs QR/FQR MARKER BY YEAR
+# ============================================================
+
+yr_qr <- SEN_year %>%
+  filter(!is.na(Collection_year)) %>%
+  count(
+    Collection_year,
+    QR_group,
+    name = "n"
+  ) %>%
+  complete(
+    Collection_year = seq(
+      min(Collection_year),
+      max(Collection_year)
+    ),
+    QR_group = factor(
+      c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      ),
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    ),
+    fill = list(n = 0)
+  ) %>%
+  arrange(
+    Collection_year,
+    QR_group
+  )
+
+
+p_year_qr <- ggplot(
+  yr_qr,
+  aes(
+    x = factor(Collection_year),
+    y = n,
+    fill = QR_group
+  )
+) +
+  geom_col() +
+  geom_text(
+    aes(
+      label = ifelse(n == 0, "", n)
+    ),
+    position = position_stack(vjust = 0.5),
+    size = 2.2
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    )
+  ) +
+  labs(
+    x = "Collection year",
+    y = "Number of genomes",
+    fill = ""
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 5
+    ),
+    axis.text.y = element_text(size = 7),
+    axis.title = element_text(
+      size = 8,
+      face = "bold"
+    ),
+    legend.text = element_text(size = 8)
+  )
+
+print(p_year_qr)
+
+
+# ============================================================
+# 6) SAVE FIGURES
+# ============================================================
+
+ggsave(
+  "SEN_collection_year_counts.png",
+  p_years,
+  width = 9,
+  height = 4.5,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_collection_year_counts.pdf",
+  p_years,
+  width = 9,
+  height = 4.5
+)
+
+
+ggsave(
+  "SEN_QRFQR_by_collection_year.png",
+  p_year_qr,
+  width = 9,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_QRFQR_by_collection_year.tif",
+  p_year_qr,
+  width = 9,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_QRFQR_by_collection_year.pdf",
+  p_year_qr,
+  width = 9,
+  height = 4.8
+)
+```
+
+#6. Improve visualization of yearly trend 
+```{r}
+
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+# ============================================================
+# PREPARE QR/FQR STATUS ONCE
+# ============================================================
+
+qr_isolates <- SEN_fqr_tokens %>%
+  distinct(isolate_id) %>%
+  mutate(QR_group = "QR/FQR marker")
+
+SEN_year <- SEN %>%
+  mutate(
+    isolate_id = as.character(.data[[id_col]])
+  ) %>%
+  left_join(
+    qr_isolates,
+    by = "isolate_id"
+  ) %>%
+  mutate(
+    QR_group = if_else(
+      is.na(QR_group),
+      "Q/FQ-susceptible",
+      QR_group
+    ),
+    QR_group = factor(
+      QR_group,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    )
+  )
+
+
+# ============================================================
+# HELPER: MAKE PLOTS FOR A GIVEN YEAR WINDOW
+# ============================================================
+
+make_year_plots <- function(
+    df,
+    year_min = NULL,
+    year_max = NULL,
+    tag = "ALL"
+) {
+
+  d <- df %>%
+    filter(!is.na(Collection_year))
+
+  # Apply selected year range
+  if (!is.null(year_min)) {
+    d <- d %>%
+      filter(Collection_year >= year_min)
+  }
+
+  if (!is.null(year_max)) {
+    d <- d %>%
+      filter(Collection_year <= year_max)
+  }
+
+  # Safety check
+  if (nrow(d) == 0) {
+    warning(
+      paste0(
+        "No genomes found for year window: ",
+        tag
+      )
+    )
+    return(invisible(NULL))
+  }
+
+
+  # ==========================================================
+  # 1) TOTAL GENOMES PER YEAR
+  # ==========================================================
+
+  yr_counts <- d %>%
+    count(
+      Collection_year,
+      name = "n"
+    ) %>%
+    complete(
+      Collection_year = seq(
+        min(Collection_year),
+        max(Collection_year)
+      ),
+      fill = list(n = 0)
+    ) %>%
+    arrange(Collection_year)
+
+
+  p_years <- ggplot(
+    yr_counts,
+    aes(
+      x = factor(Collection_year),
+      y = n
+    )
+  ) +
+    geom_col(
+      fill = "grey40"
+    ) +
+    geom_text(
+      aes(
+        label = ifelse(n == 0, "", n)
+      ),
+      vjust = -0.3,
+      size = 2.2
+    ) +
+    scale_y_continuous(
+      expand = expansion(
+        mult = c(0, 0.08)
+      )
+    ) +
+    labs(
+      x = "Collection year",
+      y = "Number of genomes",
+      title = paste0(
+        "Genome counts by collection year (",
+        tag,
+        ")"
+      )
+    ) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1,
+        size = 5
+      ),
+      axis.text.y = element_text(
+        size = 7
+      ),
+      axis.title = element_text(
+        size = 8,
+        face = "bold"
+      ),
+      plot.title = element_text(
+        size = 9,
+        hjust = 0.5
+      ),
+      legend.position = "none"
+    )
+
+  print(p_years)
+
+
+  # ==========================================================
+  # 2) Q/FQ-SUSCEPTIBLE vs QR/FQR MARKER PER YEAR
+  # ==========================================================
+
+  yr_qr <- d %>%
+    count(
+      Collection_year,
+      QR_group,
+      name = "n"
+    ) %>%
+    complete(
+      Collection_year = seq(
+        min(Collection_year),
+        max(Collection_year)
+      ),
+      QR_group = factor(
+        c(
+          "Q/FQ-susceptible",
+          "QR/FQR marker"
+        ),
+        levels = c(
+          "Q/FQ-susceptible",
+          "QR/FQR marker"
+        )
+      ),
+      fill = list(n = 0)
+    ) %>%
+    arrange(
+      Collection_year,
+      QR_group
+    )
+
+
+  p_year_qr <- ggplot(
+    yr_qr,
+    aes(
+      x = factor(Collection_year),
+      y = n,
+      fill = QR_group
+    )
+  ) +
+    geom_col() +
+    geom_text(
+      aes(
+        label = ifelse(
+          n == 0,
+          "",
+          n
+        )
+      ),
+      position = position_stack(
+        vjust = 0.5
+      ),
+      size = 2.2
+    ) +
+    scale_fill_manual(
+      values = c(
+        "Q/FQ-susceptible" = "green4",
+        "QR/FQR marker" = "red3"
+      ),
+      drop = FALSE
+    ) +
+    labs(
+      x = "Collection year",
+      y = "Number of genomes",
+      fill = "",
+      title = paste0(
+        "Q/FQ-susceptible vs QR/FQR marker by year (",
+        tag,
+        ")"
+      )
+    ) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(
+        angle = 90,
+        vjust = 0.5,
+        hjust = 1,
+        size = 5
+      ),
+      axis.text.y = element_text(
+        size = 7
+      ),
+      axis.title = element_text(
+        size = 8,
+        face = "bold"
+      ),
+      plot.title = element_text(
+        size = 9,
+        hjust = 0.5
+      ),
+      legend.text = element_text(
+        size = 8
+      )
+    )
+
+  print(p_year_qr)
+
+
+  # ==========================================================
+  # RETURN PLOTS + DATA
+  # ==========================================================
+
+  invisible(
+    list(
+      counts_data = yr_counts,
+      qr_data = yr_qr,
+      counts_plot = p_years,
+      qr_plot = p_year_qr
+    )
+  )
+}
+
+
+# ============================================================
+# A) ALL YEARS
+# ============================================================
+
+plots_all <- make_year_plots(
+  SEN_year,
+  tag = "ALL YEARS"
+)
+
+
+# ============================================================
+# B) 2000–2013
+# ============================================================
+
+plots_2000_2013 <- make_year_plots(
+  SEN_year,
+  year_min = 2000,
+  year_max = 2013,
+  tag = "2000–2013"
+)
+
+
+# ============================================================
+# C) 2013–2025
+# ============================================================
+
+plots_2013_2025 <- make_year_plots(
+  SEN_year,
+  year_min = 2013,
+  year_max = 2025,
+  tag = "2013–2025"
+)
+
+```
+#7. looking deeply into Sources type
+```{r}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+
+# ---- standardize columns ----
+SEN3 <- SEN %>%
+  mutate(
+    Source_type = str_to_lower(str_trim(as.character(`Source type`))),
+    Source_type = if_else(is.na(Source_type) | Source_type == "", "unknown", Source_type),
+    Isolation_source = str_trim(as.character(`Isolation source`)),
+    Isolation_source = if_else(is.na(Isolation_source) | Isolation_source == "", "Unknown", Isolation_source)
+  )
+
+# ---- function: bar plot of Isolation source counts for one Source type ----
+plot_iso_counts <- function(df, stype, top_n = 50) {
+  dat <- df %>%
+    filter(Source_type == stype) %>%
+    count(Isolation_source, sort = TRUE, name = "n") %>%
+    slice_head(n = top_n) %>%
+    mutate(Isolation_source = factor(Isolation_source, levels = rev(Isolation_source)))
+
+  ggplot(dat, aes(x = Isolation_source, y = n, fill = Isolation_source)) +
+    geom_col() +
+    geom_text(aes(label = n), hjust = -0.1, size = 2.2) +
+    coord_flip() +
+    labs(
+      x = "Isolation source",
+      y = "Count",
+      title = paste0("Isolation source counts (", stype, ")")
+    ) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 6),
+      axis.title  = element_text(size = 8),
+      plot.title  = element_text(size = 9),
+      legend.position = "none"
+    )
+}
+
+# ---- plots for requested source types ----
+print(plot_iso_counts(SEN3, "animal"))
+print(plot_iso_counts(SEN3, "environmental"))
+print(plot_iso_counts(SEN3, "food"))
+print(plot_iso_counts(SEN3, "unknown"))
+
+
+
+```
+#8. Reclassifying sources into Human, chicken and others
+
+```{r}
+library(dplyr)
+library(stringr)
+
+SEN <- SEN %>%
+  mutate(
+    st  = str_to_lower(str_squish(as.character(`Source type`))),
+    iso = str_to_lower(str_squish(as.character(`Isolation source`))),
+    iso = if_else(is.na(iso), "", iso),
+
+    # normalize: letters only + fix misspellings + split glued "chickenwings" etc.
+    iso_norm = iso %>%
+      str_replace_all("[^a-z]+", " ") %>%
+      str_replace_all("chicken(?=[a-z])", "chicken ") %>%
+      str_replace_all("\\bchicekn\\b", "chicken") %>%
+      str_replace_all("\\bchikcen\\b", "chicken") %>%
+      str_replace_all("\\bchcken\\b", "chicken") %>%
+      str_squish(),
+
+    Source = case_when(
+      str_detect(st, "\\bhuman\\b") ~ "Human",
+
+      # Chicken + egg + hatchery terms
+      str_detect(
+        iso_norm,
+        paste0(
+          "\\bchicken\\b|\\bchick\\b|\\bpoultry\\b|\\bhen\\b|",
+          "\\bbroiler\\b|\\blayer\\b|\\bgallus\\b|gallus\\s+gallus|",
+          "\\begg\\b|\\beggs\\b|\\begg\\s*product\\b|\\bproduct\\s*eggs\\b|\\begg\\s*yolk(s)?\\b|\\byolk(s)?\\b|",
+          "\\bhatchery\\b|\\bhatching\\b|\\bhatcher(y)?\\b|",
+          "\\bbox\\s*liner(s)?\\b|\\bliner(s)?\\b|\\bdrag\\s*swab(s)?\\b"
+        )
+      ) ~ "Chicken",
+
+      TRUE ~ "Other"
+    )
+  ) %>%
+  select(-st, -iso, -iso_norm)
+
+SEN %>% count(Source, sort = TRUE)
+
+
+```
+#manually inspect others and improve 
+
+# I manually inspected the other data and reassigned some samples back: further refined the Source classification for isolates initially labeled as “Other.”First, if the Host or IFSAC category fields contained any mention of “chicken,” these isolates were reclassified to the Chicken source. Second, if the Collected by field contained “CDC,” the isolate was reclassified to the Human source. After applying these rules, we recalculated the final counts of isolates per source category (Human, Chicken, Other, International).
+```{r}
+
+library(dplyr)
+library(stringr)
+
+SEN <- SEN %>%
+  mutate(
+    Host_l   = str_to_lower(str_squish(as.character(Host))),
+    Ifsac_l  = str_to_lower(str_squish(as.character(`IFSAC category`))),
+    Collect_l = str_to_lower(str_squish(as.character(`Collected by`))),
+
+    Source = case_when(
+      # Reclassify "Other" to Chicken if Host or IFSAC mention chicken
+      Source == "Other" & (
+        str_detect(Host_l, "chicken") |
+        str_detect(Ifsac_l, "chicken")
+      ) ~ "Chicken",
+
+      # Reclassify "Other" to Human if Collected by CDC
+      Source == "Other" & str_detect(Collect_l, "cdc") ~ "Human",
+
+      TRUE ~ Source
+    )
+  ) %>%
+  select(-Host_l, -Ifsac_l, -Collect_l)
+
+SEN %>% count(Source, sort = TRUE)
+
+
+
+```
+#9. Inspect Other to find out contents 
+```{r}
+
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(readr)
+
+# ============================================================
+# 1) UNIQUE Isolation source values among rows classified "Other"
+# ============================================================
+
+other_iso_unique <- SEN %>%
+  filter(Source == "Other") %>%
+  transmute(
+    `Isolation source` = str_squish(as.character(`Isolation source`))
+  ) %>%
+  mutate(
+    `Isolation source` = if_else(
+      is.na(`Isolation source`) | `Isolation source` == "",
+      "Unknown",
+      `Isolation source`
+    )
+  ) %>%
+  distinct(`Isolation source`) %>%
+  arrange(`Isolation source`)
+
+print(other_iso_unique, n = Inf)
+
+write_csv(
+  other_iso_unique,
+  "SEN_Other_unique_isolation_sources.csv"
+)
+
+
+# ============================================================
+# 2) FREQUENCY of Isolation source values among "Other"
+# ============================================================
+
+other_iso_counts <- SEN %>%
+  filter(Source == "Other") %>%
+  mutate(
+    iso = str_squish(as.character(`Isolation source`)),
+    iso = if_else(
+      is.na(iso) | iso == "",
+      "Unknown",
+      iso
+    )
+  ) %>%
+  count(
+    iso,
+    sort = TRUE,
+    name = "n"
+  )
+
+# Save COMPLETE frequency table before restricting plot to top 100
+write_csv(
+  other_iso_counts,
+  "SEN_Other_isolation_source_counts.csv"
+)
+
+
+# ============================================================
+# 3) TOP 100 for plotting only
+# ============================================================
+
+other_iso_plot <- other_iso_counts %>%
+  slice_head(n = 100) %>%
+  mutate(
+    iso = factor(
+      iso,
+      levels = rev(iso)
+    )
+  )
+
+p_other <- ggplot(
+  other_iso_plot,
+  aes(
+    x = iso,
+    y = n,
+    fill = iso
+  )
+) +
+  geom_col() +
+  geom_text(
+    aes(label = n),
+    hjust = -0.1,
+    size = 2.2
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.12))
+  ) +
+  labs(
+    x = "Isolation source (Other)",
+    y = "Count"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 6),
+    axis.title  = element_text(size = 8),
+    legend.position = "none"
+  )
+
+print(p_other)
+
+
+# ============================================================
+# 4) SOURCE summary
+# ============================================================
+
+source_counts <- SEN %>%
+  count(
+    Source,
+    sort = TRUE
+  )
+
+print(source_counts)
+
+write_csv(
+  source_counts,
+  "SEN_Source_counts.csv"
+)
+```
+
+#10. Based on FDA Sampling some sources are from import food products (either in Chicken or other Sources) 
+
+```{r}
+
+library(dplyr)
+library(stringr)
+library(ggplot2)
+
+top_n <- 100
+
+food_top <- SEN %>%
+  mutate(`Food origin` = str_squish(as.character(`Food origin`)),
+         `Food origin` = if_else(is.na(`Food origin`) | `Food origin` == "", "Unknown", `Food origin`)) %>%
+  count(`Food origin`, name = "n") %>%
+  arrange(desc(n)) %>%
+  slice_head(n = top_n) %>%
+  mutate(`Food origin` = factor(`Food origin`, levels = rev(`Food origin`)))
+
+ggplot(food_top, aes(x = `Food origin`, y = n, fill = `Food origin`)) +
+  geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 2.2) +
+  coord_flip() +
+  labs(x = "Food origin (top 30)", y = "Count") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 6),
+    axis.title  = element_text(size = 8),
+    legend.position = "none"
+  )
+
+SEN %>% count(Source, sort = TRUE)
+
+```
+
+#10b. Inspect the other sources and re-classify sources into Turkey, cattel, Sheep/goat, Swin and Others
+
+```{r}
+
+
+library(dplyr)
+library(stringr)
+library(readr)
+library(ggplot2)
+
+# ============================================================
+# REFINE THE CURRENT "Other" SOURCE CATEGORY
+#
+# New categories:
+#   Turkey
+#   Cattle
+#   Sheep/goat
+#   Swine
+#   Others
+#
+# Original Source column is preserved.
+# ============================================================
+
+SEN <- SEN %>%
+  mutate(
+    isolation_source_clean = `Isolation source` %>%
+      as.character() %>%
+      str_squish() %>%
+      str_to_lower(),
+
+    # --------------------------------------------------------
+    # Classify ONLY records currently designated Source = Other
+    # --------------------------------------------------------
+    Other_source_group = case_when(
+
+      # ======================================================
+      # TURKEY
+      # Includes live-animal, cecal, meat and turkey products
+      # ======================================================
+      Source == "Other" &
+        str_detect(
+          isolation_source_clean,
+          "\\bturkey\\b"
+        ) ~ "Turkey",
+
+
+      # ======================================================
+      # CATTLE
+      # Includes cattle, bovine, beef, steer, calf, Bos taurus
+      # and beef products
+      # ======================================================
+      Source == "Other" &
+        str_detect(
+          isolation_source_clean,
+          paste0(
+            "\\b(",
+            "cattle|",
+            "bovine|",
+            "beef|",
+            "steer|",
+            "calf|",
+            "veal|",
+            "bos taurus",
+            ")\\b"
+          )
+        ) ~ "Cattle",
+
+
+      # ======================================================
+      # SHEEP / GOAT
+      # Includes sheep, lamb, ovine, goat and caprine
+      # ======================================================
+      Source == "Other" &
+        str_detect(
+          isolation_source_clean,
+          paste0(
+            "\\b(",
+            "sheep|",
+            "lamb|",
+            "ovine|",
+            "goat|",
+            "caprine",
+            ")\\b"
+          )
+        ) ~ "Sheep/goat",
+
+
+      # ======================================================
+      # SWINE
+      # Includes swine, sow, pork, porcine.
+      #
+      # Deliberately NOT using generic "pig" because
+      # "guinea pig" occurs in your data and should remain Other.
+      # ======================================================
+      Source == "Other" &
+        str_detect(
+          isolation_source_clean,
+          paste0(
+            "\\b(",
+            "swine|",
+            "sow|",
+            "pork|",
+            "porcine",
+            ")\\b"
+          )
+        ) ~ "Swine",
+
+
+      # ======================================================
+      # EVERYTHING ELSE CURRENTLY IN "Other"
+      # ======================================================
+      Source == "Other" ~ "Others",
+
+      # Non-Other records left untouched here
+      TRUE ~ NA_character_
+    ),
+
+    Other_source_group = factor(
+      Other_source_group,
+      levels = c(
+        "Turkey",
+        "Cattle",
+        "Sheep/goat",
+        "Swine",
+        "Others"
+      )
+    )
+  )
+
+
+# ============================================================
+# CHECK COUNTS
+# ============================================================
+
+other_group_counts <- SEN %>%
+  filter(Source == "Other") %>%
+  count(
+    Other_source_group,
+    name = "n",
+    sort = TRUE
+  ) %>%
+  mutate(
+    pct = 100 * n / sum(n)
+  )
+
+print(other_group_counts, n = Inf)
+
+
+# ============================================================
+# SAVE SUMMARY
+# ============================================================
+
+write_csv(
+  other_group_counts,
+  "SEN_Other_source_refined_groups.csv"
+)
+
+
+# ============================================================
+# AUDIT TABLE:
+# See exactly how every Isolation source was classified
+# ============================================================
+
+other_source_audit <- SEN %>%
+  filter(Source == "Other") %>%
+  mutate(
+    isolation_source_display = str_squish(
+      as.character(`Isolation source`)
+    ),
+    isolation_source_display = if_else(
+      is.na(isolation_source_display) |
+        isolation_source_display == "",
+      "Unknown",
+      isolation_source_display
+    )
+  ) %>%
+  count(
+    Other_source_group,
+    isolation_source_display,
+    name = "n"
+  ) %>%
+  arrange(
+    Other_source_group,
+    desc(n),
+    isolation_source_display
+  )
+
+print(other_source_audit, n = Inf)
+
+write_csv(
+  other_source_audit,
+  "SEN_Other_source_refined_audit.csv"
+)
+
+
+# ============================================================
+# OPTIONAL:
+# CREATE A FULL REFINED SOURCE VARIABLE
+#
+# Existing non-"Other" Source categories are retained.
+# Only Source == "Other" is replaced by one of the five groups.
+# ============================================================
+
+SEN <- SEN %>%
+  mutate(
+    Source_refined = if_else(
+      Source == "Other",
+      as.character(Other_source_group),
+      as.character(Source)
+    )
+  )
+
+
+# Check final source distribution
+source_refined_counts <- SEN %>%
+  count(
+    Source_refined,
+    name = "n",
+    sort = TRUE
+  ) %>%
+  mutate(
+    pct = 100 * n / sum(n)
+  )
+
+print(source_refined_counts, n = Inf)
+
+write_csv(
+  source_refined_counts,
+  "SEN_Source_refined_counts.csv"
+)
+
+
+# ============================================================
+# BAR PLOT OF THE FIVE SUBGROUPS WITHIN ORIGINAL "Other"
+# ============================================================
+
+p_other_refined <- ggplot(
+  other_group_counts,
+  aes(
+    x = Other_source_group,
+    y = n
+  )
+) +
+  geom_col(fill = "grey40") +
+  geom_text(
+    aes(
+      label = sprintf(
+        "%d (%.1f%%)",
+        n,
+        pct
+      )
+    ),
+    vjust = -0.3,
+    size = 3
+  ) +
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.10)
+    )
+  ) +
+  labs(
+    x = "Refined source category",
+    y = "Number of genomes"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      size = 9,
+      face = "bold"
+    ),
+    axis.text.y = element_text(size = 8),
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    legend.position = "none"
+  )
+
+print(p_other_refined)
+
+ggsave(
+  "SEN_Other_source_refined_groups.png",
+  p_other_refined,
+  width = 6.5,
+  height = 4.5,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_Other_source_refined_groups.pdf",
+  p_other_refined,
+  width = 6.5,
+  height = 4.5
+)
+
+
+
+
+
+
+```
+
+
+
+#11. reclassify FDA samples to seperate non-US sources isolated in the US
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyr)
+
+usa_pat <- "(\\busa\\b|\\bunited\\s*states\\b|\\bu\\s*\\.\\s*s\\s*\\.\\b|\\bus\\b)"
+id_pat  <- "(\\bcfsan\\b|\\bfda\\b)"
+
+SEN <- SEN %>%
+  mutate(
+    Source = as.character(Source),
+
+    Strain_l = str_to_lower(str_squish(as.character(Strain))),
+    IsoID_l  = str_to_lower(str_squish(as.character(`Isolate identifiers`))),
+    Strain_l = if_else(is.na(Strain_l), "", Strain_l),
+    IsoID_l  = if_else(is.na(IsoID_l), "", IsoID_l),
+    is_fda_like = str_detect(Strain_l, "^fda") | str_detect(IsoID_l, id_pat),
+
+    Food_l = str_to_lower(str_squish(as.character(`Food origin`))),
+    Food_l = if_else(is.na(Food_l), "", Food_l),
+
+    # UPDATED: if FDA/CFSAN-linked but Food origin missing -> treat as US (no Unknown bucket)
+    Origin_group = case_when(
+      !is_fda_like ~ "US",
+      Food_l == "" ~ "US",
+      str_detect(Food_l, usa_pat) ~ "US",
+      TRUE ~ "Non-US"
+    ),
+
+    Source_group = case_when(
+      str_to_lower(Source) == "human" ~ "Human",
+      str_to_lower(Source) == "chicken" ~ paste0("Chicken-", Origin_group),
+      str_to_lower(Source) == "other"   ~ paste0("Other-", Origin_group),
+      TRUE ~ paste0(Source, "-", Origin_group)
+    )
+  ) %>%
+  select(-Strain_l, -IsoID_l, -Food_l)
+
+# Frequencies (no *-Unknown will exist now)
+SEN %>%
+  count(Source_group, sort = TRUE) %>%
+  print(n = Inf)
+
+SEN %>%
+  count(Source, Origin_group) %>%
+  pivot_wider(names_from = Origin_group, values_from = n, values_fill = 0) %>%
+  print(n = Inf)
+
+
+SEN %>% count(Source, sort = TRUE)
+```
+
+#Decomposing Other-US sources and internation source to various source category
+```{r}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+
+id_col <- "Isolate"
+
+# ============================================================
+# 1) QR/FQR STATUS
+#    Uses the existing SEN_fqr_tokens object
+# ============================================================
+
+qr_isolates <- SEN_fqr_tokens %>%
+  distinct(isolate_id) %>%
+  mutate(
+    QR_status = "QR/FQR marker"
+  )
+
+
+# ============================================================
+# 2) EXTRACT THE TWO CERTIFIED GROUPS
+#
+# International-Non-US -> International
+# Other-US-US           -> Other-US
+#
+# Then assign animal source
+# ============================================================
+
+source_animal_qr <- SEN %>%
+  filter(
+    Source_group %in% c(
+      "International-Non-US",
+      "Other-US-US"
+    )
+  ) %>%
+  mutate(
+    isolate_id = as.character(.data[[id_col]]),
+
+    Group = recode(
+      Source_group,
+      "International-Non-US" = "International",
+      "Other-US-US" = "Other-US"
+    ),
+
+    isolation_clean = str_to_lower(
+      str_squish(as.character(`Isolation source`))
+    ),
+
+    Animal_source = case_when(
+
+      # Chicken
+      str_detect(
+        isolation_clean,
+        "\\b(chicken|broiler|hen)\\b"
+      ) ~ "Chicken",
+
+      # Turkey
+      str_detect(
+        isolation_clean,
+        "\\bturkey\\b"
+      ) ~ "Turkey",
+
+      # Cattle
+      str_detect(
+        isolation_clean,
+        "\\b(cattle|bovine|beef|steer|calf|veal|bos taurus)\\b"
+      ) ~ "Cattle",
+
+      # Sheep / goat
+      str_detect(
+        isolation_clean,
+        "\\b(sheep|lamb|ovine|goat|caprine)\\b"
+      ) ~ "Sheep/goat",
+
+      # Swine
+      str_detect(
+        isolation_clean,
+        "\\b(swine|sow|pork|porcine)\\b"
+      ) ~ "Swine",
+
+      # Everything else
+      TRUE ~ "Others"
+    )
+  ) %>%
+
+  # One row per isolate
+  distinct(
+    isolate_id,
+    Group,
+    Animal_source
+  ) %>%
+
+  # Join QR/FQR classification
+  left_join(
+    qr_isolates,
+    by = "isolate_id"
+  ) %>%
+
+  mutate(
+    QR_status = if_else(
+      is.na(QR_status),
+      "Q/FQ-susceptible",
+      QR_status
+    ),
+
+    QR_status = factor(
+      QR_status,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    )
+  )
+
+
+# ============================================================
+# 3) CHECK TOTALS
+# ============================================================
+
+source_animal_qr %>%
+  count(Group, name = "n") %>%
+  print(n = Inf)
+
+
+# Expected:
+# International = 71
+# Other-US      = 515
+
+
+# ============================================================
+# 4) COUNTS BY GROUP × ANIMAL SOURCE × QR STATUS
+# ============================================================
+
+animal_qr_counts <- source_animal_qr %>%
+  count(
+    Group,
+    Animal_source,
+    QR_status,
+    name = "n"
+  ) %>%
+  group_by(
+    Group,
+    Animal_source
+  ) %>%
+  mutate(
+    total_source = sum(n),
+    pct = 100 * n / total_source,
+    label = paste0(
+      n,
+      " (",
+      sprintf("%.1f", pct),
+      "%)"
+    )
+  ) %>%
+  ungroup()
+
+
+print(
+  animal_qr_counts,
+  n = Inf
+)
+
+write_csv(
+  animal_qr_counts,
+  "SEN_International_OtherUS_animal_QRFQR_counts.csv"
+)
+
+
+# ============================================================
+# 5) INTERNATIONAL DATA
+# ============================================================
+
+international_plot_df <- animal_qr_counts %>%
+  filter(
+    Group == "International"
+  ) %>%
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = c(
+        "Chicken",
+        "Turkey",
+        "Cattle",
+        "Sheep/goat",
+        "Swine",
+        "Others"
+      )
+    )
+  )
+
+
+# ============================================================
+# 6) INTERNATIONAL STACKED PLOT
+# ============================================================
+
+p_international_qr <- ggplot(
+  international_plot_df,
+  aes(
+    x = Animal_source,
+    y = n,
+    fill = QR_status
+  )
+) +
+  geom_col() +
+
+  geom_text(
+    aes(
+      label = ifelse(n == 0, "", n)
+    ),
+    position = position_stack(vjust = 0.5),
+    size = 3
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    )
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+    axis.text.y = element_text(
+      size = 8
+    ),
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    legend.text = element_text(
+      size = 9
+    )
+  )
+
+print(p_international_qr)
+
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.png",
+  p_international_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.tif",
+  p_international_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.pdf",
+  p_international_qr,
+  width = 7,
+  height = 4.8
+)
+
+
+# ============================================================
+# 7) OTHER-US DATA
+# ============================================================
+
+otherUS_plot_df <- animal_qr_counts %>%
+  filter(
+    Group == "Other-US"
+  ) %>%
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = c(
+        "Turkey",
+        "Cattle",
+        "Sheep/goat",
+        "Swine",
+        "Others"
+      )
+    )
+  )
+
+
+# ============================================================
+# 8) OTHER-US STACKED PLOT
+# ============================================================
+
+p_otherUS_qr <- ggplot(
+  otherUS_plot_df,
+  aes(
+    x = Animal_source,
+    y = n,
+    fill = QR_status
+  )
+) +
+
+  geom_col() +
+
+  geom_text(
+    aes(
+      label = ifelse(n == 0, "", n)
+    ),
+    position = position_stack(vjust = 0.5),
+    size = 3
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    )
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+    axis.text.y = element_text(
+      size = 8
+    ),
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+    legend.text = element_text(
+      size = 9
+    )
+  )
+
+print(p_otherUS_qr)
+
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.png",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.tif",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.pdf",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8
+)
+```
+
+```{r}
+
+
+# ============================================================
+# SEN
+# INTERNATIONAL + OTHER-US
+# ANIMAL SOURCE AND QR/FQR ANALYSIS
+#
+# OUTPUT:
+#   1. International original animal-source counts
+#   2. International animal-source × QR/FQR
+#   3. Other-US original animal-source counts
+#   4. Other-US animal-source × QR/FQR
+# ============================================================
+
+
+# ============================================================
+# 0) LIBRARIES
+# ============================================================
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+
+
+id_col <- "Isolate"
+
+
+# ============================================================
+# 1) QR/FQR STATUS
+#
+# Uses the existing SEN_fqr_tokens object
+# Any isolate present in SEN_fqr_tokens is classified as
+# having a QR/FQR marker.
+# ============================================================
+
+qr_isolates <- SEN_fqr_tokens %>%
+  distinct(isolate_id) %>%
+  mutate(
+    isolate_id = as.character(isolate_id),
+    QR_status = "QR/FQR marker"
+  )
+
+
+# ============================================================
+# 2) EXTRACT THE TWO CERTIFIED GROUPS
+#
+# International-Non-US -> International
+# Other-US-US           -> Other-US
+#
+# Then refine animal source using Isolation source
+# ============================================================
+
+source_animal_qr <- SEN %>%
+
+  filter(
+    Source_group %in% c(
+      "International-Non-US",
+      "Other-US-US"
+    )
+  ) %>%
+
+  mutate(
+
+    # Standardize isolate ID
+    isolate_id = as.character(.data[[id_col]]),
+
+    # Rename the two analysis groups
+    Group = recode(
+      Source_group,
+      "International-Non-US" = "International",
+      "Other-US-US" = "Other-US"
+    ),
+
+    # Clean Isolation source
+    isolation_clean = str_to_lower(
+      str_squish(
+        as.character(`Isolation source`)
+      )
+    ),
+
+    # --------------------------------------------------------
+    # Animal-source classification
+    # --------------------------------------------------------
+
+    Animal_source = case_when(
+
+      # Chicken
+      str_detect(
+        isolation_clean,
+        "\\b(chicken|broiler|hen)\\b"
+      ) ~ "Chicken",
+
+      # Turkey
+      str_detect(
+        isolation_clean,
+        "\\bturkey\\b"
+      ) ~ "Turkey",
+
+      # Cattle
+      str_detect(
+        isolation_clean,
+        "\\b(cattle|bovine|beef|steer|calf|veal|bos taurus)\\b"
+      ) ~ "Cattle",
+
+      # Sheep / goat
+      str_detect(
+        isolation_clean,
+        "\\b(sheep|lamb|ovine|goat|caprine)\\b"
+      ) ~ "Sheep/goat",
+
+      # Swine
+      str_detect(
+        isolation_clean,
+        "\\b(swine|sow|pork|porcine)\\b"
+      ) ~ "Swine",
+
+      # Everything else
+      TRUE ~ "Others"
+    )
+  ) %>%
+
+  # ----------------------------------------------------------
+  # One row per isolate
+  # ----------------------------------------------------------
+
+  distinct(
+    isolate_id,
+    Group,
+    Animal_source
+  ) %>%
+
+  # ----------------------------------------------------------
+  # Add QR/FQR classification
+  # ----------------------------------------------------------
+
+  left_join(
+    qr_isolates,
+    by = "isolate_id"
+  ) %>%
+
+  mutate(
+
+    # Anything not found in SEN_fqr_tokens is susceptible
+    QR_status = if_else(
+      is.na(QR_status),
+      "Q/FQ-susceptible",
+      QR_status
+    ),
+
+    QR_status = factor(
+      QR_status,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    )
+  )
+
+
+# ============================================================
+# 3) CHECK TOTAL NUMBER OF ISOLATES
+# ============================================================
+
+group_totals <- source_animal_qr %>%
+  count(
+    Group,
+    name = "n"
+  )
+
+print(
+  group_totals,
+  n = Inf
+)
+
+
+# Expected:
+# International = 71
+# Other-US      = 515
+
+
+# ============================================================
+# 4) ORIGINAL ANIMAL-SOURCE COUNTS
+#
+# These counts ignore QR/FQR status.
+# They simply describe the original animal-source composition
+# of International and Other-US isolates.
+# ============================================================
+
+animal_original_counts <- source_animal_qr %>%
+
+  count(
+    Group,
+    Animal_source,
+    name = "n"
+  ) %>%
+
+  group_by(Group) %>%
+
+  mutate(
+    group_total = sum(n),
+    pct = 100 * n / group_total,
+    label = paste0(
+      n,
+      " (",
+      sprintf("%.1f", pct),
+      "%)"
+    )
+  ) %>%
+
+  ungroup()
+
+
+print(
+  animal_original_counts,
+  n = Inf
+)
+
+
+write_csv(
+  animal_original_counts,
+  "SEN_International_OtherUS_animal_original_counts.csv"
+)
+
+
+# ============================================================
+# 5) COUNTS BY
+#    GROUP × ANIMAL SOURCE × QR STATUS
+# ============================================================
+
+animal_qr_counts <- source_animal_qr %>%
+
+  count(
+    Group,
+    Animal_source,
+    QR_status,
+    name = "n"
+  ) %>%
+
+  group_by(
+    Group,
+    Animal_source
+  ) %>%
+
+  mutate(
+
+    total_source = sum(n),
+
+    pct = 100 * n / total_source,
+
+    label = paste0(
+      n,
+      " (",
+      sprintf("%.1f", pct),
+      "%)"
+    )
+  ) %>%
+
+  ungroup()
+
+
+print(
+  animal_qr_counts,
+  n = Inf
+)
+
+
+write_csv(
+  animal_qr_counts,
+  "SEN_International_OtherUS_animal_QRFQR_counts.csv"
+)
+
+
+# ============================================================
+# 6) FACTOR ORDERS
+# ============================================================
+
+international_levels <- c(
+  "Chicken",
+  "Turkey",
+  "Cattle",
+  "Sheep/goat",
+  "Swine",
+  "Others"
+)
+
+
+otherUS_levels <- c(
+  "Turkey",
+  "Cattle",
+  "Sheep/goat",
+  "Swine",
+  "Others"
+)
+
+
+# ============================================================
+# 7) INTERNATIONAL DATA
+# ============================================================
+
+international_original_df <- animal_original_counts %>%
+
+  filter(
+    Group == "International"
+  ) %>%
+
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = international_levels
+    )
+  )
+
+
+international_qr_df <- animal_qr_counts %>%
+
+  filter(
+    Group == "International"
+  ) %>%
+
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = international_levels
+    )
+  )
+
+
+# ============================================================
+# PLOT 1
+# INTERNATIONAL — ORIGINAL ANIMAL-SOURCE COUNTS
+# ============================================================
+
+p_international_original <- ggplot(
+  international_original_df,
+  aes(
+    x = Animal_source,
+    y = n
+  )
+) +
+
+  geom_col(
+    fill = "grey60",
+    color = "black",
+    width = 0.75
+  ) +
+
+  geom_text(
+    aes(
+      label = n
+    ),
+    vjust = -0.35,
+    size = 3.5,
+    fontface = "bold"
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.12)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates"
+  ) +
+
+  theme_bw() +
+
+  theme(
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+
+    axis.text.y = element_text(
+      size = 8
+    ),
+
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    )
+  )
+
+
+print(
+  p_international_original
+)
+
+
+ggsave(
+  "SEN_International_animal_source_original_counts.png",
+  p_international_original,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_International_animal_source_original_counts.tif",
+  p_international_original,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_International_animal_source_original_counts.pdf",
+  p_international_original,
+  width = 7,
+  height = 4.8
+)
+
+
+# ============================================================
+# PLOT 2
+# INTERNATIONAL — ANIMAL SOURCE × QR/FQR
+# ============================================================
+
+p_international_qr <- ggplot(
+  international_qr_df,
+  aes(
+    x = Animal_source,
+    y = n,
+    fill = QR_status
+  )
+) +
+
+  geom_col(
+    width = 0.75
+  ) +
+
+  geom_text(
+    aes(
+      label = ifelse(
+        n == 0,
+        "",
+        n
+      )
+    ),
+    position = position_stack(
+      vjust = 0.5
+    ),
+    size = 3.5,
+    fontface = "bold"
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    )
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+
+    axis.text.y = element_text(
+      size = 8
+    ),
+
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    legend.text = element_text(
+      size = 9
+    )
+  )
+
+
+print(
+  p_international_qr
+)
+
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.png",
+  p_international_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.tif",
+  p_international_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_International_animal_source_QRFQR_stacked.pdf",
+  p_international_qr,
+  width = 7,
+  height = 4.8
+)
+
+
+# ============================================================
+# 8) OTHER-US DATA
+# ============================================================
+
+otherUS_original_df <- animal_original_counts %>%
+
+  filter(
+    Group == "Other-US"
+  ) %>%
+
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = otherUS_levels
+    )
+  )
+
+
+otherUS_qr_df <- animal_qr_counts %>%
+
+  filter(
+    Group == "Other-US"
+  ) %>%
+
+  mutate(
+    Animal_source = factor(
+      Animal_source,
+      levels = otherUS_levels
+    )
+  )
+
+
+# ============================================================
+# PLOT 3
+# OTHER-US — ORIGINAL ANIMAL-SOURCE COUNTS
+# ============================================================
+
+p_otherUS_original <- ggplot(
+  otherUS_original_df,
+  aes(
+    x = Animal_source,
+    y = n
+  )
+) +
+
+  geom_col(
+    fill = "grey60",
+    color = "black",
+    width = 0.75
+  ) +
+
+  geom_text(
+    aes(
+      label = n
+    ),
+    vjust = -0.35,
+    size = 3.5,
+    fontface = "bold"
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.12)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates"
+  ) +
+
+  theme_bw() +
+
+  theme(
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+
+    axis.text.y = element_text(
+      size = 8
+    ),
+
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    )
+  )
+
+
+print(
+  p_otherUS_original
+)
+
+
+ggsave(
+  "SEN_OtherUS_animal_source_original_counts.png",
+  p_otherUS_original,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_original_counts.tif",
+  p_otherUS_original,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_original_counts.pdf",
+  p_otherUS_original,
+  width = 7,
+  height = 4.8
+)
+
+
+# ============================================================
+# PLOT 4
+# OTHER-US — ANIMAL SOURCE × QR/FQR
+# ============================================================
+
+p_otherUS_qr <- ggplot(
+  otherUS_qr_df,
+  aes(
+    x = Animal_source,
+    y = n,
+    fill = QR_status
+  )
+) +
+
+  geom_col(
+    width = 0.75
+  ) +
+
+  geom_text(
+    aes(
+      label = ifelse(
+        n == 0,
+        "",
+        n
+      )
+    ),
+    position = position_stack(
+      vjust = 0.5
+    ),
+    size = 3.5,
+    fontface = "bold"
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    )
+  ) +
+
+  scale_y_continuous(
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    x = "Animal source",
+    y = "Number of isolates",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 9,
+      face = "bold"
+    ),
+
+    axis.text.y = element_text(
+      size = 8
+    ),
+
+    axis.title = element_text(
+      size = 10,
+      face = "bold"
+    ),
+
+    legend.text = element_text(
+      size = 9
+    )
+  )
+
+
+print(
+  p_otherUS_qr
+)
+
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.png",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.tif",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "SEN_OtherUS_animal_source_QRFQR_stacked.pdf",
+  p_otherUS_qr,
+  width = 7,
+  height = 4.8
+)
+
+
+# ============================================================
+# 9) FINAL AUDIT TABLE
+#
+# Confirms that original counts and QR/FQR-stratified counts
+# return the same number of isolates in each group.
+# ============================================================
+
+final_audit <- source_animal_qr %>%
+
+  group_by(Group) %>%
+
+  summarise(
+
+    Total_isolates = n_distinct(isolate_id),
+
+    QR_FQR_marker = sum(
+      QR_status == "QR/FQR marker"
+    ),
+
+    Q_FQ_susceptible = sum(
+      QR_status == "Q/FQ-susceptible"
+    ),
+
+    .groups = "drop"
+  )
+
+
+print(
+  final_audit,
+  n = Inf
+)
+
+
+write_csv(
+  final_audit,
+  "SEN_International_OtherUS_QRFQR_final_audit.csv"
+)
+
+
+cat(
+  "\n============================================\n",
+  "ANALYSIS COMPLETE\n",
+  "============================================\n",
+  "Plots generated:\n",
+  "1. International original animal-source counts\n",
+  "2. International animal-source × QR/FQR\n",
+  "3. Other-US original animal-source counts\n",
+  "4. Other-US animal-source × QR/FQR\n",
+  "============================================\n"
+)
+
+
+
+
+
+```
+
+
+
+
+#12. Plot the trend for the different QR-markers in al the different sources
+```{r}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(grid)   # for unit()
+
+amr_col <- "AMR genotypes"
+
+# -----------------------------
+# Helper: bin % into categories
+# -----------------------------
+pct_bins <- function(x) {
+  cut(
+    x,
+    breaks = c(-Inf, 0, 5, 10, 20, 40, 50, 60, 80, Inf),
+    labels = c(
+      "0",
+      "1-5",
+      "6-10",
+      "10-20",
+      "20-40",
+      "40-50",
+      "50-60",
+      "60-80",
+      "80+"
+    ),
+    right = TRUE
+  )
+}
+
+# -----------------------------
+# Helper: pretty/correct gene casing for display
+# -----------------------------
+pretty_token <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)
+  x <- str_replace_all(x, "\\s+", "")
+
+  # normalize delimiters
+  x <- str_replace_all(x, "-", "_")
+
+  fix_start <- function(s, from, to) {
+    str_replace(s, paste0("^", from), to)
+  }
+
+  # chromosomal targets
+  x <- fix_start(x, "gyra", "gyrA")
+  x <- fix_start(x, "gyrb", "gyrB")
+  x <- fix_start(x, "parc", "parC")
+  x <- fix_start(x, "pare", "parE")
+  x <- fix_start(x, "pard", "parD")
+  x <- fix_start(x, "grla", "grlA")
+
+  # qnr family
+  x <- fix_start(x, "qnras", "qnrAS")
+  x <- fix_start(x, "qnra",  "qnrA")
+  x <- fix_start(x, "qnrb",  "qnrB")
+  x <- fix_start(x, "qnrc",  "qnrC")
+  x <- fix_start(x, "qnrd",  "qnrD")
+  x <- fix_start(x, "qnre",  "qnrE")
+  x <- fix_start(x, "qnrs",  "qnrS")
+  x <- fix_start(x, "qnrvc", "qnrVC")
+
+  # other families
+  x <- fix_start(x, "qepa", "qepA")
+  x <- fix_start(x, "nfxb", "nfxB")
+  x <- fix_start(x, "emrr", "emrR")
+  x <- fix_start(x, "norm", "norM")
+  x <- fix_start(x, "pmra", "pmrA")
+  x <- fix_start(x, "acrb", "acrB")
+  x <- fix_start(x, "smef", "smeF")
+
+  # prior extras
+  x <- fix_start(x, "acra", "acrA")
+  x <- fix_start(x, "tolc", "tolC")
+  x <- fix_start(x, "crpp", "crpP")
+  x <- fix_start(x, "oqxa", "oqxA")
+  x <- fix_start(x, "oqxb", "oqxB")
+  x <- fix_start(x, "rama", "ramA")
+  x <- fix_start(x, "ramr", "ramR")
+  x <- fix_start(x, "mara", "marA")
+  x <- fix_start(x, "marr", "marR")
+  x <- fix_start(x, "soxr", "soxR")
+  x <- fix_start(x, "soxs", "soxS")
+
+  # enzyme token
+  x <- str_replace_all(
+    x,
+    "^aac\\(6'\\)-ib-cr",
+    "aac(6')-Ib-cr"
+  )
+
+  # uppercase mutation/suffix after underscore
+  parts <- str_split_fixed(x, "_", 2)
+
+  gene_part <- parts[, 1]
+  rest_part <- parts[, 2]
+
+  rest_part <- ifelse(
+    rest_part == "",
+    rest_part,
+    toupper(rest_part)
+  )
+
+  x <- ifelse(
+    rest_part == "",
+    gene_part,
+    paste0(gene_part, "_", rest_part)
+  )
+
+  x
+}
+
+
+# =========================================================
+# 0) Assign origin (US vs Non-US), then build Source groups
+#    Collapse ALL Non-US into "International"
+# =========================================================
+
+usa_pat <- "(\\busa\\b|\\bunited\\s*states\\b|\\bu\\s*\\.\\s*s\\s*\\.\\b|\\bus\\b)"
+id_pat  <- "(\\bcfsan\\b|\\bfda\\b)"
+
+source_levels <- c(
+  "Human",
+  "Chicken-US",
+  "Other-US",
+  "International"
+)
+
+SEN <- SEN %>%
+  mutate(
+    Source = as.character(Source),
+
+    Strain_l = str_to_lower(
+      str_squish(as.character(Strain))
+    ),
+
+    IsoID_l = str_to_lower(
+      str_squish(as.character(`Isolate identifiers`))
+    ),
+
+    Food_l = str_to_lower(
+      str_squish(as.character(`Food origin`))
+    ),
+
+    Strain_l = if_else(
+      is.na(Strain_l),
+      "",
+      Strain_l
+    ),
+
+    IsoID_l = if_else(
+      is.na(IsoID_l),
+      "",
+      IsoID_l
+    ),
+
+    Food_l = if_else(
+      is.na(Food_l),
+      "",
+      Food_l
+    ),
+
+    is_fda_like =
+      str_detect(Strain_l, "^fda") |
+      str_detect(IsoID_l, id_pat),
+
+    is_us_food =
+      str_detect(Food_l, usa_pat) |
+      Food_l == "",
+
+    origin_tag = if_else(
+      is_fda_like & !is_us_food,
+      "Non-US",
+      "US"
+    ),
+
+    Source = case_when(
+      str_to_lower(Source) == "human" ~
+        "Human",
+
+      str_to_lower(Source) == "chicken" ~
+        paste0("Chicken-", origin_tag),
+
+      str_to_lower(Source) == "other" ~
+        paste0("Other-", origin_tag),
+
+      TRUE ~ Source
+    ),
+
+    Source = case_when(
+      Source %in% c(
+        "Chicken-Non-US",
+        "Other-Non-US"
+      ) ~ "International",
+
+      TRUE ~ Source
+    ),
+
+    Source = factor(
+      Source,
+      levels = source_levels
+    )
+  ) %>%
+  select(
+    -Strain_l,
+    -IsoID_l,
+    -Food_l,
+    -is_fda_like,
+    -is_us_food,
+    -origin_tag
+  )
+
+
+# =========================================================
+# N per Source for facet labels
+# =========================================================
+
+src_N <- SEN %>%
+  count(
+    Source,
+    name = "N_total"
+  ) %>%
+  mutate(
+    Source_chr = as.character(Source),
+
+    Source_lab = paste0(
+      Source_chr,
+      " (N=",
+      N_total,
+      ")"
+    )
+  ) %>%
+  arrange(
+    factor(
+      Source_chr,
+      levels = source_levels
+    )
+  ) %>%
+  mutate(
+    Source_lab = factor(
+      Source_lab,
+      levels = Source_lab
+    )
+  ) %>%
+  select(
+    Source,
+    Source_lab
+  )
+
+
+# =========================================================
+# 1) TOKENIZE + keep ALL QR tokens
+# =========================================================
+
+qr_regex <- regex(
+  paste0(
+    "^(",
+    "(gyr[a-b](?:_.+)?|par[c-e](?:_.+)?|grla(?:_.+)?)(?:$)|",
+    "(qnr(as|[a-z0-9._-]*))(?:$)|",
+    "(qnrvc[a-z0-9._-]*)(?:$)|",
+    "(qep[a-z0-9._-]*)(?:$)|",
+    "(nfxb(?:_.+)?|emrr(?:_.+)?|norm(?:_.+)?|pmra(?:_.+)?|acrb(?:_.+)?|smef(?:_.+)?)(?:$)|",
+    "(aac\\(6'\\)-ib-cr(?:_.+)?|oqx[a-b](?:_.+)?|crpp(?:_.+)?|acr[a-b](?:_.+)?|tolc(?:_.+)?|ram[ar](?:_.+)?|mar[ar](?:_.+)?|sox[rs](?:_.+)?)(?:$)",
+    ")"
+  ),
+  ignore_case = TRUE
+)
+
+
+tok_long <- SEN %>%
+  mutate(
+    row_id = row_number(),
+
+    Collection_year = as.integer(
+      Collection_year
+    ),
+
+    amr_txt = as.character(
+      .data[[amr_col]]
+    ),
+
+    amr_txt = if_else(
+      is.na(amr_txt),
+      "",
+      amr_txt
+    ),
+
+    token = str_extract_all(
+      amr_txt,
+      "[^,=\\s]+(?==)"
+    )
+  ) %>%
+  select(
+    row_id,
+    Source,
+    Collection_year,
+    token
+  ) %>%
+  unnest_longer(
+    token
+  ) %>%
+  mutate(
+    token = str_trim(token),
+
+    token = str_replace_all(
+      token,
+      "\\s+",
+      ""
+    ),
+
+    token_norm = str_to_lower(
+      token
+    ),
+
+    token_pretty = pretty_token(
+      token_norm
+    )
+  ) %>%
+  filter(
+    !is.na(Collection_year),
+    Collection_year >= 1990,
+    Collection_year <= 2025
+  )
+
+
+tok_qr <- tok_long %>%
+  filter(
+    str_detect(
+      token_norm,
+      qr_regex
+    )
+  )
+
+
+# =========================================================
+# 2) Pick TOP 5 QR TOKENS overall
+#    rest -> "others"
+# =========================================================
+
+top5_tokens <- tok_qr %>%
+  count(
+    token_pretty,
+    name = "n"
+  ) %>%
+  arrange(
+    desc(n)
+  ) %>%
+  slice_head(
+    n = 5
+  ) %>%
+  pull(
+    token_pretty
+  )
+
+
+marker_long <- tok_qr %>%
+  mutate(
+    marker_group = if_else(
+      token_pretty %in% top5_tokens,
+      token_pretty,
+      "others"
+    )
+  ) %>%
+  distinct(
+    row_id,
+    Source,
+    Collection_year,
+    marker_group
+  )
+
+
+top5_lower <- str_to_lower(
+  top5_tokens
+)
+
+top5_ordered <- c(
+
+  top5_tokens[
+    str_detect(
+      top5_lower,
+      "^gyra(_|$)"
+    )
+  ],
+
+  top5_tokens[
+    str_detect(
+      top5_lower,
+      "^qnrb"
+    )
+  ],
+
+  top5_tokens[
+    !str_detect(
+      top5_lower,
+      "^gyra(_|$)"
+    ) &
+      !str_detect(
+        top5_lower,
+        "^qnrb"
+      )
+  ]
+)
+
+top5_ordered <- unique(
+  top5_ordered
+)
+
+marker_levels <- c(
+  top5_ordered,
+  "others"
+)
+
+
+# =========================================================
+# 3) DOTPLOT BY YEAR
+#
+# All years <=2000 represented as "≤2000"
+# =========================================================
+
+year_levels <- c(
+  "≤2000",
+  as.character(
+    2001:2025
+  )
+)
+
+
+den_year <- SEN %>%
+  mutate(
+    Collection_year = as.integer(
+      Collection_year
+    ),
+
+    year_plot = if_else(
+      Collection_year <= 2000,
+      "≤2000",
+      as.character(Collection_year)
+    )
+  ) %>%
+  filter(
+    !is.na(Collection_year),
+    Collection_year >= 1990,
+    Collection_year <= 2025
+  ) %>%
+  count(
+    Source,
+    year_plot,
+    name = "N"
+  )
+
+
+year_marker <- marker_long %>%
+  mutate(
+    year_plot = if_else(
+      Collection_year <= 2000,
+      "≤2000",
+      as.character(Collection_year)
+    )
+  ) %>%
+  count(
+    Source,
+    year_plot,
+    marker_group,
+    name = "n"
+  ) %>%
+  complete(
+    Source = factor(
+      source_levels,
+      levels = source_levels
+    ),
+
+    year_plot = year_levels,
+
+    marker_group = marker_levels,
+
+    fill = list(
+      n = 0
+    )
+  ) %>%
+  left_join(
+    den_year %>%
+      complete(
+        Source = factor(
+          source_levels,
+          levels = source_levels
+        ),
+
+        year_plot = year_levels,
+
+        fill = list(
+          N = 0
+        )
+      ),
+
+    by = c(
+      "Source",
+      "year_plot"
+    )
+  ) %>%
+  mutate(
+    pct = if_else(
+      N > 0,
+      100 * n / N,
+      0
+    ),
+
+    pct_bin = pct_bins(
+      pct
+    ),
+
+    pct_bin = factor(
+      pct_bin,
+      levels = c(
+        "0",
+        "1-5",
+        "6-10",
+        "10-20",
+        "20-40",
+        "40-50",
+        "50-60",
+        "60-80",
+        "80+"
+      )
+    ),
+
+    year_plot = factor(
+      year_plot,
+      levels = year_levels
+    ),
+
+    marker_group = factor(
+      marker_group,
+      levels = marker_levels
+    )
+  ) %>%
+  left_join(
+    src_N,
+    by = "Source"
+  ) %>%
+  mutate(
+    Source_lab = factor(
+      Source_lab,
+      levels = levels(
+        src_N$Source_lab
+      )
+    )
+  )
+
+
+p_year_binned <- ggplot(
+  year_marker,
+  aes(
+    x = year_plot,
+    y = marker_group
+  )
+) +
+  geom_point(
+    aes(
+      size = pct,
+      color = pct_bin
+    ),
+    alpha = 0.9
+  ) +
+  facet_wrap(
+    ~ Source_lab,
+    ncol = 1
+  ) +
+  labs(
+    x = "Collection year",
+    y = "QR/FQR Markers",
+    color = "Percent (%) bin",
+    size = "Percent (%) magnitude"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 8
+    ),
+
+    axis.text.y = element_text(
+      size = 7
+    ),
+
+    axis.title = element_text(
+      size = 8
+    ),
+
+    strip.text = element_text(
+      size = 8
+    ),
+
+    legend.title = element_text(
+      size = 8
+    ),
+
+    legend.text = element_text(
+      size = 7
+    )
+  )
+
+
+# =========================================================
+# 4) DOTPLOT BY 5-YEAR BINS
+# =========================================================
+
+year5_levels <- c(
+  "≤2000",
+  "2001-2005",
+  "2006-2010",
+  "2011-2015",
+  "2016-2020",
+  "2021-2025"
+)
+
+
+marker_long5 <- marker_long %>%
+  mutate(
+    year5 = case_when(
+
+      Collection_year <= 2000 ~
+        "≤2000",
+
+      Collection_year >= 2001 &
+        Collection_year <= 2005 ~
+        "2001-2005",
+
+      Collection_year >= 2006 &
+        Collection_year <= 2010 ~
+        "2006-2010",
+
+      Collection_year >= 2011 &
+        Collection_year <= 2015 ~
+        "2011-2015",
+
+      Collection_year >= 2016 &
+        Collection_year <= 2020 ~
+        "2016-2020",
+
+      Collection_year >= 2021 &
+        Collection_year <= 2025 ~
+        "2021-2025",
+
+      TRUE ~ NA_character_
+    )
+  )
+
+
+den_5 <- SEN %>%
+  mutate(
+    Collection_year = as.integer(
+      Collection_year
+    ),
+
+    year5 = case_when(
+
+      Collection_year <= 2000 ~
+        "≤2000",
+
+      Collection_year >= 2001 &
+        Collection_year <= 2005 ~
+        "2001-2005",
+
+      Collection_year >= 2006 &
+        Collection_year <= 2010 ~
+        "2006-2010",
+
+      Collection_year >= 2011 &
+        Collection_year <= 2015 ~
+        "2011-2015",
+
+      Collection_year >= 2016 &
+        Collection_year <= 2020 ~
+        "2016-2020",
+
+      Collection_year >= 2021 &
+        Collection_year <= 2025 ~
+        "2021-2025",
+
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(
+    !is.na(Collection_year),
+    Collection_year >= 1990,
+    Collection_year <= 2025
+  ) %>%
+  count(
+    Source,
+    year5,
+    name = "N"
+  )
+
+
+marker_5 <- marker_long5 %>%
+  count(
+    Source,
+    year5,
+    marker_group,
+    name = "n"
+  ) %>%
+  complete(
+    Source = factor(
+      source_levels,
+      levels = source_levels
+    ),
+
+    year5 = year5_levels,
+
+    marker_group = marker_levels,
+
+    fill = list(
+      n = 0
+    )
+  ) %>%
+  left_join(
+    den_5 %>%
+      complete(
+        Source = factor(
+          source_levels,
+          levels = source_levels
+        ),
+
+        year5 = year5_levels,
+
+        fill = list(
+          N = 0
+        )
+      ),
+
+    by = c(
+      "Source",
+      "year5"
+    )
+  ) %>%
+  mutate(
+    pct = if_else(
+      N > 0,
+      100 * n / N,
+      0
+    ),
+
+    pct_bin = pct_bins(
+      pct
+    ),
+
+    pct_bin = factor(
+      pct_bin,
+      levels = c(
+        "0",
+        "1-5",
+        "6-10",
+        "10-20",
+        "20-40",
+        "40-50",
+        "50-60",
+        "60-80",
+        "80+"
+      )
+    ),
+
+    year5 = factor(
+      year5,
+      levels = year5_levels
+    ),
+
+    marker_group = factor(
+      marker_group,
+      levels = marker_levels
+    )
+  ) %>%
+  left_join(
+    src_N,
+    by = "Source"
+  ) %>%
+  mutate(
+    Source_lab = factor(
+      Source_lab,
+      levels = levels(
+        src_N$Source_lab
+      )
+    )
+  )
+
+
+p_5_binned <- ggplot(
+  marker_5,
+  aes(
+    x = year5,
+    y = marker_group
+  )
+) +
+  geom_point(
+    aes(
+      size = pct,
+      color = pct_bin
+    ),
+    alpha = 0.9
+  ) +
+  facet_wrap(
+    ~ Source_lab,
+    ncol = 1
+  ) +
+  labs(
+    x = "5-year bin",
+    y = "QR/FQR Markers",
+    color = "Percent (%) bin",
+    size = "Percent (%) magnitude"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 8
+    ),
+
+    axis.text.y = element_text(
+      size = 7
+    ),
+
+    axis.title = element_text(
+      size = 8
+    ),
+
+    strip.text = element_text(
+      size = 8
+    ),
+
+    legend.title = element_text(
+      size = 8
+    ),
+
+    legend.text = element_text(
+      size = 7
+    )
+  )
+
+
+# =========================================================
+# Prevent circles touching facet borders
+# =========================================================
+
+y_pad <- expansion(
+  mult = c(
+    0.30,
+    0.30
+  )
+)
+
+panel_gap <- unit(
+  0.50,
+  "lines"
+)
+
+
+p_year_binned <- p_year_binned +
+  scale_y_discrete(
+    expand = y_pad
+  ) +
+  theme(
+    panel.spacing = panel_gap,
+
+    strip.background = element_rect(
+      color = "black",
+      linewidth = 0.4
+    ),
+
+    strip.placement = "outside"
+  )
+
+
+p_5_binned <- p_5_binned +
+  scale_y_discrete(
+    expand = y_pad
+  ) +
+  theme(
+    panel.spacing = panel_gap,
+
+    strip.background = element_rect(
+      color = "black",
+      linewidth = 0.4
+    ),
+
+    strip.placement = "outside"
+  )
+
+
+# =========================================================
+# PRINT
+# =========================================================
+
+print(p_year_binned)
+print(p_5_binned)
+
+
+# =========================================================
+# SAVE
+#
+# Original height = 6
+# Width reduced by 10%:
+# 9 -> 8.1
+# =========================================================
+
+ggsave(
+  "FQ_burden.png",
+  p_year_binned,
+  width = 8.1,
+  height = 6,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_burden.tif",
+  p_year_binned,
+  width = 8.1,
+  height = 6,
+  dpi = 600,
+  compression = "lzw"
+)
+
+ggsave(
+  "FQ_burden_5yr.png",
+  p_5_binned,
+  width = 8.1,
+  height = 6,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_burden_5yr.tif",
+  p_5_binned,
+  width = 8.1,
+  height = 6,
+  dpi = 600,
+  compression = "lzw"
+)
+```
+#stacked bar plot over time
+```{r}
+
+# =========================================================
+# STACKED BAR PLOTS:
+#
+# 1. PERCENT VERSION
+# 2. COUNT VERSION
+#
+# QR/FQR marker      = red3
+# Q/FQ-susceptible   = green4
+#
+# Same years as dot plot:
+#   ≤2000
+#   2001
+#   2002
+#   ...
+#   2025
+#
+# Years with NO genomes have NO bar.
+#
+# COUNT VERSION:
+# Total genome count is written vertically above each bar.
+# =========================================================
+
+
+# =========================================================
+# 1) IDENTIFY GENOMES WITH ≥1 QR/FQR MARKER
+# =========================================================
+
+qr_positive_rows <- tok_qr %>%
+  distinct(
+    row_id
+  ) %>%
+  mutate(
+    QR_status = "QR/FQR marker"
+  )
+
+
+# =========================================================
+# 2) ASSIGN ONE QR/FQR STATUS TO EVERY GENOME
+#
+# ≥1 QR/FQR marker  -> QR/FQR marker
+# no QR/FQR marker  -> Q/FQ-susceptible
+# =========================================================
+
+SEN_qr_status <- SEN %>%
+  mutate(
+    row_id = row_number(),
+
+    Collection_year = as.integer(
+      Collection_year
+    ),
+
+    year_plot = if_else(
+      Collection_year <= 2000,
+      "≤2000",
+      as.character(
+        Collection_year
+      )
+    )
+  ) %>%
+
+  filter(
+    !is.na(Collection_year),
+    Collection_year >= 1990,
+    Collection_year <= 2025
+  ) %>%
+
+  left_join(
+    qr_positive_rows,
+    by = "row_id"
+  ) %>%
+
+  mutate(
+    QR_status = if_else(
+      is.na(QR_status),
+      "Q/FQ-susceptible",
+      QR_status
+    ),
+
+    QR_status = factor(
+      QR_status,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    ),
+
+    year_plot = factor(
+      year_plot,
+      levels = year_levels
+    )
+  )
+
+
+# =========================================================
+# 3) COUNT GENOMES PER
+#    SOURCE × YEAR × QR/FQR STATUS
+#
+# IMPORTANT:
+# We deliberately DO NOT use complete() here.
+#
+# Therefore:
+#   N = 0 -> NO BAR
+#
+# But scale_x_discrete(drop = FALSE) below keeps the
+# corresponding year position visible on the x-axis.
+# =========================================================
+
+year_qr_stack <- SEN_qr_status %>%
+  count(
+    Source,
+    year_plot,
+    QR_status,
+    name = "n"
+  ) %>%
+
+  group_by(
+    Source,
+    year_plot
+  ) %>%
+
+  mutate(
+    N_year = sum(n),
+
+    pct = 100 * n / N_year
+  ) %>%
+
+  ungroup() %>%
+
+  left_join(
+    src_N,
+    by = "Source"
+  ) %>%
+
+  mutate(
+    Source_lab = factor(
+      Source_lab,
+      levels = levels(
+        src_N$Source_lab
+      )
+    ),
+
+    year_plot = factor(
+      year_plot,
+      levels = year_levels
+    ),
+
+    QR_status = factor(
+      QR_status,
+      levels = c(
+        "Q/FQ-susceptible",
+        "QR/FQR marker"
+      )
+    )
+  )
+
+
+# =========================================================
+# 4) CREATE ONE TOTAL COUNT PER SOURCE × YEAR
+#
+# This is used ONLY for writing the total number of
+# genomes above each stacked bar in the count plot.
+# =========================================================
+
+year_qr_totals <- year_qr_stack %>%
+  distinct(
+    Source,
+    Source_lab,
+    year_plot,
+    N_year
+  )
+
+
+# =========================================================
+# 5) OPTIONAL CHECK OF DATA USED IN BOTH PLOTS
+# =========================================================
+
+print(
+  year_qr_stack,
+  n = Inf
+)
+
+print(
+  year_qr_totals,
+  n = Inf
+)
+
+
+# =========================================================
+# 6) PERCENTAGE STACKED BAR PLOT
+#
+# Every bar represents 100% of genomes sampled from
+# that Source during that year.
+# =========================================================
+
+p_year_qr_stack_pct <- ggplot(
+  year_qr_stack,
+  aes(
+    x = year_plot,
+    y = pct,
+    fill = QR_status
+  )
+) +
+
+  geom_col(
+    width = 0.82
+  ) +
+
+  facet_wrap(
+    ~ Source_lab,
+    ncol = 1
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    ),
+    drop = FALSE
+  ) +
+
+  scale_y_continuous(
+    limits = c(
+      0,
+      100
+    ),
+
+    breaks = seq(
+      0,
+      100,
+      20
+    ),
+
+    labels = function(x) {
+      paste0(
+        x,
+        "%"
+      )
+    },
+
+    expand = expansion(
+      mult = c(
+        0,
+        0
+      )
+    )
+  ) +
+
+  scale_x_discrete(
+    drop = FALSE
+  ) +
+
+  labs(
+    x = "Collection year",
+    y = "Genomes (%)",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 7
+    ),
+
+    axis.text.y = element_text(
+      size = 7
+    ),
+
+    axis.title = element_text(
+      size = 8
+    ),
+
+    strip.text = element_text(
+      size = 8
+    ),
+
+    legend.title = element_text(
+      size = 8
+    ),
+
+    legend.text = element_text(
+      size = 8
+    ),
+
+    panel.spacing = unit(
+      0.50,
+      "lines"
+    ),
+
+    strip.background = element_rect(
+      color = "black",
+      linewidth = 0.4
+    ),
+
+    strip.placement = "outside"
+  )
+
+
+# =========================================================
+# 7) COUNT STACKED BAR PLOT
+#
+# Bar height = actual number of genomes
+#
+# Green component:
+#   Q/FQ-susceptible genomes
+#
+# Red component:
+#   QR/FQR marker genomes
+#
+# Total N is written vertically above each bar.
+#
+# Y-axis:
+#   whole numbers only
+#
+# Extra upper space:
+#   allows all vertical N labels to show clearly
+# =========================================================
+
+
+# ---------------------------------------------------------
+# FUNCTION FOR INTEGER-ONLY Y-AXIS BREAKS
+# ---------------------------------------------------------
+
+integer_breaks <- function(x) {
+
+  b <- pretty(
+    x,
+    n = 5
+  )
+
+  b <- b[
+    b >= 0 &
+    b >= x[1] &
+    b <= x[2] &
+    abs(b - round(b)) < 1e-8
+  ]
+
+  unique(
+    as.integer(
+      round(b)
+    )
+  )
+}
+
+
+# ---------------------------------------------------------
+# COUNT PLOT
+# ---------------------------------------------------------
+
+p_year_qr_stack_count <- ggplot(
+  year_qr_stack,
+  aes(
+    x = year_plot,
+    y = n,
+    fill = QR_status
+  )
+) +
+
+  geom_col(
+    width = 0.82
+  ) +
+
+  # -------------------------------------------------------
+  # TOTAL GENOME NUMBER ABOVE EACH BAR
+  # -------------------------------------------------------
+
+  geom_text(
+    data = year_qr_totals,
+
+    aes(
+      x = year_plot,
+      y = N_year,
+      label = N_year
+    ),
+
+    inherit.aes = FALSE,
+
+    angle = 90,
+
+    hjust = 0,
+
+    vjust = 0.5,
+
+    size = 2.2
+  ) +
+
+  facet_wrap(
+    ~ Source_lab,
+    ncol = 1,
+    scales = "free_y"
+  ) +
+
+  scale_fill_manual(
+    values = c(
+      "Q/FQ-susceptible" = "green4",
+      "QR/FQR marker" = "red3"
+    ),
+    drop = FALSE
+  ) +
+
+  # -------------------------------------------------------
+  # Y AXIS
+  #
+  # 50% additional space above tallest bar in each panel.
+  #
+  # Breaks are restricted to whole numbers.
+  # -------------------------------------------------------
+
+  scale_y_continuous(
+
+    breaks = integer_breaks,
+
+    labels = function(x) {
+      as.integer(x)
+    },
+
+    expand = expansion(
+      mult = c(
+        0,
+        0.50
+      )
+    )
+  ) +
+
+  scale_x_discrete(
+    drop = FALSE
+  ) +
+
+  labs(
+    x = "Collection year",
+    y = "Genomes (n)",
+    fill = ""
+  ) +
+
+  theme_bw() +
+
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1,
+      size = 7
+    ),
+
+    axis.text.y = element_text(
+      size = 7
+    ),
+
+    axis.title = element_text(
+      size = 8
+    ),
+
+    strip.text = element_text(
+      size = 8
+    ),
+
+    legend.title = element_text(
+      size = 8
+    ),
+
+    legend.text = element_text(
+      size = 8
+    ),
+
+    panel.spacing = unit(
+      0.50,
+      "lines"
+    ),
+
+    strip.background = element_rect(
+      color = "black",
+      linewidth = 0.4
+    ),
+
+    strip.placement = "outside"
+  )
+
+
+# =========================================================
+# PRINT COUNT PLOT
+# =========================================================
+
+print(
+  p_year_qr_stack_count
+)
+
+
+# =========================================================
+# SAVE COUNT VERSION
+# =========================================================
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year.png",
+  p_year_qr_stack_count,
+  width = 8.1,
+  height = 6,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year.tif",
+  p_year_qr_stack_count,
+  width = 8.1,
+  height = 6,
+  dpi = 600,
+  compression = "lzw"
+)
+
+# =========================================================
+# 8) PRINT BOTH
+# =========================================================
+
+print(
+  p_year_qr_stack_pct
+)
+
+print(
+  p_year_qr_stack_count
+)
+
+
+# =========================================================
+# 9) SAVE PERCENTAGE VERSION
+#
+# PNG = 1200 dpi
+# TIFF = 600 dpi
+# =========================================================
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_PERCENT_by_year.png",
+  p_year_qr_stack_pct,
+  width = 8.1,
+  height = 6,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_PERCENT_by_year.tif",
+  p_year_qr_stack_pct,
+  width = 8.1,
+  height = 6,
+  dpi = 600,
+  compression = "lzw"
+)
+
+
+# =========================================================
+# 10) SAVE COUNT VERSION
+#
+# PNG = 1200 dpi
+# TIFF = 600 dpi
+#
+# Includes vertical total genome counts above bars.
+# =========================================================
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year.png",
+  p_year_qr_stack_count,
+  width = 8.1,
+  height = 6,
+  dpi = 1200
+)
+
+ggsave(
+  "FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year.tif",
+  p_year_qr_stack_count,
+  width = 8.1,
+  height = 6,
+  dpi = 600,
+  compression = "lzw"
+)
+
+
+
+
+```
+
+
+#Diversity and Enrichment score and Plotting
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+
+# =========================================================
+# A) Build iso_mat from marker_long (one row per isolate)
+# =========================================================
+source_levels <- c("Human", "Chicken-US", "Other-US", "International")
+
+iso_mat <- marker_long %>%
+  mutate(value = 1L) %>%
+  select(row_id, Source, marker_group, value) %>%
+  distinct() %>%
+  pivot_wider(
+    id_cols     = c(row_id, Source),
+    names_from  = marker_group,
+    values_from = value,
+    values_fill = list(value = 0L)
+  ) %>%
+  mutate(Source = factor(as.character(Source), levels = source_levels))
+
+# ensure marker_levels match the columns in iso_mat
+marker_levels <- setdiff(names(iso_mat), c("row_id", "Source"))
+
+# =========================================================
+# B) Hill numbers helper (q0, q1, q2)
+# =========================================================
+hill_numbers <- function(p) {
+  p <- as.numeric(p)
+  p <- p[is.finite(p) & p > 0]
+  if (length(p) == 0) return(c(q0 = 0, q1 = 0, q2 = 0))
+  q0 <- length(p)
+  q1 <- exp(-sum(p * log(p)))   # Exponential Shannon
+  q2 <- 1 / sum(p^2)            # Inverse Simpson
+  c(q0 = q0, q1 = q1, q2 = q2)
+}
+
+# =========================================================
+# C) Point estimates q0/q1/q2 per Source
+# =========================================================
+div_point <- iso_mat %>%
+  group_by(Source) %>%
+  summarise(
+    N = n(),
+    across(all_of(marker_levels), ~ mean(.x)),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    s = sum(c_across(all_of(marker_levels))),
+    p = list(if (s > 0) c_across(all_of(marker_levels)) / s else rep(0, length(marker_levels))),
+    q0 = hill_numbers(unlist(p))["q0"],
+    q1 = hill_numbers(unlist(p))["q1"],
+    q2 = hill_numbers(unlist(p))["q2"]
+  ) %>%
+  ungroup() %>%
+  select(Source, N, q0, q1, q2) %>%
+  arrange(Source)
+
+# =========================================================
+# D) Bootstrap 95% CI for q0/q1/q2
+# =========================================================
+set.seed(1)
+B <- 1000
+
+boot_source <- function(df_source) {
+  X <- as.matrix(df_source[, marker_levels, drop = FALSE])
+  n <- nrow(X)
+  out <- matrix(NA_real_, nrow = B, ncol = 3)
+  colnames(out) <- c("q0", "q1", "q2")
+  if (n == 0) return(as.data.frame(out))
+
+  for (b in seq_len(B)) {
+    idx <- sample.int(n, n, replace = TRUE)
+    prev <- colMeans(X[idx, , drop = FALSE])
+    s <- sum(prev)
+    p <- if (s > 0) prev / s else rep(0, length(prev))
+    out[b, ] <- hill_numbers(p)
+  }
+  as.data.frame(out)
+}
+
+boot_res <- split(iso_mat, iso_mat$Source) %>%
+  lapply(boot_source) %>%
+  Map(function(df, nm) { df$Source <- nm; df }, ., names(.)) %>%
+  bind_rows()
+
+div_ci <- boot_res %>%
+  group_by(Source) %>%
+  summarise(
+    q0_lo = quantile(q0, 0.025, na.rm = TRUE),
+    q0_hi = quantile(q0, 0.975, na.rm = TRUE),
+    q1_lo = quantile(q1, 0.025, na.rm = TRUE),
+    q1_hi = quantile(q1, 0.975, na.rm = TRUE),
+    q2_lo = quantile(q2, 0.025, na.rm = TRUE),
+    q2_hi = quantile(q2, 0.975, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+div_sum <- div_point %>%
+  left_join(div_ci, by = "Source") %>%
+  mutate(Source = factor(as.character(Source), levels = source_levels)) %>%
+  arrange(Source)
+
+print(div_sum, n = Inf)
+write.csv(div_sum, "QR_diversity_q0_q1_q2_bySource_with95CI.csv", row.names = FALSE)
+
+# =========================================================
+# E) Composition table from iso_mat
+# =========================================================
+comp_tbl <- iso_mat %>%
+  group_by(Source) %>%
+  summarise(across(all_of(marker_levels), ~ mean(.x)), .groups = "drop") %>%
+  pivot_longer(
+    cols = all_of(marker_levels),
+    names_to = "marker_group",
+    values_to = "prevalence"
+  ) %>%
+  group_by(Source) %>%
+  mutate(
+    denom = sum(prevalence),
+    p = if_else(denom > 0, prevalence / denom, 0)
+  ) %>%
+  ungroup() %>%
+  select(-denom) %>%
+  mutate(
+    Source = factor(as.character(Source), levels = source_levels),
+    marker_group = factor(marker_group, levels = marker_levels)
+  )
+
+write.csv(comp_tbl, "QR_composition_bySource.csv", row.names = FALSE)
+
+# =========================================================
+# F) Permutation tests: global + pairwise (q1, q2)
+# =========================================================
+calc_div_by_source <- function(df_mat) {
+  df_mat %>%
+    group_by(Source) %>%
+    summarise(across(all_of(marker_levels), ~ mean(.x)), .groups = "drop") %>%
+    rowwise() %>%
+    mutate(
+      s = sum(c_across(all_of(marker_levels))),
+      p = list(if (s > 0) c_across(all_of(marker_levels)) / s else rep(0, length(marker_levels))),
+      q1 = hill_numbers(unlist(p))["q1"],
+      q2 = hill_numbers(unlist(p))["q2"]
+    ) %>%
+    ungroup() %>%
+    mutate(Source = factor(as.character(Source), levels = source_levels)) %>%
+    arrange(Source) %>%
+    select(Source, q1, q2)
+}
+
+global_stat <- function(v) max(v, na.rm = TRUE) - min(v, na.rm = TRUE)
+
+perm_global_test <- function(df_mat, metric = c("q1", "q2"), nperm = 2000, seed = 1) {
+  set.seed(seed)
+  metric <- match.arg(metric)
+
+  obs <- calc_div_by_source(df_mat)
+  obs_stat <- global_stat(obs[[metric]])
+
+  perm_stats <- numeric(nperm)
+  for (i in seq_len(nperm)) {
+    dfp <- df_mat
+    dfp$Source <- sample(dfp$Source)
+    perm <- calc_div_by_source(dfp)
+    perm_stats[i] <- global_stat(perm[[metric]])
+  }
+
+  tibble(metric = metric, obs_stat = obs_stat, p_value = mean(perm_stats >= obs_stat))
+}
+
+perm_pairwise <- function(df_mat, metric = c("q1", "q2"), nperm = 2000, seed = 1) {
+  set.seed(seed)
+  metric <- match.arg(metric)
+
+  pairs <- combn(source_levels, 2, simplify = FALSE)
+
+  res <- lapply(pairs, function(p) {
+    a <- p[1]; b <- p[2]
+    df2 <- df_mat %>% filter(as.character(Source) %in% c(a, b))
+
+    obs <- calc_div_by_source(df2)
+    obs_a <- obs %>% filter(as.character(Source) == a) %>% pull(!!sym(metric))
+    obs_b <- obs %>% filter(as.character(Source) == b) %>% pull(!!sym(metric))
+    obs_diff <- abs(obs_a - obs_b)
+
+    perm_d <- numeric(nperm)
+    for (i in seq_len(nperm)) {
+      dfp <- df2
+      dfp$Source <- sample(dfp$Source)
+      perm <- calc_div_by_source(dfp)
+      pa <- perm %>% filter(as.character(Source) == a) %>% pull(!!sym(metric))
+      pb <- perm %>% filter(as.character(Source) == b) %>% pull(!!sym(metric))
+      perm_d[i] <- abs(pa - pb)
+    }
+
+    tibble(metric = metric,
+           group1 = a,
+           group2 = b,
+           obs_diff = obs_diff,
+           p_value = mean(perm_d >= obs_diff))
+  }) %>% bind_rows()
+
+  res %>%
+    mutate(p_adj_BH = p.adjust(p_value, method = "BH")) %>%
+    arrange(p_adj_BH)
+}
+
+N_PERM <- 2000
+global_q1 <- perm_global_test(iso_mat, "q1", nperm = N_PERM, seed = 101)
+global_q2 <- perm_global_test(iso_mat, "q2", nperm = N_PERM, seed = 102)
+pair_q1   <- perm_pairwise(iso_mat, "q1", nperm = N_PERM, seed = 201)
+pair_q2   <- perm_pairwise(iso_mat, "q2", nperm = N_PERM, seed = 202)
+
+print(global_q1)
+print(global_q2)
+print(pair_q1, n = Inf)
+print(pair_q2, n = Inf)
+
+write.csv(global_q1, "QR_diversity_global_perm_q1.csv", row.names = FALSE)
+write.csv(global_q2, "QR_diversity_global_perm_q2.csv", row.names = FALSE)
+write.csv(pair_q1,   "QR_diversity_pairwise_perm_q1.csv", row.names = FALSE)
+write.csv(pair_q2,   "QR_diversity_pairwise_perm_q2.csv", row.names = FALSE)
+
+# =========================================================
+# G) Shannon + Simpson + composition patchwork
+#
+# All three plots have EXACTLY the same height.
+# Shannon and Simpson are each 10% wider than composition.
+# =========================================================
+
+letters_df <- tibble(
+  Source = factor(source_levels, levels = source_levels),
+  letter = c("a", "b", "c", "d")   # update manually if needed
+)
+
+div_long_plot <- div_sum %>%
+  select(
+    Source,
+    q1, q1_lo, q1_hi,
+    q2, q2_lo, q2_hi
+  ) %>%
+  pivot_longer(
+    cols = c(q1, q2),
+    names_to = "metric",
+    values_to = "value"
+  ) %>%
+  mutate(
+    lo = if_else(
+      metric == "q1",
+      q1_lo,
+      q2_lo
+    ),
+
+    hi = if_else(
+      metric == "q1",
+      q1_hi,
+      q2_hi
+    ),
+
+    metric = recode(
+      metric,
+      q1 = "Exponential Shannon (q1)",
+      q2 = "Inverse Simpson (q2)"
+    ),
+
+    metric = factor(
+      metric,
+      levels = c(
+        "Exponential Shannon (q1)",
+        "Inverse Simpson (q2)"
+      )
+    )
+  ) %>%
+  left_join(
+    letters_df,
+    by = "Source"
+  ) %>%
+  mutate(
+    Source = factor(
+      as.character(Source),
+      levels = source_levels
+    )
+  )
+
+
+# =========================================================
+# 1) EXPONENTIAL SHANNON
+# =========================================================
+
+p_shannon <- div_long_plot %>%
+  filter(
+    metric == "Exponential Shannon (q1)"
+  ) %>%
+
+  ggplot(
+    aes(
+      x = Source,
+      y = value
+    )
+  ) +
+
+  geom_point(
+    size = 2.8
+  ) +
+
+  geom_errorbar(
+    aes(
+      ymin = lo,
+      ymax = hi
+    ),
+    width = 0.15
+  ) +
+
+  geom_text(
+    aes(
+      label = letter
+    ),
+    y = 6.8,
+    fontface = "bold",
+    size = 4
+  ) +
+
+  coord_cartesian(
+    ylim = c(0, 7)
+  ) +
+
+  labs(
+    title = "Exponential Shannon (q1)",
+    x = "Source",
+    y = "Effective number of QR/FQR categories"
+  ) +
+
+  theme_bw() +
+
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 11,
+      hjust = 0.5
+    ),
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold",
+      size = 10
+    ),
+
+    axis.text.y = element_text(
+      face = "bold",
+      size = 10
+    ),
+
+    axis.title = element_text(
+      face = "bold",
+      size = 11
+    ),
+
+    plot.margin = margin(
+      6, 6, 6, 6
+    )
+  )
+
+
+# =========================================================
+# 2) INVERSE SIMPSON
+# =========================================================
+
+p_simpson <- div_long_plot %>%
+  filter(
+    metric == "Inverse Simpson (q2)"
+  ) %>%
+
+  ggplot(
+    aes(
+      x = Source,
+      y = value
+    )
+  ) +
+
+  geom_point(
+    size = 2.8
+  ) +
+
+  geom_errorbar(
+    aes(
+      ymin = lo,
+      ymax = hi
+    ),
+    width = 0.15
+  ) +
+
+  geom_text(
+    aes(
+      label = letter
+    ),
+    y = 6.8,
+    fontface = "bold",
+    size = 4
+  ) +
+
+  coord_cartesian(
+    ylim = c(0, 7)
+  ) +
+
+  labs(
+    title = "Inverse Simpson (q2)",
+    x = "Source",
+    y = "Effective number of QR/FQR categories"
+  ) +
+
+  theme_bw() +
+
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 11,
+      hjust = 0.5
+    ),
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold",
+      size = 10
+    ),
+
+    axis.text.y = element_text(
+      face = "bold",
+      size = 10
+    ),
+
+    axis.title = element_text(
+      face = "bold",
+      size = 11
+    ),
+
+    plot.margin = margin(
+      6, 6, 6, 6
+    )
+  )
+
+
+# =========================================================
+# 3) QR/FQR COMPOSITION
+# =========================================================
+
+p_comp <- ggplot(
+  comp_tbl,
+  aes(
+    x = Source,
+    y = p,
+    fill = marker_group
+  )
+) +
+
+  geom_col(
+    width = 0.85
+  ) +
+
+  scale_y_continuous(
+    labels = scales::percent_format(
+      accuracy = 1
+    ),
+    expand = expansion(
+      mult = c(
+        0,
+        0.02
+      )
+    )
+  ) +
+
+  labs(
+    title = "QR/FQR composition",
+    x = "Source",
+    y = "Normalized QR/FQR % composition",
+    fill = "QR category"
+  ) +
+
+  theme_bw() +
+
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 11,
+      hjust = 0.5
+    ),
+
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      face = "bold",
+      size = 9
+    ),
+
+    axis.text.y = element_text(
+      face = "bold",
+      size = 10
+    ),
+
+    axis.title = element_text(
+      face = "bold",
+      size = 11
+    ),
+
+    legend.title = element_text(
+      face = "bold",
+      size = 11
+    ),
+
+    legend.text = element_text(
+      size = 9
+    ),
+
+    legend.key.size = unit(
+      0.45,
+      "cm"
+    ),
+
+    plot.margin = margin(
+      6, 6, 6, 6
+    )
+  )
+
+
+# =========================================================
+# 4) PATCHWORK
+#
+# SAME HEIGHT for all three panels
+#
+# Relative widths:
+#   Shannon = 1.10
+#   Simpson = 1.10
+#   Composition = 1.00
+#
+# Thus Shannon and Simpson are 10% wider.
+# =========================================================
+
+combo_side <- (
+  p_shannon |
+  p_simpson |
+  p_comp
+) +
+  plot_layout(
+    widths = c(
+      1.10,
+      1.10,
+      1.00
+    )
+  )
+
+
+# =========================================================
+# PRINT
+# =========================================================
+
+print(
+  combo_side
+)
+
+
+# =========================================================
+# SAVE
+# =========================================================
+
+ggsave(
+  "QR_diversity_and_composition_side_by_side.png",
+  combo_side,
+  width = 18,
+  height = 6.2,
+  dpi = 600
+)
+
+ggsave(
+  "QR_diversity_and_composition_side_by_side.tif",
+  combo_side,
+  width = 18,
+  height = 6.2,
+  dpi = 600,
+  compression = "lzw"
+)
+```
+#Strategizing for 3000-3500 Genome selection
+## FINAL TARGETS 
+# <2018: max 1400
+# >=2018: 2100 total, with +100 added to HUMAN only:
+#   +50 to 2018–2020 human, +50 to 2021–2025 human
+
+# ------------------------------------------------------------
+# BLOCK A (<2018)  = 1400 max (time + source balanced)
+# ------------------------------------------------------------
+# Rule A1: include ALL QR <2018 (fixed)
+#   all_QR_pre2018 = 689  (your number)
+
+# Rule A2: fill remainder with NON-QR to reach 1400, keeping source balance
+# Pre-2018 totals (suggested):
+#   Human   = 820 total (QR + NON-QR)
+#   Chicken = 380 total
+#   Other   = 200 total
+# Total    = 1400
+#
+# Implementation rule:
+#   - take ALL QR <2018 for each source (Human/Chicken/Other)
+#   - then sample NON-QR within each source to hit its target total
+#   - if a source cannot hit its target due to limited genomes, reallocate deficit:
+#         first to Chicken (if deficit in Other), then Human; keep totals = 1400
+
+# ------------------------------------------------------------
+# BLOCK B (>=2018) = 2100 total (time-stratified + source-stratified)
+# ------------------------------------------------------------
+# Split >=2018 into two sections:
+#   Section 1: 2018–2020  = 800 + 50 (human-only) = 850
+#   Section 2: 2021–2025  = 1200 + 50 (human-only) = 1250
+#
+# Section 1 (2018–2020) totals:
+#   Human   = 500   (450 + 50 added)
+#   Chicken = 250
+#   Other   = 100
+#   Total   = 850
+#
+# Section 2 (2021–2025) totals:
+#   Human   = 700   (650 + 50 added)
+#   Chicken = 400
+#   Other   = 150
+#   Total   = 1250
+#
+# Within EACH (section × source):
+#   target QR/NON-QR ≈ 70/30
+#   - Human 2018–2020: 350 QR / 150 NON-QR
+#   - Human 2021–2025: 490 QR / 210 NON-QR
+#   - Chicken 2018–2020: 175 QR / 75 NON-QR
+#   - Chicken 2021–2025: 280 QR / 120 NON-QR
+#   - Other 2018–2020: 70 QR / 30 NON-QR
+#   - Other 2021–2025: 105 QR / 45 NON-QR
+#
+# Marker representation constraints (apply inside >=2018 blocks):
+#   - Guarantee minimum representation IF PRESENT (otherwise take all available):
+#       qnr*                >= 30 total
+#       parC/parE mutations >= 25 total
+#       oqxA/oqxB            >= 15 total
+#       qepA                 >= 15 total
+#       aac(6')-Ib-cr         >= 15 total
+#
+# ------------------------------------------------------------
+# QUICK CHECK: totals
+# ------------------------------------------------------------
+# <2018: 1400
+# >=2018: 850 + 1250 = 2100
+# TOTAL: 3500
+
+#For the "Outbreak" column, only one QR and non-QR must be selected in each outbreak/year if available, and "Location": must select representatives of all loaction present per year 
+
+```{r}
+## ============================================================
+## FINAL 3500-GENOME SELECTION SCRIPT
+## GUARANTEE: ALL NON-US INCLUDED
+## ============================================================
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+set.seed(123)
+
+## -----------------------------
+## CONFIG
+## -----------------------------
+year_cut <- 2018
+target_total <- 3500
+
+A_total <- 1400
+
+A_targets <- tibble(
+  Source3 = c("Human","Chicken","Other"),
+  target  = c(820, 380, 200)
+)
+
+B_sections <- tibble(
+  section = c("2018-2020","2021-2025"),
+  y_min   = c(2018, 2021),
+  y_max   = c(2020, 2025),
+  total   = c(850, 1250)
+)
+
+B_targets <- tibble(
+  section = rep(B_sections$section, each = 3),
+  Source3 = rep(c("Human","Chicken","Other"), times = 2),
+  target  = c(500,250,100, 700,400,150)
+) %>%
+  mutate(
+    target_QR  = round(target * 0.70),
+    target_NQR = target - target_QR
+  )
+
+## -----------------------------
+## HELPERS
+## -----------------------------
+clean_na <- function(x) {
+  x <- str_squish(as.character(x))
+  x[x %in% c("", "NA","N/A","none","null")] <- NA
+  x
+}
+
+make_source3 <- function(x) {
+  s <- tolower(x)
+  case_when(
+    str_detect(s,"human")   ~ "Human",
+    str_detect(s,"chicken") ~ "Chicken",
+    str_detect(s,"other")   ~ "Other",
+    TRUE ~ "Other"
+  )
+}
+
+is_non_us <- function(x) {
+  str_detect(tolower(x), "non-us|nonus|non_us")
+}
+
+assign_amr_pattern <- function(amr) {
+  a <- tolower(ifelse(is.na(amr), "", amr))
+  case_when(
+    str_detect(a,"gyra[_-]?d87y") ~ "gyrA_d87Y",
+    str_detect(a,"gyra[_-]?d87n") ~ "gyrA_d87N",
+    str_detect(a,"gyra[_-]?s83y") ~ "gyrA_s83Y",
+    str_detect(a,"gyra[_-]?d87g") ~ "gyrA_d87G",
+    str_detect(a,"qnrb19")        ~ "qnrB19",
+    TRUE                          ~ "others"
+  )
+}
+
+safe_sample <- function(df, n) {
+  if (n <= 0 || nrow(df) == 0) return(df[0,])
+  slice_sample(df, n = min(n, nrow(df)))
+}
+
+## -----------------------------
+## PREP DATA
+## -----------------------------
+SEN_work <- SEN %>%
+  mutate(
+    row_id = row_number(),
+    Year   = as.integer(Collection_year),
+    Source_raw = Source,
+    Source3 = make_source3(Source),
+    NonUS  = is_non_us(Source),
+    QR_group = if_else(QR_genotype == 1L, "QR","NON-QR"),
+    Outbreak_clean = clean_na(Outbreak),
+    Location_clean = clean_na(Location),
+    AMR_pattern = assign_amr_pattern(`AMR genotypes`)
+  ) %>%
+  filter(!is.na(Year), Year >= 1990, Year <= 2025)
+
+## ============================================================
+## 🔒 FORCE-INCLUDE ALL NON-US
+## ============================================================
+forced_nonUS <- SEN_work %>% filter(NonUS)
+
+SEN_work_remain <- SEN_work %>%
+  anti_join(forced_nonUS, by = "row_id")
+
+cat("Forced-in Non-US:", nrow(forced_nonUS), "\n")
+
+## Adjust total targets
+remaining_budget <- target_total - nrow(forced_nonUS)
+if (remaining_budget <= 0) {
+  stop("Non-US isolates exceed target_total — increase target_total")
+}
+
+## ============================================================
+## BLOCK A (<2018)
+## ============================================================
+A_pool <- SEN_work_remain %>% filter(Year < year_cut)
+
+A_QR <- A_pool %>% filter(QR_group=="QR")
+
+A_plan <- A_targets %>%
+  left_join(count(A_QR, Source3, name="nQR"), by="Source3") %>%
+  mutate(
+    nQR = replace_na(nQR,0),
+    nNQ = pmax(target - nQR, 0)
+  )
+
+A_NQR <- A_plan %>%
+  mutate(pick = map2(Source3, nNQ, ~{
+    A_pool %>% filter(Source3==.x, QR_group=="NON-QR") %>% safe_sample(.y)
+  })) %>%
+  select(pick) %>% unnest(cols = pick)
+
+A_sel <- bind_rows(A_QR, A_NQR) %>% distinct(row_id,.keep_all=TRUE)
+
+if (nrow(A_sel) < A_total) {
+  rem <- A_pool %>% anti_join(A_sel, by="row_id")
+  A_sel <- bind_rows(A_sel, safe_sample(rem, A_total - nrow(A_sel)))
+}
+
+## ============================================================
+## BLOCK B (>=2018)
+## ============================================================
+B_pool <- SEN_work_remain %>% filter(Year >= year_cut)
+
+B_sel <- map_dfr(seq_len(nrow(B_targets)), function(i){
+
+  sec <- B_targets$section[i]
+  s3  <- B_targets$Source3[i]
+  tQR <- B_targets$target_QR[i]
+  tNQ <- B_targets$target_NQR[i]
+
+  yrs <- B_sections %>% filter(section==sec)
+  pool <- B_pool %>%
+    filter(Year >= yrs$y_min, Year <= yrs$y_max, Source3==s3)
+
+  picked <- pool[0,]
+
+  fill_group <- function(qr_label, need_n) {
+    rem <- pool %>% anti_join(picked, by="row_id") %>% filter(QR_group==qr_label)
+    if (need_n <= 0 || nrow(rem)==0) return(rem[0,])
+
+    map_dfr(unique(rem$Year), function(y){
+      py <- rem %>% filter(Year==y)
+      if (nrow(py)==0) return(py)
+
+      props <- py %>% count(AMR_pattern) %>% mutate(w=n/sum(n))
+      alloc <- props %>% mutate(n_take=round(w*need_n))
+      py %>% left_join(alloc, by="AMR_pattern") %>%
+        group_by(AMR_pattern) %>%
+        group_modify(~ safe_sample(.x, unique(.x$n_take))) %>%
+        ungroup()
+    })
+  }
+
+  picked <- bind_rows(
+    fill_group("QR", tQR),
+    fill_group("NON-QR", tNQ)
+  ) %>% distinct(row_id,.keep_all=TRUE)
+
+  picked %>% slice_head(n=tQR+tNQ) %>% mutate(section=sec)
+})
+
+## ============================================================
+## FINAL MERGE
+## ============================================================
+sel_all <- bind_rows(
+  forced_nonUS,
+  A_sel %>% mutate(section="<2018"),
+  B_sel
+) %>% distinct(row_id,.keep_all=TRUE)
+
+if (nrow(sel_all) > target_total) {
+  keep_nonUS <- sel_all %>% filter(NonUS)
+  rest <- sel_all %>% filter(!NonUS)
+  sel_all <- bind_rows(
+    keep_nonUS,
+    safe_sample(rest, target_total - nrow(keep_nonUS))
+  )
+}
+
+cat("FINAL N =", nrow(sel_all), "\n")
+
+write.csv(sel_all, "Selected_3500_genomes.csv", row.names=FALSE)
+
+```
+
+#Getting the Finalupdated_SEN_Genomes.csv
+
+```{r}
+
+
+library(dplyr)
+library(readr)
+library(stringr)
+
+# 1. Read the 2-column key file (Strain, Isolate)
+keys <- read_csv("Selected_updated_Isolate.csv", show_col_types = FALSE) %>%
+  mutate(
+    Strain  = str_squish(as.character(Strain)),
+    Isolate = str_squish(as.character(Isolate))
+  )
+
+# 2. Subset SEN using (Strain, Isolate) matches, keeping ALL SEN columns
+SEN_final <- SEN %>%
+  mutate(
+    Strain  = str_squish(as.character(Strain)),
+    Isolate = str_squish(as.character(Isolate))
+  ) %>%
+  semi_join(keys, by = c("Strain", "Isolate"))
+
+# Check how many matched
+nrow(SEN_final)
+
+# 3. Save full subset
+write_csv(SEN_final, "Finalupdated_SEN_Genomes.csv")
+
+
+```
+
+
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+
+# =========================================================
+# INPUTS (selected genomes only)
+# =========================================================
+# If you already have your selected set in memory, set:
+#   SEL <- sel_all
+# Otherwise read from the file you wrote:
+SEL <- read.csv("Selected_3500_genomes.csv", check.names = FALSE)
+
+# =========================================================
+# CONFIG
+# =========================================================
+amr_col    <- "AMR genotypes"
+year_col   <- "Collection_year"
+source_col <- "Source"
+qr_col     <- "QR_genotype"
+
+source_levels <- c("Human", "Chicken-US", "Chicken-Non-US", "Other-US", "Other-Non-US")
+
+# Major QR markers (from your chart y-axis)
+major_markers <- c("gyra_d87y", "gyra_d87n", "gyra_s83y", "gyra_d87g", "qnrb19")
+marker_levels <- c(major_markers, "other_qr", "non_qr")  # add NON-QR to the stack
+
+# =========================================================
+# HELPERS
+# =========================================================
+clean_txt <- function(x){
+  x <- as.character(x)
+  x <- ifelse(is.na(x), "", x)
+  str_to_lower(str_squish(x))
+}
+
+extract_tokens <- function(amr_txt){
+  amr_txt <- clean_txt(amr_txt)
+  toks <- str_extract_all(amr_txt, "[^,=\\s]+(?==)")[[1]]
+  toks <- str_to_lower(str_replace_all(str_trim(toks), "\\s+", ""))
+  toks[toks != ""]
+}
+
+# classify each row into ONE bucket:
+#  - NON-QR -> "non_qr"
+#  - QR -> top gyrA markers first, then qnrb19, else "other_qr"
+row_bucket <- function(tokens, is_qr){
+  if (is.na(is_qr) || is_qr != 1L) return("non_qr")
+  if (length(tokens) == 0) return("other_qr")
+
+  toks <- str_to_lower(tokens)
+  toks <- str_replace_all(toks, "^gyra_", "gyra_")
+  toks <- str_replace_all(toks, "^gyrA_", "gyra_")
+  toks <- str_replace_all(toks, "^gyra", "gyra")
+  toks <- str_replace_all(toks, "^qnrb19$", "qnrb19")
+
+  # priority: gyrA major markers first
+  for (m in major_markers[grepl("^gyra_", major_markers)]) {
+    if (any(toks == m)) return(m)
+  }
+  # then qnrb19
+  if (any(toks %in% c("qnrb19","qnr_b19","qnr-b19","qnrb_19","qnrB19"))) return("qnrb19")
+
+  "other_qr"
+}
+
+make_year3 <- function(y){
+  y <- as.integer(y)
+  start <- y - ((y - min(y, na.rm = TRUE)) %% 3)
+  paste0(start, "-", start + 2)
+}
+
+# =========================================================
+# BUILD STACKED COUNTS (SELECTED ONLY) + NON-QR INCLUDED
+# =========================================================
+df_plot <- SEL %>%
+  mutate(
+    Year   = as.integer(.data[[year_col]]),
+    Source = as.character(.data[[source_col]]),
+    Source = factor(Source, levels = source_levels),
+    is_qr  = as.integer(.data[[qr_col]]),
+    amr_txt = .data[[amr_col]]
+  ) %>%
+  filter(!is.na(Year), Year >= 1990, Year <= 2025, !is.na(Source)) %>%
+  rowwise() %>%
+  mutate(
+    tokens = list(extract_tokens(amr_txt)),
+    bucket = row_bucket(tokens, is_qr)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    year3  = make_year3(Year),
+    bucket = factor(bucket, levels = marker_levels)
+  ) %>%
+  count(Source, year3, bucket, name = "n") %>%
+  group_by(Source) %>%
+  complete(year3, bucket, fill = list(n = 0)) %>%
+  ungroup()
+
+# order x-axis chronologically
+year3_levels <- df_plot %>%
+  distinct(year3) %>%
+  mutate(start = as.integer(str_extract(year3, "^\\d{4}"))) %>%
+  arrange(start) %>%
+  pull(year3)
+
+df_plot <- df_plot %>%
+  mutate(year3 = factor(year3, levels = year3_levels))
+
+# =========================================================
+# PLOT
+# =========================================================
+p <- ggplot(df_plot, aes(x = year3, y = n, fill = bucket)) +
+  geom_col(width = 0.85) +
+  facet_wrap(~ Source, ncol = 1, scales = "free_y") +
+  labs(
+    x = "Collection year (3-year groups)",
+    y = "Selected genomes (count)",
+    fill = "QR bucket"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x  = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 7),
+    axis.text.y  = element_text(size = 8),
+    axis.title   = element_text(size = 10),
+    strip.text   = element_text(size = 10),
+    legend.title = element_text(size = 10),
+    legend.text  = element_text(size = 9),
+    plot.title   = element_text(hjust = 0.5)
+  )
+
+print(p)
+
+# Optional save
+# ggsave("SelectedGenomes_majorQR_plus_nonQR_3yr_by_source.png", p, width = 12, height = 8, dpi = 600)
+
+
+```
+
+#selection description
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+
+# =========================================================
+# 1) FORCE RELOAD OF FINAL 3434-GENOME DATASET
+# =========================================================
+
+rm(SEL)
+
+SEL <- read_csv(
+  "Finalupdated_SEN_Genomes1.csv",
+  show_col_types = FALSE
+)
+
+# =========================================================
+# 2) VERIFY CORRECT FILE
+# =========================================================
+
+cat("Rows =", nrow(SEL), "\n")
+
+cat(
+  "QR columns found:\n"
+)
+
+print(
+  grep(
+    "QR",
+    names(SEL),
+    value = TRUE
+  )
+)
+
+# This MUST pass
+stopifnot(nrow(SEL) == 3434)
+stopifnot("QR_genotype" %in% names(SEL))
+
+
+# =========================================================
+# 3) CREATE METHODS VARIABLES
+# =========================================================
+
+SEL_methods <- SEL %>%
+  mutate(
+    Collection_year = as.integer(
+      .data[["Collection_year"]]
+    ),
+
+    International =
+      .data[["Source"]] == "International",
+
+    QR_status = if_else(
+      as.integer(.data[["QR_genotype"]]) == 1L,
+      "QR/FQR",
+      "FQS"
+    )
+  )
+
+
+# =========================================================
+# 4) INTERNATIONAL
+# =========================================================
+
+n_international <- SEL_methods %>%
+  filter(International) %>%
+  nrow()
+
+
+# =========================================================
+# 5) TEMPORAL DATA
+#    EXCLUDE INTERNATIONAL SO THEY ARE NOT DOUBLE-COUNTED
+# =========================================================
+
+temporal <- SEL_methods %>%
+  filter(
+    !International,
+    !is.na(Collection_year)
+  )
+
+
+# =========================================================
+# 6) METHODS COUNTS
+# =========================================================
+
+methods_counts <- temporal %>%
+  mutate(
+    Period = if_else(
+      Collection_year < 2018,
+      "Pre-2018",
+      "2018-2025"
+    )
+  ) %>%
+  count(
+    Period,
+    QR_status,
+    name = "n"
+  )
+
+print(methods_counts)
+
+
+# =========================================================
+# 7) EXTRACT NUMBERS
+# =========================================================
+
+pre_fqr <- temporal %>%
+  filter(
+    Collection_year < 2018,
+    QR_status == "QR/FQR"
+  ) %>%
+  nrow()
+
+pre_fqs <- temporal %>%
+  filter(
+    Collection_year < 2018,
+    QR_status == "FQS"
+  ) %>%
+  nrow()
+
+post_fqr <- temporal %>%
+  filter(
+    Collection_year >= 2018,
+    Collection_year <= 2025,
+    QR_status == "QR/FQR"
+  ) %>%
+  nrow()
+
+post_fqs <- temporal %>%
+  filter(
+    Collection_year >= 2018,
+    Collection_year <= 2025,
+    QR_status == "FQS"
+  ) %>%
+  nrow()
+
+
+# =========================================================
+# 8) 2018-2020 / 2021-2025 BREAKDOWN
+# =========================================================
+
+later_breakdown <- temporal %>%
+  filter(
+    Collection_year >= 2018,
+    Collection_year <= 2025
+  ) %>%
+  mutate(
+    Period = case_when(
+      Collection_year <= 2020 ~ "2018-2020",
+      Collection_year >= 2021 ~ "2021-2025"
+    )
+  ) %>%
+  count(
+    Period,
+    QR_status,
+    name = "n"
+  ) %>%
+  group_by(Period) %>%
+  mutate(
+    Total = sum(n),
+    Percent = round(100 * n / Total, 1)
+  ) %>%
+  ungroup()
+
+print(later_breakdown)
+
+
+# =========================================================
+# 9) FINAL TOTAL
+# =========================================================
+
+final_total <-
+  n_international +
+  pre_fqr +
+  pre_fqs +
+  post_fqr +
+  post_fqs
+
+cat(
+  "\n============================\n",
+  "International     =", n_international, "\n",
+  "Pre-2018 QR/FQR   =", pre_fqr, "\n",
+  "Pre-2018 FQS      =", pre_fqs, "\n",
+  "2018-2025 QR/FQR  =", post_fqr, "\n",
+  "2018-2025 FQS     =", post_fqs, "\n",
+  "TOTAL             =", final_total, "\n",
+  "============================\n"
+)
+
+stopifnot(final_total == 3434)
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+library(readr)
+
+set.seed(123)
+
+## -----------------------------
+## HELPERS (same as original)
+## -----------------------------
+clean_na <- function(x) {
+  x <- str_squish(as.character(x))
+  x[x %in% c("", "NA", "N/A", "none", "null")] <- NA
+  x
+}
+
+make_source3 <- function(x) {
+  s <- tolower(x)
+  case_when(
+    str_detect(s, "human")   ~ "Human",
+    str_detect(s, "chicken") ~ "Chicken",
+    str_detect(s, "other")   ~ "Other",
+    TRUE ~ "Other"
+  )
+}
+
+is_non_us <- function(x) {
+  str_detect(tolower(x), "non-us|nonus|non_us")
+}
+
+assign_amr_pattern <- function(amr) {
+  a <- tolower(ifelse(is.na(amr), "", amr))
+  case_when(
+    str_detect(a, "gyra[_-]?d87y") ~ "gyrA_d87Y",
+    str_detect(a, "gyra[_-]?d87n") ~ "gyrA_d87N",
+    str_detect(a, "gyra[_-]?s83y") ~ "gyrA_s83Y",
+    str_detect(a, "gyra[_-]?d87g") ~ "gyrA_d87G",
+    str_detect(a, "qnrb19")        ~ "qnrB19",
+    TRUE                           ~ "others"
+  )
+}
+
+## -----------------------------
+## 1) BUILD SEN_work WITH ALL YOUR LOGIC
+## -----------------------------
+SEN_work <- SEN %>%
+  mutate(
+    # keep original Strain / Isolate but trimmed for safer matching
+    Strain  = str_squish(as.character(Strain)),
+    Isolate = str_squish(as.character(Isolate)),
+
+    row_id = row_number(),
+    Year   = as.integer(Collection_year),
+    Source_raw = Source,
+    Source3 = make_source3(Source),
+    NonUS  = is_non_us(Source),
+    QR_group = if_else(QR_genotype == 1L, "QR", "NON-QR"),
+    Outbreak_clean = clean_na(Outbreak),
+    Location_clean = clean_na(Location),
+    AMR_pattern = assign_amr_pattern(`AMR genotypes`)
+  ) %>%
+  filter(!is.na(Year), Year >= 1990, Year <= 2025)
+
+## -----------------------------
+## 2) READ KEY FILE (Strain, Isolate) AND TRIM
+## -----------------------------
+keys <- read_csv("Selected_updated_Isolate.csv", show_col_types = FALSE) %>%
+  mutate(
+    Strain  = str_squish(as.character(Strain)),
+    Isolate = str_squish(as.character(Isolate))
+  )
+
+## -----------------------------
+## 3) SUBSET SEN_work BY (Strain, Isolate)
+## -----------------------------
+SEN_final <- SEN_work %>%
+  semi_join(keys, by = c("Strain", "Isolate"))
+
+# How many matched?
+nrow(SEN_final)
+
+## -----------------------------
+## 4) SAVE FULL SUBSET (ALL COLS FROM SEN_work)
+## -----------------------------
+write_csv(SEN_final, "Finalupdated_SEN_Genomes.csv")
+
+```
