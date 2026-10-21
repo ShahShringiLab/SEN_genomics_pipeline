@@ -50,7 +50,7 @@ results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv
 results/part_a/cohort/QC_merged_3434_validation.json
 ```
 
-The merge runs automatically with `bash scripts/run_master_part_a2.sh`
+The derived marker summary, source profiles and diversity/composition analyses now read the QC-merged metadata directly, not the unaugmented reconstructed 3,434-genome file.\n\nThe merge runs automatically with `bash scripts/run_master_part_a2.sh`
 or the full `bash scripts/run_part_a.sh`. The complete Part A runner
 also runs `scripts/validate_part_a_outputs.py`, checking that the merged
 metadata agree with the independently rebuilt cohort and final clades.
