@@ -92,8 +92,9 @@ assert {x["Isolate"] for x in corrected} == {
 }
 counts = Counter(row["Final_phylogeny"] for row in merged)
 assert counts == Counter({"Included": 3306, "Excluded": 128})
-assert sum(row["AUDIT"] == "PASS" for row in merged) == 3306
+assert sum(row["AUDIT"].startswith("PASS") for row in merged) == 3306
 assert sum(row["AUDIT"].startswith("FAIL") for row in merged) == 128
+assert sum(row["AUDIT"].startswith("PASS: Historical coverage exception") for row in merged) == 2
 assert sum(row["QR_genotype"] == "1" for row in merged) == 2288
 fields = meta_cols + [
     "QR_genotype_archived", "FQR_genotype_archived", "QR_status",
@@ -116,6 +117,7 @@ summary = {
     "unique_isolates": len({row["Isolate"] for row in merged}),
     "qc_included": counts["Included"],
     "qc_excluded": counts["Excluded"],
+    "documented_historical_coverage_exceptions_retained": 2,
     "qr_marker_positive": sum(row["QR_genotype"] == "1" for row in merged),
     "qr_corrections": corrected,
     "metadata_source": str(CANONICAL.relative_to(ROOT)),
