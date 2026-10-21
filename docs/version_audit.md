@@ -59,11 +59,3 @@ and Biopython 1.86 with Panaroo 1.6.0. This preserves Panaroo's expected FASTA
 parsing behavior without altering or sanitizing the Prokka GFF source files.
 The smoke runner checks this runtime explicitly and rebuilds incompatible
 pre-existing environments.
-
-
-## October 2026 Part A candidate versions
-
-The candidate adds `r-lubridate` and `r-patchwork` to `sen_stats`, retaining
-`r-base=4.5.2` for the reproducible environment. These definitions are not
-proof of the historical software versions used in the final manuscript.
-The historical MLST/Gubbins/AMRFinderPlus discrepancies remain open.
