@@ -26,5 +26,5 @@ echo "[5/5] Generate manuscript Table SS1: 2018-2025 by QR/FQR marker genotype, 
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/08_table_ss1_post2018_genotype.R
 echo "[READY] analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
-echo "[NOTE] This preserves exact notebook analyses and plots; it does NOT silently run alternative analyses."
+echo "[NOTE] Original Rmd remains archived; generated copy changes only temporal eligibility/facet N and the requested Top-100 plot x-axis to 25,000."
 echo "[NOTE] Render/run the notebook only after resolving its original local input/output paths and exploratory state."
