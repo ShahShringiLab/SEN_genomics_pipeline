@@ -34,6 +34,9 @@ run_r() {
   conda run --no-capture-output -n sen_stats     env SEN_ROOT="$SEN_ROOT"     Rscript "$script"
 }
 
+echo
+echo "[RUN] Master preparation, Rmd correction, and both year/QC sampling tables"
+bash scripts/run_master_part_a2.sh
 run_r analysis/part_a/01_phenotype_trends.R
 run_r analysis/part_a/02_build_final_cohort.R
 run_r analysis/part_a/03_genotype_marker_summary.R
@@ -48,5 +51,15 @@ conda run --no-capture-output -n sen_stats \
 
 echo
 echo "=================================================="
+echo "[RUN] Original master Rmd chunks 4-21"
+python3 scripts/build_original_a2_master_execution.py
+MASTER_DIR="$SEN_ROOT/results/part_a/master_33831/original_execution"
+if ! conda run --no-capture-output -n sen_stats env SEN_ROOT="$SEN_ROOT" \
+  Rscript "$MASTER_DIR/run_original_A2_master.R" > "$MASTER_DIR/run.log" 2>&1; then
+  echo "[FAIL] Original A2 execution; see $MASTER_DIR/run.log" >&2
+  tail -n 60 "$MASTER_DIR/run.log" >&2
+  exit 1
+fi
+echo "[PASS] Original master analyses completed"
 echo " SEN PART A: PASS"
 echo "=================================================="
