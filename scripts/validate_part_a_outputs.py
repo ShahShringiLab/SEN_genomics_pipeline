@@ -54,7 +54,18 @@ def main() -> None:
     if qr_counts != Counter({1: 2288, 0: 1146}):
         raise AssertionError(f"Unexpected corrected QR genotype counts: {dict(qr_counts)}")
 
-    clade_counts = Counter(r.get("Clade", "") for r in rebuilt if r.get("Clade", ""))
+    missing_clades = {"", "NA"}  # readr writes missing clade assignments as NA
+    clade_counts = Counter(
+        r.get("Clade", "") for r in rebuilt
+        if r.get("Clade", "").strip() not in missing_clades
+    )
+    excluded_clades = sum(
+        r.get("Clade", "").strip() in missing_clades for r in rebuilt
+    )
+    if excluded_clades != 128:
+        raise AssertionError(
+            f"Expected 128 excluded genomes; observed {excluded_clades}"
+        )
     expected_clades = Counter({
         "Clade 1A": 169,
         "Clade 1B": 759,
