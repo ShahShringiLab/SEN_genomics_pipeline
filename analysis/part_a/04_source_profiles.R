@@ -4,9 +4,9 @@ source(file.path(
   "analysis/part_a/lib/common.R"
 ))
 
-input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes_rebuilt.csv")
+input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")
 if (!file.exists(input)) {
-  stop("Run analysis/part_a/02_build_final_cohort.R first.")
+  stop("Run python3 scripts/merge_qc_full_metadata.py first.")
 }
 
 outdir <- ensure_dir(sen_path("results/part_a/source_profiles"))
@@ -18,7 +18,7 @@ assert_columns(
     "Isolate", "Source", "Source_group", "Isolation source",
     "QR_genotype", "Food origin"
   ),
-  "rebuilt cohort"
+  "QC-merged 3,434-genome cohort"
 )
 
 if (nrow(sen) != 3434L || n_distinct(sen$Isolate) != 3434L) {
