@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare original Part A2 with audited master input and temporal facet N only."""
+"""Prepare original Part A2 with audited master input and consistent temporal eligibility."""
 from pathlib import Path
 import hashlib
+import re
 import sys
 root=Path(__file__).resolve().parents[1]
 original=Path(sys.argv[1]) if len(sys.argv)>1 else root/"provenance/SEN_Genomes2_uploaded_original_20261021.Rmd"
@@ -17,8 +18,8 @@ SEN <- read_csv(file_path, col_types = cols(.default = col_character()))
 stopifnot(nrow(SEN)==33831L,ncol(SEN)==51L)'''
 rendered=text.replace(old,new,1)
 # The original dot plot uses source-specific facet labels. Its N must reflect
-# precisely the year-eligible source population (1990-2025), not all source rows.
-# This is a surgical label-only change; original statistics and figures remain.
+# precisely the plotted source population: any valid year <=2025.
+# Historical years <=2000 are grouped under the single <=2000 category.
 old_facet = """src_N <- SEN %>%
   count(
     Source,
@@ -27,7 +28,6 @@ old_facet = """src_N <- SEN %>%
 new_facet = """src_N <- SEN %>%
   filter(
     !is.na(Collection_year),
-    as.integer(Collection_year) >= 1990L,
     as.integer(Collection_year) <= 2025L
   ) %>%
   count(
@@ -36,14 +36,28 @@ new_facet = """src_N <- SEN %>%
   ) %>%"""
 assert rendered.count(old_facet) == 1, "Original facet N block must occur exactly once"
 rendered = rendered.replace(old_facet, new_facet, 1)
+# All six temporal uses (uploaded 30-chunk original) or four uses (archived
+# 26-chunk notebook) incorrectly discarded dated genomes before 1990, although
+# both notebooks have a <=2000 bin. Remove only those lower-year cutoff LINES
+# from the generated working copy. Keep the archived/uploaded original pristine.
+lower_cutoff = r"(?m)^[ \\t]*Collection_year[ \\t]*>=[ \\t]*1990[L]?,[ \\t]*\\n"
+rendered, n_dropped = re.subn(lower_cutoff, "", rendered)
+assert n_dropped in (4, 6), (
+    f"Expected 4 or 6 temporal lower-year cutoffs, found {n_dropped}. "
+    "Refusing an unverified edit."
+)
+# Strict reproducibility: no edits other than import, facet N, and temporal
+# lower-year cutoff removal.
+expected = text.replace(old, new, 1).replace(old_facet, new_facet, 1)
+expected, expected_n = re.subn(lower_cutoff, "", expected)
+assert expected_n == n_dropped and rendered == expected
 out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 out.parent.mkdir(parents=True,exist_ok=True)
 out.write_text(rendered,encoding="utf-8")
-# Strict invariant: only the input reader is changed.
-assert rendered.replace(new_facet,old_facet,1).replace(new,old,1)==text
 sha=hashlib.sha256(original.read_bytes()).hexdigest()
 (out.parent/"ORIGINAL_SHA256.txt").write_text(f"{sha}  {original.name}\n")
 print(f"[PASS] Original notebook preserved; master import and temporal facet N corrected: {out}")
 print(f"[AUDIT] Original SHA-256: {sha}")
-print("[AUDIT] Temporal facet labels count only 1990-2025 eligible genomes; percentages and plots unchanged.")
+print(f"[AUDIT] Removed {n_dropped} unintended pre-1990 temporal cutoffs; years <=2000 remain grouped.")
+print("[AUDIT] Dot plot facets and numerators use the same valid-year <=2025 population.")
 print("[NOTE] Notebook execution can depend on exploratory objects/interactive R chunks; validate outputs against the original.")
