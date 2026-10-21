@@ -34,16 +34,16 @@ with file.open(encoding="utf-8-sig", newline="") as stream:
             counts[source]["historical"] += n
 
 expected = {
-    "Human": (26541, 245, 19, 26296),
-    "Chicken-US": (6637, 49, 17, 6588),
-    "Other-US": (582, 29, 2, 553),
-    "International": (71, 0, 0, 71),
+    "Human": (26541, 245, 25, 26296),
+    "Chicken-US": (6637, 49, 1, 6588),
+    "Other-US": (582, 29, 11, 553),
+    "International": (71, 0, 1, 71),
 }
 # Verify expected total, missing and eligible counts. Report but do not constrain
 # each source's historical count: the <=2000 category is summed explicitly below.
-for src, (total, missing, _old, plotted) in expected.items():
+for src, (total, missing, historical, plotted) in expected.items():
     got = counts[src]
-    if (got["total"], got["missing"], got["plotted"]) != (total, missing, plotted):
+    if (got["total"], got["missing"], got["historical"], got["plotted"]) != (total, missing, historical, plotted):
         raise SystemExit(f"[FAIL] Temporal counts for {src}: {got}")
 totals = {k: sum(v[k] for v in counts.values()) for k in
           ("total", "missing", "historical", "plotted")}
