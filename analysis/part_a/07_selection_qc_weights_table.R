@@ -91,14 +91,14 @@ cat("[OUTPUT] ",out,"\n",sep="")
 # IMPORTANT: 2018-2022 and 2021-2025 intentionally OVERLAP in 2021-2022.
 # Do not sum counts across these periods: those years are repeated by design.
 period_specs <- tibble::tibble(
-  Period=c("Pre-2018","2018-2022","2021-2025"),
-  Start=c(-Inf,2018L,2021L),
-  End=c(2017L,2022L,2025L)
+  Period=c("Pre-2018","2018-2022","2021-2025","Missing year"),
+  Start=c(-Inf,2018L,2021L,NA_real_),
+  End=c(2017L,2022L,2025L,NA_real_)
 )
 period_input <- purrr::pmap_dfr(period_specs, function(Period,Start,End) {
   master %>%
-    dplyr::filter(!is.na(Year_of_isolation),
-      Year_of_isolation >= Start, Year_of_isolation <= End) %>%
+    dplyr::filter(if (is.na(Start)) is.na(Year_of_isolation) else
+      !is.na(Year_of_isolation) & Year_of_isolation >= Start & Year_of_isolation <= End) %>%
     dplyr::mutate(Period=Period)
 })
 period_tab <- period_input %>%
@@ -145,5 +145,5 @@ readr::write_csv(period_tab,
 writexl::write_xlsx(list(Period_source_marker=period_tab),
   file.path(out,"period_source_marker_selection_QC_weights.xlsx"))
 cat("[PASS] Period grouping table: ",nrow(period_tab),
-  " strata (Pre-2018, 2018-2022, 2021-2025).\\n",sep="")
+  " strata (Pre-2018, 2018-2022, 2021-2025, Missing year).\\n",sep="")
 cat("[CAUTION] Periods 2018-2022 and 2021-2025 overlap for 2021-2022; totals across periods must not be summed.\\n")
