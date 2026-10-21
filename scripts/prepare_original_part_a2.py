@@ -36,12 +36,6 @@ new_facet = """src_N <- SEN %>%
   ) %>%"""
 assert rendered.count(old_facet) == 1, "Original facet N block must occur exactly once"
 rendered = rendered.replace(old_facet, new_facet, 1)
-# The original Top-100 chart is horizontal (coord_flip): scale_y is its x-axis.
-chart_axis_old = "limits = c(0, 22000),"
-chart_axis_new = "limits = c(0, 25000),"
-assert rendered.count(chart_axis_old) == 1, "FQR Top-100 axis block must be unique"
-rendered = rendered.replace(chart_axis_old, chart_axis_new, 1)
-
 # All six temporal uses (uploaded 30-chunk original) or four uses (archived
 # 26-chunk notebook) incorrectly discarded dated genomes before 1990, although
 # both notebooks have a <=2000 bin. Remove only those lower-year cutoff LINES
@@ -69,7 +63,7 @@ def set_top100_xmax(doc):
 
 rendered = set_top100_xmax(rendered)
 # Strict reproducibility: only input, facet N, temporal cutoff and Top100 axis may change.
-expected = text.replace(old, new, 1).replace(old_facet, new_facet, 1).replace(chart_axis_old, chart_axis_new, 1)
+expected = text.replace(old, new, 1).replace(old_facet, new_facet, 1)
 expected, expected_n = re.subn(lower_cutoff, "", expected)
 expected = set_top100_xmax(expected)
 assert expected_n == n_dropped and rendered == expected
