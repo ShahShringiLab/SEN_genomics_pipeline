@@ -86,6 +86,12 @@ The broad QR/FQR marker rule reconstructed from the original notebook differs fr
 
 Fresh-Linux instructions: docs/PART_A_FRESH_LINUX.md.
 
+### Part A2 master-population reproducibility (33,831 genomes)
+
+The original notebook (`provenance/SEN_Genomes2.Rmd`) analyzed the **full 33,831-genome master population** before genome selection. A reproducible master-population extension now exports the correctly parsed **51 original columns to XLSX/CSV before creating any derived fields**, then produces full-population QR/FQR marker, temporal dot/bar, source and sampling-audit outputs. The original Part A1 and selected 3,434-genome workflows remain intact.
+
+Run: `bash scripts/run_part_a_master.sh` after installing `r-writexl` in `sen_stats`. See [the exact cloning, output and scope instructions](docs/PART_A_33831_MASTER.md).
+
 ### Part B1 — read retrieval, trimming and quality control
 
 The final Part A cohort provides the 3,434 selected accessions entering Part B.
