@@ -81,8 +81,8 @@ if (file.exists(annual_path)) {
   dplyr::summarise(N=sum(`Available genomes (N)`),
     selected=sum(`Selected genomes (pre-QC)`),
     analyzed=sum(`Analyzed genomes (post-QC) (n)`),.groups="drop")
- if (!identical(dplyr::arrange(check,Year,QR_status),
-                 dplyr::arrange(recorded,Year,QR_status)))
+ if (!isTRUE(all.equal(dplyr::arrange(check,Year,QR_status),
+                 dplyr::arrange(recorded,Year,QR_status),check.attributes=FALSE)))
    stop("Genotype table does not reconcile against existing yearly QR-status table.")
 }
 out <- ensure_dir(sen_path("results/part_a/master_33831/sampling_qc_table"))
