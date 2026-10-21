@@ -85,8 +85,29 @@ if (file.exists(annual_path)) {
                  dplyr::arrange(recorded,Year,QR_status),check.attributes=FALSE)))
    stop("Genotype table does not reconcile against existing yearly QR-status table.")
 }
+# Full genotype signatures (not grouped by major marker). These capture
+# co-occurring determinants without pretending each genome has one mutation.
+master$QR_genotype_signature <- vapply(markers,function(x) {
+  if (!length(x)) "QS/FQS (no marker)" else
+    paste(sort(unique(pretty_token(x))),collapse=" + ")
+},character(1))
+full <- master %>% dplyr::filter(!is.na(Year),dplyr::between(Year,2018L,2025L)) %>%
+  dplyr::group_by(Year,QR_genotype_signature) %>%
+  dplyr::summarise(N_available=dplyr::n(),
+    N_selected=sum(Selected_pre_QC),N_analyzed=sum(Analyzed_post_QC),
+    .groups="drop") %>%
+  dplyr::arrange(Year,dplyr::desc(N_available),QR_genotype_signature) %>%
+  dplyr::rename("Year of isolation"=Year,
+    "Exact QR/FQR marker genotype(s)"=QR_genotype_signature,
+    "Total available genomes (N)"=N_available,
+    "Total genomes selected (pre-QC)"=N_selected,
+    "Total genomes analyzed (post-QC)"=N_analyzed)
+stopifnot(sum(full[["Total available genomes (N)"]])==nrow(records),
+ sum(full[["Total genomes selected (pre-QC)"]])==sum(records$Selected_pre_QC),
+ sum(full[["Total genomes analyzed (post-QC)"]])==sum(records$Analyzed_post_QC))
 out <- ensure_dir(sen_path("results/part_a/master_33831/sampling_qc_table"))
 readr::write_csv(tab,file.path(out,"Table_SS1_2018_2025_year_marker_genotype.csv"))
+readr::write_csv(full,file.path(out,"Table_SS1_2018_2025_exact_genotype_signatures.csv"))
 if (!requireNamespace("writexl",quietly=TRUE)) stop("r-writexl required for XLSX export.")
 rules <- data.frame(
  Note=c("Study population","Time window","One genome per row",
@@ -104,7 +125,7 @@ rules <- data.frame(
   "Available=master genomes; selected=3,434-key membership; analyzed=3,306 final clade metadata.",
   "The previously verified outbreak restriction is a feature of the archived selected cohort, not reapplied here."
  ),check.names=FALSE)
-writexl::write_xlsx(list("Table_SS1"=tab,"Definitions"=rules),
+writexl::write_xlsx(list("Table_SS1"=tab,"Exact_genotype_signatures"=full,"Definitions"=rules),
  file.path(out,"Table_SS1_2018_2025_year_marker_genotype.xlsx"))
 cat("[PASS] Table SS1 ",nrow(tab)," rows / 2018-2025 / genotypes + QS/FQS; ",
  sum(tab[["Total available genomes (N)"]])," available, ",
