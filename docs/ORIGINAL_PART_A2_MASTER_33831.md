@@ -1,37 +1,22 @@
-# Original Part A2 — 33,831-genome master reproduction
+# Original Part A2: faithful Rmd preservation (33,831 genomes)
 
-The original population-level analysis is documented in `provenance/SEN_Genomes2.Rmd`. Do **not** substitute the selected 3,434 genomes as the denominator for 33,831-genome epidemiology.
-
-## Clone and run
+**Authoritative source:** user's supplied `SEN_Genomes2.Rmd`. It is longer than the archived `provenance/SEN_Genomes2.Rmd`; they are **not interchangeable**. The full uploaded original is not committed on this branch. Copy it to the local repository before running.
 
 ```bash
 git clone --branch feature/part-a2-master-33831-parsed-snapshot-20261021 \
-  https://github.com/ShahShringiLab/SEN_genomics_pipeline.git SEN_MasterA2
+ https://github.com/ShahShringiLab/SEN_genomics_pipeline.git SEN_MasterA2
 cd SEN_MasterA2
+mkdir -p provenance
+cp /path/to/your/uploaded/SEN_Genomes2.Rmd provenance/SEN_Genomes2_uploaded_original_20261021.Rmd
 source ~/miniconda3/etc/profile.d/conda.sh
-# Reuse your existing sen_stats environment; writexl is needed for Excel export.
 conda install -n sen_stats -c conda-forge r-writexl -y
 bash scripts/run_master_part_a2.sh
 ```
 
-### Three stages
-1. `analysis/part_a/00_parse_master_33831.R`: use `read_sen_master_csv()`, audit BioProject/BioSample/Run field alignment, then export the **unaugmented** 33,831-by-51 snapshot before adding variables. Does not modify the original CSV.
-2. `analysis/part_a/06_master_33831_analysis.R`: run 33,831-genome master analysis, derive collection year, QR/FQR status and source/origin, plot source-specific population denominators and create audits. The 3,434 selection key is referenced only for coverage/audit columns, not as the source population.
-3. `scripts/run_part_a.sh`: **after** master epidemiology, run A1 phenotype and the downstream 3,434-genome selected-cohort analyses and validators.
-
-### Raw snapshot
+The runner first normalizes CSV quoting/escaped commas and exports **exactly 33,831 rows × original 51 columns** as immutable input snapshot at
 `results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.xlsx`
+and equivalent CSV, with field-alignment audit and checksums.
 
-Also: `SEN_33831_PARSED_51COL.csv`, `parsed_master_field_alignment_audit.csv`, `file_checksums.csv`.
+Then `scripts/prepare_original_part_a2.py` copies the user's original Rmd into `analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd` and replaces **only** the original `SEN <- read_csv(file_path, ...)` import to read the corrected snapshot. Its source checks prove the rest of the notebook is byte-for-byte preserved after undoing that one replacement. SHA-256 of supplied original is recorded.
 
-### Derived outputs
-Under `results/part_a/master_33831/`: analysis-ready CSV/XLSX, source/year QC audit, annual QR/FQR tables, marker frequencies/burden, two dot plots (year, five-year bins), stacked count and percentage plots, cohort-coverage plots, sampling weights, and master-vs-rebuilt discrepancy audit.
-
-**Publication caveat:** This modular implementation restores key original Part A2 master-population analyses but does not assert that every exploratory chunk of the archived Rmd has been identically reproduced. The pipeline must run and audits must pass locally before publication.
-
-## Guardrails and scope
-
-- The raw 51-column XLSX/CSV is written **before any derived field**; originals in `data/` are never overwritten.
-- The 33,831-master is the denominator for master marker frequencies and per-source-year prevalence. Missing/out-of-window years are excluded only from temporal estimates, with source-specific missing-year counts audited separately.
-- The derived master script checks unique run IDs, selected membership (3,434), final phylogeny membership (3,306), and optionally the regenerated cohort when present.
-- The master script is a **partial modular implementation** of the original `provenance/SEN_Genomes2.Rmd`, not a claim of complete one-to-one reproduction of its exploratory analyses; run-time checks on the target machine are required.
+**This runner intentionally does NOT execute a substituted modern plot pipeline or rewrite analytical chunks.** The notebook still has original working-directory assumptions, manual intermediary files and exploratory sections. It must be run/migrated with an output-by-output fidelity check before reporting a full reproducible Part A2 run. The 3,434-genome selected cohort must not be silently substituted for the original 33,831 master.
