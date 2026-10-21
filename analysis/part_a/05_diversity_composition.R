@@ -6,12 +6,12 @@ if (!requireNamespace("patchwork", quietly=TRUE)) {
 }
 suppressPackageStartupMessages(library(patchwork))
 
-input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes_rebuilt.csv")
-if (!file.exists(input)) stop("Run analysis/part_a/02_build_final_cohort.R first.")
+input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")
+if (!file.exists(input)) stop("Run python3 scripts/merge_qc_full_metadata.py first.")
 outdir <- ensure_dir(sen_path("results/part_a/diversity"))
 
 sen <- read_csv(input, show_col_types=FALSE)
-assert_columns(sen,c("Isolate","AMR genotypes core","Source"),"rebuilt cohort")
+assert_columns(sen,c("Isolate","AMR genotypes core","Source"),"QC-merged 3,434-genome cohort")
 source_levels <- c("Human","Chicken-US","Other-US","International")
 
 tok <- sen %>%
