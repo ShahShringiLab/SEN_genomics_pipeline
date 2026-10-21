@@ -26,11 +26,21 @@ Run the version capture script inside the relevant analysis environment(s):
 bash scripts/capture_tool_versions.sh
 ```
 
-The resulting `software_versions.tsv` is used to build reproducible environment
-definitions without inventing package versions.
+The resulting `software_versions.tsv` records the resolved runtime software
+versions for reproducibility and release verification.
 
 ## Runtime validation
 
-Static validation does not prove the biological workflow executes end-to-end.
-After environments are resolved, run a small representative smoke cohort before
-attempting the full 3,306-isolate reconstruction.
+Part A runtime validation is performed with:
+
+```bash
+bash scripts/run_part_a.sh
+```
+
+The runner validates committed inputs and the Part A -> Part B accession handoff
+before execution, runs all five Part A R stages, and then requires
+`scripts/validate_part_a_outputs.py` to pass before emitting `SEN PART A:
+PASS`.
+
+Part B runtime validation uses the representative four-isolate smoke cohort to
+verify end-to-end stage handoffs before manuscript-scale execution.

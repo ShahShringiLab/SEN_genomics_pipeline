@@ -214,3 +214,30 @@ implementation. Development and testing continue in the personal development
 repository; validated improvements are promoted into the manuscript repository
 as updated complete snapshots. A validated release tag should be created after
 the checklist above has been rerun and reconciled against the manuscript.
+
+
+## 11. October 2026 release-candidate gate
+
+**STATUS: DRAFT — PUBLIC `main` MUST NOT BE PROMOTED YET.**
+
+The candidate introduces Part A scripts, phenotype input, source and cohort
+selection logic, curated QR/clade audit, and the latest lightweight
+Run/Isolate/Clade sidecar. The two 3,434-row audit/sidecar files agree exactly;
+128 records were excluded from the final phylogeny.
+
+The three core-field `gyrA_D87Y` Clade 3 accessions SRR15338589,
+SRR16764591, and SRR16767069 are corrected to molecular marker-positive in
+Part A but assigned curated QS/FQS override labels in the latest clade summary.
+Do not equate a curated susceptibility label with lack of a QR/FQR determinant.
+Reconcile the scientific classification and manuscript summaries explicitly.
+
+**Blocked:** two source CSVs remain absent on this review branch because of
+a GitHub connector large-payload transfer limitation. Restore exact blobs:
+`US-SEN_12192025.csv` (git blob SHA
+`6ffc47814dca722ac75e7b335d4b976dbfaad9ee`) and
+`Finalupdated_SEN_Genomes1.csv` (git blob SHA
+`b51383acf25d52fbd2eb979a416092acd8d2d2ca`).
+
+Before any merge: run the static publication audit, complete Part A and Part B
+smoke workflows, confirm canonical results, resolve software-version provenance,
+and obtain a manuscript-level review of resistance labeling.
