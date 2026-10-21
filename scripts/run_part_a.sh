@@ -60,6 +60,10 @@ if ! conda run --no-capture-output -n sen_stats env SEN_ROOT="$SEN_ROOT" \
   tail -n 60 "$MASTER_DIR/run.log" >&2
   exit 1
 fi
-echo "[PASS] Original master analyses completed"
+grep -F "[PASS] Temporal dot plot:" "$MASTER_DIR/run.log" || {
+  echo "[FAIL] Temporal dot plot audit did not appear in $MASTER_DIR/run.log" >&2
+  exit 1
+}
+echo "[PASS] Original master analyses completed with validated 33,508-genome temporal denominator"
 echo " SEN PART A: PASS"
 echo "=================================================="
