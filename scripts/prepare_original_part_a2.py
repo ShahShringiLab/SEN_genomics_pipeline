@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare faithful original Part A2 Rmd from an uploaded notebook. No plot edits."""
+"""Prepare original Part A2 with audited master input and temporal facet N only."""
 from pathlib import Path
 import hashlib
 import sys
@@ -16,13 +16,34 @@ new='''file_path <- file.path(Sys.getenv("SEN_ROOT", unset=getwd()),
 SEN <- read_csv(file_path, col_types = cols(.default = col_character()))
 stopifnot(nrow(SEN)==33831L,ncol(SEN)==51L)'''
 rendered=text.replace(old,new,1)
+# The original dot plot uses source-specific facet labels. Its N must reflect
+# precisely the year-eligible source population (1990-2025), not all source rows.
+# This is a surgical label-only change; original statistics and figures remain.
+old_facet = """src_N <- SEN %>%
+  count(
+    Source,
+    name = "N_total"
+  ) %>%"""
+new_facet = """src_N <- SEN %>%
+  filter(
+    !is.na(Collection_year),
+    as.integer(Collection_year) >= 1990L,
+    as.integer(Collection_year) <= 2025L
+  ) %>%
+  count(
+    Source,
+    name = "N_total"
+  ) %>%"""
+assert rendered.count(old_facet) == 1, "Original facet N block must occur exactly once"
+rendered = rendered.replace(old_facet, new_facet, 1)
 out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 out.parent.mkdir(parents=True,exist_ok=True)
 out.write_text(rendered,encoding="utf-8")
 # Strict invariant: only the input reader is changed.
-assert rendered.replace(new,old,1)==text
+assert rendered.replace(new_facet,old_facet,1).replace(new,old,1)==text
 sha=hashlib.sha256(original.read_bytes()).hexdigest()
 (out.parent/"ORIGINAL_SHA256.txt").write_text(f"{sha}  {original.name}\n")
-print(f"[PASS] Original notebook preserved; one import replaced: {out}")
+print(f"[PASS] Original notebook preserved; master import and temporal facet N corrected: {out}")
 print(f"[AUDIT] Original SHA-256: {sha}")
+print("[AUDIT] Temporal facet labels count only 1990-2025 eligible genomes; percentages and plots unchanged.")
 print("[NOTE] Notebook execution can depend on exploratory objects/interactive R chunks; validate outputs against the original.")
