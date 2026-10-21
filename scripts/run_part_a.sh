@@ -39,6 +39,11 @@ echo "[RUN] Master preparation, Rmd correction, and both year/QC sampling tables
 bash scripts/run_master_part_a2.sh
 run_r analysis/part_a/01_phenotype_trends.R
 run_r analysis/part_a/02_build_final_cohort.R
+
+echo
+echo "[MERGE] Combine verified QC edits with every column of 3,434 selected-genome metadata"
+python3 scripts/merge_qc_full_metadata.py
+
 run_r analysis/part_a/03_genotype_marker_summary.R
 run_r analysis/part_a/04_source_profiles.R
 run_r analysis/part_a/05_diversity_composition.R
