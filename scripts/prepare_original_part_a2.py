@@ -46,10 +46,26 @@ assert n_dropped in (4, 6), (
     f"Expected 4 or 6 temporal lower-year cutoffs, found {n_dropped}. "
     "Refusing an unverified edit."
 )
-# Strict reproducibility: no edits other than import, facet N, and temporal
-# lower-year cutoff removal.
+# Targeted graphical change: after coord_flip(), the count scale is the
+# displayed horizontal (x) axis in FQR_marker_counts_top100.
+# Retain the source notebook unchanged; modify only the generated working Rmd.
+def set_top100_xmax(doc):
+    start = "p_tokens <- ggplot(plot_df, aes(x = token_pretty, y = n_isolates, fill = Type)) +"
+    end = "print(p_tokens)"
+    assert doc.count(start) == 1, "Expected one Top100 marker chart definition"
+    prefix, rest = doc.split(start, 1)
+    assert rest.count(end) >= 1, "Cannot find end of Top100 chart"
+    plot, suffix = rest.split(end, 1)
+    old_limit = "limits = c(0, 22000)"
+    assert plot.count(old_limit) == 1, "Expected one Top100 count axis with max 22000"
+    plot = plot.replace(old_limit, "limits = c(0, 25000)", 1)
+    return prefix + start + plot + end + suffix
+
+rendered = set_top100_xmax(rendered)
+# Strict reproducibility: only input, facet N, temporal cutoff and Top100 axis may change.
 expected = text.replace(old, new, 1).replace(old_facet, new_facet, 1)
 expected, expected_n = re.subn(lower_cutoff, "", expected)
+expected = set_top100_xmax(expected)
 assert expected_n == n_dropped and rendered == expected
 out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 out.parent.mkdir(parents=True,exist_ok=True)
@@ -60,4 +76,5 @@ print(f"[PASS] Original notebook preserved; master import and temporal facet N c
 print(f"[AUDIT] Original SHA-256: {sha}")
 print(f"[AUDIT] Removed {n_dropped} unintended pre-1990 temporal cutoffs; years <=2000 remain grouped.")
 print("[AUDIT] Dot plot facets and numerators use the same valid-year <=2025 population.")
+print("[AUDIT] FQR_marker_counts_top100 x-axis limit set to 25,000 (after coord_flip).")
 print("[NOTE] Notebook execution can depend on exploratory objects/interactive R chunks; validate outputs against the original.")
