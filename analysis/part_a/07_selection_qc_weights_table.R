@@ -85,3 +85,65 @@ writexl::write_xlsx(list(Year_source_marker=tab),file.path(out,"year_source_mark
 cat("[PASS] Sampling and QC table generated: ",nrow(tab)," strata, 33,831 master / 3,434 selected / 3,306 analyzed.\n",sep="")
 cat("[INFO] Undefined percentages (N=0) and weights (n=0) exported blank; missing years retained separately.\n")
 cat("[OUTPUT] ",out,"\n",sep="")
+
+
+# SECOND OUTPUT: the three user-requested period definitions.
+# IMPORTANT: 2018-2022 and 2021-2025 intentionally OVERLAP in 2021-2022.
+# Do not sum counts across these periods: those years are repeated by design.
+period_specs <- tibble::tibble(
+  Period=c("Pre-2018","2018-2022","2021-2025"),
+  Start=c(-Inf,2018L,2021L),
+  End=c(2017L,2022L,2025L)
+)
+period_input <- purrr::pmap_dfr(period_specs, function(Period,Start,End) {
+  master %>%
+    dplyr::filter(!is.na(Year_of_isolation),
+      Year_of_isolation >= Start, Year_of_isolation <= End) %>%
+    dplyr::mutate(Period=Period)
+})
+period_tab <- period_input %>%
+  dplyr::group_by(Period,Source,QR_FQR_Marker_status) %>%
+  dplyr::summarise(Available_genomes_N=dplyr::n(),
+    Selected_genomes_pre_QC=sum(Selected_pre_QC),
+    Analyzed_genomes_post_QC_n=sum(Analyzed_post_QC),.groups="drop") %>%
+  tidyr::complete(Period=period_specs$Period,Source=sources,
+    QR_FQR_Marker_status=statuses,
+    fill=list(Available_genomes_N=0L,Selected_genomes_pre_QC=0L,
+      Analyzed_genomes_post_QC_n=0L)) %>%
+  dplyr::mutate(
+    Pct_of_available_selected=ifelse(Available_genomes_N>0,
+      100*Selected_genomes_pre_QC/Available_genomes_N,NA_real_),
+    Pct_of_available_analyzed=ifelse(Available_genomes_N>0,
+      100*Analyzed_genomes_post_QC_n/Available_genomes_N,NA_real_),
+    Weight_N_div_n=ifelse(Analyzed_genomes_post_QC_n>0,
+      Available_genomes_N/Analyzed_genomes_post_QC_n,NA_real_),
+    .period_order=match(Period,period_specs$Period),
+    .source_order=match(Source,sources),
+    .status_order=match(QR_FQR_Marker_status,statuses)) %>%
+  dplyr::arrange(.period_order,.source_order,.status_order) %>%
+  dplyr::select(-.period_order,-.source_order,-.status_order) %>%
+  dplyr::rename("Year"=Period,
+    "QR status"=QR_FQR_Marker_status,
+    "N"=Available_genomes_N,
+    "Selected genomes (pre-QC)"=Selected_genomes_pre_QC,
+    "n"=Analyzed_genomes_post_QC_n,
+    "% of available selected"=Pct_of_available_selected,
+    "% of available analyzed"=Pct_of_available_analyzed,
+    "N/n"=Weight_N_div_n)
+
+# Check each period against its independently filtered source records;
+# NEVER assert sum of periods equals 33,831 because overlap is intentional.
+for (p in period_specs$Period) {
+  observed <- period_tab[period_tab$Year==p,,drop=FALSE]
+  expected <- period_input[period_input$Period==p,,drop=FALSE]
+  stopifnot(sum(observed$N)==nrow(expected),
+    sum(observed[["Selected genomes (pre-QC)"]])==sum(expected$Selected_pre_QC),
+    sum(observed$n)==sum(expected$Analyzed_post_QC))
+}
+readr::write_csv(period_tab,
+  file.path(out,"period_source_marker_selection_QC_weights.csv"),na="")
+writexl::write_xlsx(list(Period_source_marker=period_tab),
+  file.path(out,"period_source_marker_selection_QC_weights.xlsx"))
+cat("[PASS] Period grouping table: ",nrow(period_tab),
+  " strata (Pre-2018, 2018-2022, 2021-2025).\\n",sep="")
+cat("[CAUTION] Periods 2018-2022 and 2021-2025 overlap for 2021-2022; totals across periods must not be summed.\\n")
