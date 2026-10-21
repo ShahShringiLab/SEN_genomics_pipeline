@@ -40,7 +40,7 @@ rendered = rendered.replace(old_facet, new_facet, 1)
 # 26-chunk notebook) incorrectly discarded dated genomes before 1990, although
 # both notebooks have a <=2000 bin. Remove only those lower-year cutoff LINES
 # from the generated working copy. Keep the archived/uploaded original pristine.
-lower_cutoff = r"(?m)^[ \\t]*Collection_year[ \\t]*>=[ \\t]*1990[L]?,[ \\t]*\\n"
+lower_cutoff = r"(?m)^[ \t]*Collection_year[ \t]*>=[ \t]*1990[L]?,[ \t]*\n"
 rendered, n_dropped = re.subn(lower_cutoff, "", rendered)
 assert n_dropped in (4, 6), (
     f"Expected 4 or 6 temporal lower-year cutoffs, found {n_dropped}. "
