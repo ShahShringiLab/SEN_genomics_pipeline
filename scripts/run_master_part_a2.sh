@@ -10,14 +10,17 @@ if [[ ! -f "$NOTEBOOK" ]]; then
   echo "Copy your provided SEN_Genomes2.Rmd there or pass its path as the first argument." >&2
   exit 2
 fi
-echo "[1/3] Strict 33,831 x 51 parsed raw snapshot and metadata QC"
+echo "[1/4] Strict 33,831 x 51 parsed raw snapshot and metadata QC"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/00_parse_master_33831.R
-echo "[2/3] Prepare original Rmd with parsed master and corrected temporal facet N"
+echo "[2/4] Prepare original Rmd with parsed master and corrected temporal facet N"
 python3 scripts/prepare_original_part_a2.py "$NOTEBOOK"
-echo "[3/3] Generate year × source × marker sampling/QC table and weights"
+echo "[3/4] Generate year × source × marker sampling/QC table and weights"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/07_selection_qc_weights_table.R
+echo "[4/4] Generate manuscript Table SS1: 2018-2025 by QR/FQR marker genotype, including QS/FQS"
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
+  Rscript analysis/part_a/08_table_ss1_post2018_genotype.R
 echo "[READY] analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 echo "[NOTE] This preserves exact notebook analyses and plots; it does NOT silently run alternative analyses."
 echo "[NOTE] Render/run the notebook only after resolving its original local input/output paths and exploratory state."
