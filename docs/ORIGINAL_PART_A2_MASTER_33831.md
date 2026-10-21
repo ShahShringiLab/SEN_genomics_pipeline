@@ -16,8 +16,8 @@ bash scripts/run_master_part_a2.sh
 
 ### Three stages
 1. `analysis/part_a/00_parse_master_33831.R`: use `read_sen_master_csv()`, audit BioProject/BioSample/Run field alignment, then export the **unaugmented** 33,831-by-51 snapshot before adding variables. Does not modify the original CSV.
-2. `scripts/run_part_a.sh`: run validated A1 phenotype plus A2 selected-cohort analyses and compare 3,434 selected versus 3,306 final-phylogeny genomes.
-3. `analysis/part_a/06_master_33831_analysis.R`: derive collection year, QR/FQR status and source/origin using the canonical functions; cross-check selected and post-QC memberships; produce master population analyses and plots.
+2. `analysis/part_a/06_master_33831_analysis.R`: run 33,831-genome master analysis, derive collection year, QR/FQR status and source/origin, plot source-specific population denominators and create audits. The 3,434 selection key is referenced only for coverage/audit columns, not as the source population.
+3. `scripts/run_part_a.sh`: **after** master epidemiology, run A1 phenotype and the downstream 3,434-genome selected-cohort analyses and validators.
 
 ### Raw snapshot
 `results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.xlsx`
@@ -28,3 +28,10 @@ Also: `SEN_33831_PARSED_51COL.csv`, `parsed_master_field_alignment_audit.csv`, `
 Under `results/part_a/master_33831/`: analysis-ready CSV/XLSX, source/year QC audit, annual QR/FQR tables, marker frequencies/burden, two dot plots (year, five-year bins), stacked count and percentage plots, cohort-coverage plots, sampling weights, and master-vs-rebuilt discrepancy audit.
 
 **Publication caveat:** This modular implementation restores key original Part A2 master-population analyses but does not assert that every exploratory chunk of the archived Rmd has been identically reproduced. The pipeline must run and audits must pass locally before publication.
+
+## Guardrails and scope
+
+- The raw 51-column XLSX/CSV is written **before any derived field**; originals in `data/` are never overwritten.
+- The 33,831-master is the denominator for master marker frequencies and per-source-year prevalence. Missing/out-of-window years are excluded only from temporal estimates, with source-specific missing-year counts audited separately.
+- The derived master script checks unique run IDs, selected membership (3,434), final phylogeny membership (3,306), and optionally the regenerated cohort when present.
+- The master script is a **partial modular implementation** of the original `provenance/SEN_Genomes2.Rmd`, not a claim of complete one-to-one reproduction of its exploratory analyses; run-time checks on the target machine are required.
