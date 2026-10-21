@@ -13,11 +13,13 @@ fi
 echo "[1/4] Strict 33,831 x 51 parsed raw snapshot and metadata QC"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/00_parse_master_33831.R
-echo "[2/4] Prepare original Rmd with parsed master and corrected temporal facet N"
+echo "[2/4] Prepare original Rmd with consistent temporal eligibility (all dated years <=2025)"
 python3 scripts/prepare_original_part_a2.py "$NOTEBOOK"
 echo "[3/4] Generate year × source × marker sampling/QC table and weights"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/07_selection_qc_weights_table.R
+echo "[AUDIT] Validate temporal plot: 33,508 genomes; <=2000 bin has 38"
+python3 scripts/audit_full_temporal_counts.py
 echo "[4/4] Generate manuscript Table SS1: 2018-2025 by QR/FQR marker genotype, including QS/FQS"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/08_table_ss1_post2018_genotype.R
