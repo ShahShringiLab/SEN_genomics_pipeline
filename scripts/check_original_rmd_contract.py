@@ -40,7 +40,9 @@ checks = [
     ('30 source chunks preserved in working Rmd',
      len(re.findall(r'(?ms)^\x60\x60\x60\{r[^\n}]*\}\s*\n(.*?)^\x60\x60\x60\s*$',working)) == 30),
     ('original source preserved', original.read_text(encoding="utf-8-sig") == s),
-    ('corrected horizontal chart axis', 'limits = c(0, 25000)' in working),
+    ('horizontal marker chart reaches 250,000, with endpoint tick omitted',
+     'limits = c(0, 250000)' in working and
+     'breaks = seq(0, 200000, by = 50000)' in working),
     ('historical year filters removed from working full-master',
      'Collection_year >= 1990,' not in "\n".join(chunks2 for chunks2 in
         re.findall(r'(?ms)^\x60\x60\x60\{r[^\n}]*\}\s*\n(.*?)^\x60\x60\x60\s*$', working)[3:22])),
