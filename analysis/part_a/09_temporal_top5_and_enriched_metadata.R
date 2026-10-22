@@ -208,7 +208,10 @@ make_plot <- function(df, cohort_label, y_key) {
       fill="QR/FQR genotype") +
     ggplot2::theme_classic(base_size=13) +
     ggplot2::theme(axis.text.x=ggplot2::element_text(face="bold"),
-                   legend.position="right")
+                   legend.position="right",
+                   plot.title=ggplot2::element_text(hjust=0.5,face="bold"),
+                   plot.subtitle=ggplot2::element_text(hjust=0.5),
+                   plot.title.position="plot")
   if (y_key=="Percent") pp <- pp +
     ggplot2::scale_y_continuous(labels=function(y) paste0(y,"%"),limits=c(0,112))
   else pp <- pp + ggplot2::scale_y_continuous(labels=scales::label_comma())
@@ -229,6 +232,57 @@ save_plots(total_counts,"SEN_Total_33831_TemporalBlocks_Top5_QSFQS",
            "Total available SEN genomes")
 save_plots(selected_counts,"SEN_Selected_3434_TemporalBlocks_Top5_QSFQS",
            "Selected SEN genomes")
+
+# Companion panels use two independent ggplot objects: the count panels
+# deliberately retain their OWN y-axis scales (33,508 dated master genomes
+# versus 3,434 selected genomes). The percent plots use the original 0-112%
+# bounds. The archived individual figures above remain available unchanged,
+# apart from the requested centered titles.
+save_side_by_side <- function(total_df, selected_df, metric, prefix) {
+  stopifnot(metric %in% c("Count","Percent"))
+  p_total <- make_plot(total_df,"Total available SEN genomes",metric) +
+    ggplot2::labs(subtitle=NULL)
+  p_selected <- make_plot(selected_df,"Selected SEN genomes",metric) +
+    ggplot2::labs(subtitle=NULL)
+
+  headline <- if (metric=="Count") {
+    "Temporal distribution of SEN genomes by QR/FQR marker category"
+  } else {
+    "Temporal composition of SEN genomes by QR/FQR marker category (%)"
+  }
+
+  combined <- ((p_total + p_selected) +
+    patchwork::plot_layout(ncol=2,guides="collect") +
+    patchwork::plot_annotation(
+      title=headline,
+      subtitle="Top five QR/FQR markers + Others + QS/FQS; each genome counted once",
+      theme=ggplot2::theme(
+        plot.title=ggplot2::element_text(hjust=0.5,face="bold",size=16),
+        plot.subtitle=ggplot2::element_text(hjust=0.5)
+      )
+    )) & ggplot2::theme(legend.position="right")
+
+  for (ext in c("png","tif","pdf")) {
+    target <- file.path(plot_out,paste0(prefix,".",ext))
+    args <- list(filename=target,plot=combined,
+                 width=17,height=7,units="in",bg="white")
+    if (ext!="pdf") {
+      args$dpi <- 600
+      if (ext=="tif") args$compression <- "lzw"
+    }
+    do.call(ggplot2::ggsave,args)
+  }
+  cat("[PASS] Side-by-side ",metric,
+      " panels exported; separate count y-axis scales and centered titles.\n",
+      sep="")
+}
+
+save_side_by_side(
+  total_counts,selected_counts,"Count",
+  "SEN_Total_vs_Selected_TemporalBlocks_Top5_QSFQS_Count_side_by_side")
+save_side_by_side(
+  total_counts,selected_counts,"Percent",
+  "SEN_Total_vs_Selected_TemporalBlocks_Top5_QSFQS_Percent_side_by_side")
 
 cat("[PASS] Full enriched metadata: ",nrow(full)," rows, ",
     ncol(full)," columns, all original 51 retained\n",sep="")
