@@ -66,6 +66,13 @@ for population in ("Total_33831","Selected_3434"):
         for ext in (".png",".tif",".pdf"):
             path=chart/(stem+ext)
             assert path.is_file() and path.stat().st_size>0,path
+# Publication companions: Total and Selected share a legend but retain
+# independent panel y-axis scales for counts. Both Count/Percent exports exist.
+for metric in ("Count", "Percent"):
+    stem=f"SEN_Total_vs_Selected_TemporalBlocks_Top5_QSFQS_{metric}_side_by_side"
+    for ext in (".png", ".tif", ".pdf"):
+        path=chart/(stem+ext)
+        assert path.is_file() and path.stat().st_size>0, path
 with countsfile.open(newline="",encoding="utf-8-sig") as fh:
     rows=list(csv.DictReader(fh))
 counts=Counter()
@@ -81,4 +88,4 @@ print("[PASS] All original 51 full-master and 78 selected+QC columns are preserv
 print("[PASS] Enriched master=33,831; selected=3,434; QC included=3,306; excluded=128.")
 print("[PASS] Master-to-selected source, QR bucket and QC statuses reconcile by Run.")
 print("[PASS] Full temporal stacks=33,508 dated; selected=3,434; exactly 1 marker bucket per genome.")
-print("[PASS] Matching count/percentage PNG, TIFF and PDF figures and audit CSVs exported.")
+print("[PASS] Individual and side-by-side count/percentage PNG, TIFF and PDF figures plus audit CSVs exported.")
