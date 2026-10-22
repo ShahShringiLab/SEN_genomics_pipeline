@@ -43,7 +43,11 @@ with both genome counts and percentages labeled and a centered title. Its
 data CSV, PNG, TIFF and PDF are written to
 `results/part_a/full_master_original/international_animal_source/`.
 
-To run **only this figure** from existing finished full-master results:
+The same script also disaggregates the **67 original Others** by the actual recorded `Isolation source` text. It exports three additional **count + percentage** charts (PNG/TIFF/PDF): all 71 categorized source commodities, the 67 Others categorized source commodities, and every distinct literal isolation-source description inside the 67 Others. For the October 2026 metadata this produces the following grouping: plants/herbs/spices/nuts/seeds (16), crustaceans (10), finfish (10), rabbit products (9), mollusks (8), bakery/confectionery (7), dairy/cheese (3), other terrestrial animals (2), processed/imitated seafood (1), and unspecified pet chew (1). The remaining 4 Chicken records are chicken-containing pet treats. These are **transparent rule-based commodity descriptions**, not new host/species assignments; the original wording remains attached to every isolate.
+
+The multi-sheet `SEN_International_71_ALL_sources_and_metadata.xlsx` includes the original 67/4 summary, detailed and literal source counts, IFSAC and Food-origin counts, isolate-level classification audit, **all original master fields** for 71 International genomes, **all available selected+QC fields** for the same 71, a field glossary, and provenance of each input. When available it prefers the enriched master and selected-QC metadata; otherwise it falls back to the raw master and QC-merged/archived selection. It asserts 71 unique matched isolates and fails rather than silently omitting any.
+
+To regenerate **these figures and the Excel workbook only**, using existing full-master and selected metadata:
 
 ```bash
 cd ~/SEN_PartA_clean
