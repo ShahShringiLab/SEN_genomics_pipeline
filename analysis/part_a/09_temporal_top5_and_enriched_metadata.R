@@ -256,7 +256,7 @@ save_side_by_side <- function(total_df, selected_df, metric, prefix) {
   # patchwork's plot-composition operators are not attached to the session.
   # Separate ggplot objects retain their individual count y-scales.
   combined <- patchwork::wrap_plots(
-    plots=list(p_total,p_selected),
+    list(p_total,p_selected),
     ncol=2,
     guides="collect"
   ) + patchwork::plot_annotation(
