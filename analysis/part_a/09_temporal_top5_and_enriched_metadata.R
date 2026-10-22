@@ -12,11 +12,11 @@ out <- ensure_dir(sen_path("results/part_a/reconciled_metadata"))
 plot_out <- ensure_dir(sen_path("results/part_a/temporal_top5"))
 
 raw <- readr::read_csv(raw_file, col_types=readr::cols(.default=readr::col_character()),
-                       show_col_types=FALSE, progress=FALSE)
+                       na=character(), show_col_types=FALSE, progress=FALSE)
 rmd <- readr::read_csv(rmd_file, col_types=readr::cols(.default=readr::col_character()),
-                       show_col_types=FALSE, progress=FALSE)
+                       na=character(), show_col_types=FALSE, progress=FALSE)
 sel <- readr::read_csv(selected_file, col_types=readr::cols(.default=readr::col_character()),
-                       show_col_types=FALSE, progress=FALSE)
+                       na=character(), show_col_types=FALSE, progress=FALSE)
 require_cols <- function(df, cols, label) {
   stopifnot(all(cols %in% names(df)))
   if (anyDuplicated(df[,cols,drop=FALSE])) stop(label, ": duplicate Run+Isolate")
