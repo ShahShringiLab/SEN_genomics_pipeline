@@ -1,110 +1,65 @@
-# Part A — phenotype and genotype/cohort analysis
+# SEN Part A — reproducible original analysis (October 2026)
 
-Part A contains the Linux-executable implementation extracted from the original
-SEN analysis notebook. The original notebook is retained separately as
-provenance; the scripts in this directory are the reproducible publication
-workflow.
+## Analytical authority and population boundaries
 
-## A1. Phenotype resistance trends
+**The complete 30-chunk uploaded original Rmd is the scientific source of truth:**
+provenance/SEN_Genomes2_uploaded_original_20261021.Rmd.
 
-Script: analysis/part_a/01_phenotype_trends.R
+The main command is `bash scripts/run_part_a.sh`.
 
-Input:
+- **Original chunks 3–22:** Phenotypic trends, marker frequencies and burden, source refinements, International/Other-US Table S1, temporal dot and stacked plots, and Hill-number diversity. The genomic input is always **the full 33,831-genome SEN master**, never the 3,434-genome selected metadata. Phenotype data are read from their original surveillance file.
+- **Original chunk 23:** Historical, stochastic selection generation **is not rerun**. The original final 3,434-genome selection has already been frozen and committed.
+- **Original chunks 24–30:** Downstream selected-genome analyses use the fixed **3,434-genome QC-merged metadata**; `SEN` remains the independent 33,831-genome master object. Input file paths are updated but analyses are preserved.
+- **Independent QC reporting:** The validated 3,434 selected metadata, 3,306 phylogeny genomes and 128 exclusions, three molecular-QR corrections, 2018–2025 selection and QC tables are additional audits, not replacements for original full-master analyses.
 
-    data/part_a/phenotype/FDASEN_AMRPhenotype2.csv
+### Only deliberate modifications to the original Rmd
 
-Outputs include the Human-versus-Chicken quinolone/fluoroquinolone phenotype
-trend table, 95% confidence intervals, and publication PNG/PDF figures.
+The original committed file remains unchanged; `scripts/prepare_original_part_a2.py` generates a working copy with:
+1. Input paths redirected to the strictly parsed 33,831 × 51 master snapshot and committed phenotype CSV.
+2. Four/six unintended `Collection_year >= 1990` exclusions removed in temporal analyses. All valid years **≤2000** remain in the combined historical bin, so **33,508** dated genomes contribute, and **323** undated genomes are excluded.
+3. Original temporal facet **N** restricted to the same eligible dated genomes as the marker-percentage denominators. No marker percentages or methods are changed by this label fix.
+4. Original `FQR_marker_counts_top100` horizontal count-axis maximum changed from **22,000 to 25,000**. Marker values and styling unchanged.
 
-The script preserves the notebook rule excluding 2024 and 2025. It also checks
-that Cip_Tested and DSC_Tested are identical before using the shared denominator
-defined in the original analysis.
+### Source decomposition audit
 
-## A2. Genotype trends and final cohort construction
+The original master's manuscript table `SEN_TableS1_final_source_decomposition.csv` must contain:
 
-Script: analysis/part_a/02_build_final_cohort.R
+| Group | Subsource | Genome n |
+|---|---|---:|
+| International | Others | 67 |
+| International | Chicken | 4 |
+| Other-US | Others | 448 |
+| Other-US | Cattle | 60 |
+| Other-US | Turkey | 48 |
+| Other-US | Swine | 21 |
+| Other-US | Sheep/goat | 5 |
 
-Inputs:
+Expected group totals: **International 71**, **Other-US 582**. Corrected parser changes should be **audited, never forced to preserve old numbers**. The end-of-run validator stops and prints the actual differing categories rather than silently changing Table S1.
 
-    data/part_a/genotype/US-SEN_12192025.csv
-    data/part_a/selection/Selected_updated_Isolate.csv
-    data/part_a/selection/Finalupdated_SEN_Genomes1.csv
+### Outputs (never mix denominators)
 
-The script rebuilds the 3,434-isolate selected cohort from the master genotype
-table and final two-column selection key. It reproduces collection-year,
-QR/FQR-marker and source/origin derivations and verifies the rebuilt fields
-against the committed final 3,434-genome table.
+- `results/part_a/full_master_original/`: The **full 33,831** original marker/source/diversity/temporal tables and figures, including original Table S1 and a machine-readable reproducibility audit.
+- `results/part_a/selected_original/`: Original selected-genome figures and tables from Rmd chunks 24–30.
+- `results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv`: Complete **3,434 × 78** metadata with all original 69 fields and nine QC/provenance fields.
+- `results/part_a/master_33831/00_parsed_raw/`: Strict 33,831 × 51 snapshot, field-alignment checks and checksums.
+- `results/part_a/master_33831/sampling_qc_table/`: Master-to-selection sampling weights/QC table.
+- `results/part_a/master_33831/original_execution/run.log`: Full original execution log.
 
-Script: analysis/part_a/03_genotype_marker_summary.R
+The alternative extracted scripts `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are **not invoked by the publication reproducer**, because their 3,434-genome inputs would mislabel full-master results. Their old outputs must not be used for master population claims.
 
-Produces marker-frequency, marker-burden, multi-marker-combination,
-source-by-year QR/FQR and top-marker prevalence outputs. Marker-frequency and
-composition outputs are token-based, following the notebook marker definition;
-binary QR/FQR status summaries use the committed final `QR_genotype` after the
-three-record discrepancy audit.
+## Fresh clone and rerun
 
-Script: analysis/part_a/04_source_profiles.R
+Keep the previous working folder until the new clone passes.
 
-Produces final source counts, food-origin summaries, refined Other-source
-animal categories, and International/Other-US animal-source × QR/FQR tables.
+```bash
+git clone --single-branch --branch feature/part-a2-master-33831-parsed-snapshot-20261021 \
+  https://github.com/ShahShringiLab/SEN_genomics_pipeline.git \
+  ~/SEN_PartA_clean
+cd ~/SEN_PartA_clean
+conda env list | grep sen_stats
+bash scripts/run_part_a.sh 2>&1 | tee original_part_a_rerun.log
+```
 
-Script: analysis/part_a/05_diversity_composition.R
+If the Conda environment is not already installed, create it using the repository environment files before rerunning.
 
-Produces Hill-number diversity estimates (q0, q1, q2), bootstrap 95% confidence
-intervals, QR/FQR composition, and global/pairwise permutation tests.
-
-The original notebook used manually supplied plot letters for one diversity
-figure. The production script does not hard-code significance letters; it writes
-the permutation-test tables directly.
-
-## Run
-
-From the repository root:
-
-    bash scripts/run_part_a.sh
-
-The runner is fail-fast. It validates canonical inputs before analysis, executes
-the five modular R stages in order, and then runs
-`scripts/validate_part_a_outputs.py`. It prints `SEN PART A: PASS` only when
-all scientific/data contracts and required output artifacts pass.
-
-All generated Part A outputs are written beneath results/part_a/.
-
-
-## Release safeguards
-
-The master genotype CSV is kept unchanged in `data/part_a/genotype/`. The
-production reader performs two parser-only normalizations in memory for known
-source-file CSV artifacts, then requires exactly 33,831 rows and 51 columns.
-
-Production QR/FQR status is derived from the AMRFinderPlus `AMR genotypes core`
-field. This field provides the stable curated determinant calls and avoids a
-known source-CSV quoting artifact that shifted the broader AMR field in three
-records: `PDT001102834.1`, `PDT001168391.1`, and `PDT001168656.1`.
-All three contain `gyrA_D87Y=POINT` in the core field and are therefore
-corrected to QR/FQR marker-positive in production. The archived values are kept
-as `QR_genotype_archived` for provenance.
-
-The rebuilt Part A cohort also joins `metadata/final_clade_metadata.tsv` by
-SRA `Run`. Exactly 3,306 genomes receive final clade labels; 128 selected
-genomes were excluded before the final phylogeny and retain a missing `Clade`
-value with `Final_phylogeny_status = "Excluded before final phylogeny"`.
-
-A compact committed audit table containing Run, Isolate, original/corrected QR
-status, detected QR markers, clade, phylogeny inclusion status, and QC audit is:
-
-    data/part_a/selection/Selected_US-SEN_12192025_QCAUDIT_R1_qr_clade.csv
-
-No script installs packages at runtime. Dependencies are supplied by the pinned
-`sen_stats` Conda environment. The archived Rmd is provenance only; production
-execution does not depend on notebook chunk state, interactive R sessions, or
-workstation-specific paths.
-
-
-## October 2026 review note
-
-The lightweight 3,434-row Run/Isolate/Clade sidecar matches the curated
-3,434-row QR/clade audit (including 128 outside the final phylogeny). Three
-`gyrA_D87Y`-positive Clade 3 isolates have QS/FQS curated overrides in the
-newer clade-summary code. These are different analytical constructs and
-must not be conflated with absence of a QR/FQR molecular determinant.
+**Do not delete previous files until all PASS checks finish.** Because the 33,831-genome raw CSV and original Rmd are committed, the fresh clone should not require manually copying inputs. Runtime analyses have to execute on a machine with the `sen_stats` environment and R packages; the GitHub commit alone does not establish successful execution.
