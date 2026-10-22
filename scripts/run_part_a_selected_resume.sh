@@ -33,6 +33,10 @@ fi
 echo "[3/5] Validate original full-master results and selected QC"
 python3 scripts/validate_full_master_repro.py
 
+echo "[ADD-ON] International decomposed animal-source chart (N=71)"
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
+  Rscript analysis/part_a/10_international_animal_source_plot.R
+
 echo "[4/5] Generate matching Top-5 charts and enriched 33,831/3,434 metadata"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
