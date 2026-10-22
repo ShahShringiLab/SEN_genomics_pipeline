@@ -1,3 +1,18 @@
+## Corrected Table S5 AMRFinder-by-clade statistical audit
+
+The original code is `analysis/clades/15_amr_byclade.py`. The previous analysis incorrectly **dropped 0%- and 100%-presence clades from each gene's omnibus contingency table**, then applied pairwise Fisher tests to those same reduced groups. This made clade-restricted genes (e.g. `gogB` or `ybtP` restricted to Unassigned) appear `ns`. It also used a greedy letter display that could not faithfully represent overlapping nonsignificant pairwise comparisons. The revised implementation retains **all five nonempty clades** for each gene, runs Monte Carlo chi-square on sparse 5 × 2 tables (default 100,000 resamples, fixed seed), BH across all tested genes, pairwise two-sided Fisher across all 10 clade pairs, Holm within each gene, and a verified maximal-clique compact-letter display. The exact testing family and Monte Carlo method are recorded in the outputs.
+
+The CLI requires the original **sample-tagged** AMRFinder master and `metadata/final_clade_metadata.tsv` (3,306 unique genomes; 169/759/894/1357/127). Standard untagged 22-column AMRFinderPlus reports are **invalid for clade joins** and are rejected; the pipeline's `workflow/07_amr_vf_plasmid/24_amrfinderplus.sh` generates the sample-tagged master. Malformed TSV lines now fail closed rather than silently losing observations.
+
+```bash
+cd ~/SEN_PartA_clean
+git pull --ff-only origin feature/part-a2-master-33831-parsed-snapshot-20261021
+set -o pipefail
+bash scripts/run_amrfinder_table_s5_audit.sh 2>&1 | tee table_s5_audit_run.log
+```
+
+If the master is stored elsewhere, provide `SEN_AMRFINDER_MASTER=/absolute/path/to/sample_tagged_master.tsv` before the command. Outputs in `iqtree_final/AMRFinder_clade/Split_Clade1A1B/With_Unassigned/` include `AMRFinder_ByClade_Summary.xlsx`, `AMRFinder_Omnibus_Stats.tsv`, `AMRFinder_Pairwise_Fisher.tsv`, `AMRFinder_PresenceAbsence_Matrix.tsv`, and `Table_S5_Flagged_Genes_Audit.tsv`. The last file compares manuscript counts to regenerated counts for `sseK3`, `gogB`, `ybtP`, `gyrA_S83F`, and additional `ns` anomalies **without overwriting** discrepant counts. With `--stats-only`, enormous 600-dpi heatmaps are skipped, not the tests or Excel. Do not replace manuscript values until the rerun and audit pass.
+
 # SEN Part A — reproducible original analysis (October 2026)
 
 ## Analytical authority and population boundaries
