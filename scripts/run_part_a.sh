@@ -50,6 +50,12 @@ if ! conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
 fi
 
 python3 scripts/validate_full_master_repro.py
+
+echo "[ADD-ON] Seven-bucket Top-5 temporal charts and reconciled master/selected metadata"
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
+  Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
+python3 scripts/validate_enriched_metadata_outputs.py
+
 grep -F "[PASS] Temporal dot plot:" "$MASTER_DIR/run.log"
 grep -F "[PASS] All original full-master Rmd chunks" "$MASTER_DIR/run.log"
 grep -F "[PASS] Original selected followups" "$MASTER_DIR/run.log"
@@ -58,3 +64,5 @@ echo "[PASS] Original Part A analysis and QC completed."
 echo "[RESULTS] 33,831 master figures: results/part_a/full_master_original/"
 echo "[RESULTS] Original 3,434 analyses: results/part_a/selected_original/"
 echo "[RESULTS] 3,434 metadata/QC: results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv"
+echo "[RESULTS] Master/selected enriched metadata: results/part_a/reconciled_metadata/"
+echo "[RESULTS] Seven-bucket full/selected Top-5 temporal stacks: results/part_a/temporal_top5/"
