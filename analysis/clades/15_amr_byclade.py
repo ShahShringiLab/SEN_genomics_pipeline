@@ -304,10 +304,13 @@ meta_df_master["Sample"] = meta_df_master["Sample"].map(normalize_sample_id)
 meta_df_master = meta_df_master[meta_df_master["Lineage"] != "Reference"].copy()
 
 required_lineages = {"Clade 1A", "Clade 1B", "Clade 2", "Clade 3", "Unassigned"}
-meta_df_master["Lineage"] = meta_df_master["Lineage"].where(
-    meta_df_master["Lineage"].isin(required_lineages),
-    other="Unassigned"
-)
+unknown_lineages = set(meta_df_master["Lineage"].dropna().unique()) - required_lineages
+if unknown_lineages or meta_df_master["Lineage"].isna().any():
+    raise SystemExit(f"[FAIL] Unexpected clade labels (not silently Unassigned): {unknown_lineages}")
+if meta_df_master["Sample"].isna().any() or meta_df_master["Sample"].duplicated().any():
+    raise SystemExit("[FAIL] Duplicate or missing sample identifiers in clade assignments")
+if len(meta_df_master) != 3306:
+    raise SystemExit(f"[FAIL] Expected 3306 unique assigned samples, got {len(meta_df_master)}")
 
 req_cols = {"Sample", "Type", "Element symbol", "Element name"}
 missing = req_cols - set(amr_df.columns)
