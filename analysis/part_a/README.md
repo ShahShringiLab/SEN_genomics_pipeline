@@ -34,11 +34,11 @@ The original master's manuscript table `SEN_TableS1_final_source_decomposition.c
 | Other-US | Swine | 21 |
 | Other-US | Sheep/goat | 5 |
 
-Expected group totals: **International 71**, **Other-US 582**. Corrected parser changes should be **audited, never forced to preserve old numbers**. The end-of-run validator stops and prints the actual differing categories rather than silently changing Table S1.
+Expected group totals: **International 71**, **Other-US 582**. Corrected parser changes should be **audited, never forced to preserve old numbers**. First rerun of the complete original code found `Other-US: Swine=43, Others=426` (versus manuscript `Swine=21, Others=448`). Cattle=60, Turkey=48 and Sheep/goat=5 are unchanged. Source isolate-level classification will be audited; do not silently treat 43 as an updated biological truth until its 22-record discrepancy is inspected. Original Rmd chunk 18 also uses two obsolete group labels; the generated execution script redirects its filter to the already-derived `Final_source` to avoid empty charts, leaving the original animal-source and QR rules unchanged. The end-of-run validator prints **[REVIEW REQUIRED]** and records all differences in `REPRO_AUDIT.json` rather than silently changing Table S1; it does not falsely fail otherwise valid computations over a historical manuscript reference. A 653-isolate source audit and an isolate-level Swine audit are exported for reconciliation.
 
 ### Outputs (never mix denominators)
 
-- `results/part_a/full_master_original/`: The **full 33,831** original marker/source/diversity/temporal tables and figures, including original Table S1 and a machine-readable reproducibility audit.
+- `results/part_a/full_master_original/`: The **full 33,831** original marker/source/diversity/temporal tables and figures, including original Table S1, `SEN_fullmaster_source_isolate_audit.csv`, `SEN_OtherUS_swine_isolate_audit.csv`, and a machine-readable reproducibility audit.
 - `results/part_a/selected_original/`: Original selected-genome figures and tables from Rmd chunks 24–30.
 - `results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv`: Complete **3,434 × 78** metadata with all original 69 fields and nine QC/provenance fields.
 - `results/part_a/master_33831/00_parsed_raw/`: Strict 33,831 × 51 snapshot, field-alignment checks and checksums.
@@ -63,3 +63,7 @@ bash scripts/run_part_a.sh 2>&1 | tee original_part_a_rerun.log
 If the Conda environment is not already installed, create it using the repository environment files before rerunning.
 
 **Do not delete previous files until all PASS checks finish.** Because the 33,831-genome raw CSV and original Rmd are committed, the fresh clone should not require manually copying inputs. Runtime analyses have to execute on a machine with the `sen_stats` environment and R packages; the GitHub commit alone does not establish successful execution.
+
+### Original Rmd execution compatibility (not new biological methods)
+
+The uploaded notebook assumes an interactive R session. The runner reconstructs missing `SEN_plot` and `SEL_plot` views for chunk 25 using the original three periods and original binary marker variable; it never resamples the fixed cohort. Chunk 19's `src_N` deliberately discards its intermediate `N_total` after generating source labels, so the validator checks `den_year`, the eligible full-master year count and the retained `Source_lab` rather than referencing a nonexistent column. Chunk 18's obsolete source-group filter is translated to the existing `Final_source` groups `International` and `Other-US` in the execution copy only, to prevent empty results.
