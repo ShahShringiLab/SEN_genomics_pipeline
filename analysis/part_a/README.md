@@ -18,7 +18,20 @@ The original committed file remains unchanged; `scripts/prepare_original_part_a2
 1. Input paths redirected to the strictly parsed 33,831 × 51 master snapshot and committed phenotype CSV.
 2. Four/six unintended `Collection_year >= 1990` exclusions removed in temporal analyses. All valid years **≤2000** remain in the combined historical bin, so **33,508** dated genomes contribute, and **323** undated genomes are excluded.
 3. Original temporal facet **N** restricted to the same eligible dated genomes as the marker-percentage denominators. No marker percentages or methods are changed by this label fix.
-4. Original `FQR_marker_counts_top100` horizontal count-axis maximum changed from **22,000 to 25,000**. Marker values and styling unchanged.
+4. Original `FQR_marker_counts_top100` horizontal count-axis maximum changed from **22,000 to 250,000**, with the **250,000 tick label suppressed** (labeled ticks stop at 200,000). Marker values unchanged. This tenfold axis expansion is per the October 22 request and will visually compress the bars.
+
+### Additional reconciled metadata and matched temporal stacks (October 22)
+
+The **original Rmd and prior manuscripts' figures remain unmodified** by this additive deliverable. The complete original full-master analysis now exports every Rmd-created non-raw field (`SEN_33831_original_Rmd_derived.csv`) after original chunk 22. `analysis/part_a/09_temporal_top5_and_enriched_metadata.R` then creates:
+
+- `results/part_a/reconciled_metadata/SEN_33831_full_enriched_metadata.csv`: **33,831 genomes**; preserves each of the 51 corrected original metadata columns, appends all `Rmd_` fields (primary/final source, year, marker variables, etc.), consistent `Audit_` columns and `QC_` status for selected genomes; QC entries remain blank for unselected genomes.
+- `results/part_a/reconciled_metadata/SEN_3434_selected_enriched_QC_metadata.csv`: **3,434 selected genomes**; preserves all 69 original selection columns and all 9 appended QC columns (78 total), then joins exactly the same `Rmd_` and `Audit_` columns from its 33,831-genome master counterpart by `Run + Isolate`. The 3 corrected QR calls remain traceable through archived and corrected fields.
+- `SEN_3434_master_selected_field_discrepancies.csv`: only discrepancies in source, collection year and QR status between original selected metadata and corresponding full-master records, with original values retained.
+- `SEN_metadata_reconciliation_summary.csv`: counts and validations.
+
+New charts in `results/part_a/temporal_top5/` render the **total master and selected cohorts separately**, each with count and percentage plots in PNG/TIFF/PDF. They use the same seven mutually exclusive categories: **QS/FQS, gyrA_D87Y, gyrA_D87N, gyrA_S83Y, gyrA_D87G, qnrB19 and Others**. Periods: **Pre-2018, 2018–2020, 2021–2025**. The master chart contains **33,508 dated genomes**; the selected chart contains **3,434**. Unlike plots of overlapping marker occurrences, **each genome is counted exactly once**, prioritizing the five markers in listed order when multiple are present. A dedicated `SEN_master_multimarker_bucket_priority_audit.csv` documents those rare assignments. This avoids totals exceeding cohort sizes.
+
+No sampling is repeated, no original code is rewritten and no biological source result is forced to match the older Table S1. The independent validator `scripts/validate_enriched_metadata_outputs.py` verifies exact key and QC reconciliation and chart totals.
 
 ### Source decomposition audit
 
