@@ -191,8 +191,14 @@ palette <- c("QS/FQS"="#D9D9D9","gyrA_D87Y"="#0072B2",
              "gyrA_D87G"="#CC79A7","qnrB19"="#E69F00",
              "Others"="#666666")
 make_plot <- function(df, cohort_label, y_key) {
+  den <- df %>% dplyr::distinct(Period,Total_N) %>%
+    dplyr::mutate(Label_y=if (y_key=="Percent") 104 else Total_N*1.04,
+                  N_label=paste0("N=",scales::comma(Total_N)))
   pp <- ggplot2::ggplot(df,ggplot2::aes(x=Period,y=.data[[y_key]],fill=Category)) +
     ggplot2::geom_col(width=0.72) +
+    ggplot2::geom_text(data=den,
+      ggplot2::aes(x=Period,y=Label_y,label=N_label),
+      inherit.aes=FALSE,vjust=0,size=3.6,fontface="bold") +
     ggplot2::scale_fill_manual(values=palette,drop=FALSE) +
     ggplot2::labs(
       title=cohort_label,
@@ -204,7 +210,7 @@ make_plot <- function(df, cohort_label, y_key) {
     ggplot2::theme(axis.text.x=ggplot2::element_text(face="bold"),
                    legend.position="right")
   if (y_key=="Percent") pp <- pp +
-    ggplot2::scale_y_continuous(labels=function(y) paste0(y,"%"),limits=c(0,105))
+    ggplot2::scale_y_continuous(labels=function(y) paste0(y,"%"),limits=c(0,112))
   else pp <- pp + ggplot2::scale_y_continuous(labels=scales::label_comma())
   pp
 }
