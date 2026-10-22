@@ -37,8 +37,31 @@ master = [
     f'cat("[INFO] Original Rmd working-copy SHA256: {hashlib.sha256(src.encode()).hexdigest()}\\n")',
 ]
 for index in range(3, 23):
+    chunk = parts[index - 1]
+    if index == 18:
+        # Original chunk 18 used obsolete Source_group labels
+        # "International-Non-US" and "Other-US-US"; chunk 17 already
+        # builds the validated Final_source values International/Other-US.
+        # Correct ONLY this impossible input filter/recode in the generated
+        # execution script. Preserve the animal and QR grouping algorithm.
+        obsolete = '''    Source_group %in% c(
+      "International-Non-US",
+      "Other-US-US"
+    )'''
+        actual = '''    Final_source %in% c(
+      "International",
+      "Other-US"
+    )'''
+        obsolete_recode = '''    Group = recode(
+      Source_group,
+      "International-Non-US" = "International",
+      "Other-US-US" = "Other-US"
+    ),'''
+        actual_recode = '''    Group = Final_source,'''
+        assert chunk.count(obsolete) == 1 and chunk.count(obsolete_recode) == 1
+        chunk = chunk.replace(obsolete, actual, 1).replace(obsolete_recode, actual_recode, 1)
     master.extend([f'\n# BEGIN USER ORIGINAL CHUNK {index}',
-                   parts[index - 1],
+                   chunk,
                    f'# END USER ORIGINAL CHUNK {index}'])
     if index >= 4:
         master.extend([
