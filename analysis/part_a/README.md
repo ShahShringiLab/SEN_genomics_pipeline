@@ -18,7 +18,7 @@ The original committed file remains unchanged; `scripts/prepare_original_part_a2
 1. Input paths redirected to the strictly parsed 33,831 × 51 master snapshot and committed phenotype CSV.
 2. Four/six unintended `Collection_year >= 1990` exclusions removed in temporal analyses. All valid years **≤2000** remain in the combined historical bin, so **33,508** dated genomes contribute, and **323** undated genomes are excluded.
 3. Original temporal facet **N** restricted to the same eligible dated genomes as the marker-percentage denominators. No marker percentages or methods are changed by this label fix.
-4. Original `FQR_marker_counts_top100` horizontal count-axis maximum changed from **22,000 to 250,000**, with the **250,000 tick label suppressed** (labeled ticks stop at 200,000). Marker values unchanged. This tenfold axis expansion is per the October 22 request and will visually compress the bars.
+4. Original `FQR_marker_counts_top100` horizontal count-axis maximum changed from **22,000 to 25,000**, with the **25,000 tick label suppressed** (labeled ticks stop at 20,000). Marker values unchanged.
 
 ### Additional reconciled metadata and matched temporal stacks (October 22)
 
