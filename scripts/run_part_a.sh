@@ -51,14 +51,14 @@ fi
 
 python3 scripts/validate_full_master_repro.py
 
-echo "[ADD-ON] International decomposed animal-source figure (N=71)"
-conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/10_international_animal_source_plot.R
-
 echo "[ADD-ON] Seven-bucket Top-5 temporal charts and reconciled master/selected metadata"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
 python3 scripts/validate_enriched_metadata_outputs.py
+
+echo "[ADD-ON] International n=71 exact-source plots and complete QC-enriched Excel workbook"
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
+  Rscript analysis/part_a/10_international_animal_source_plot.R
 
 grep -F "[PASS] Temporal dot plot:" "$MASTER_DIR/run.log"
 grep -F "[PASS] All original full-master Rmd chunks" "$MASTER_DIR/run.log"
