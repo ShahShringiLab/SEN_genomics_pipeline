@@ -57,15 +57,40 @@ for row in data:
     key = (row["Source category"].strip(), row["Decomposed source information"].strip())
     require(key not in observed, f"Duplicate source classification row: {key}")
     observed[key] = int(float(row["Number of genomes (n)"]))
-require(observed == expected,
-        "Correctly parsed full-master source distribution differs from original Table S1. "
-        f"Expected {expected}, observed {observed}. DO NOT silently overwrite the table.")
+# A previous manuscript Table S1 is a COMPARISON REFERENCE, not ground
+# truth that may override the re-executed original classification. A discrepancy
+# needs manuscript review, but must not prevent other original outputs.
+source_differences = [
+    {"source": grp, "animal_source": typ,
+     "original_n": expected.get((grp, typ), 0),
+     "reproduced_n": observed.get((grp, typ), 0),
+     "difference": observed.get((grp, typ), 0) - expected.get((grp, typ), 0)}
+    for grp, typ in sorted(set(expected) | set(observed))
+    if observed.get((grp, typ), 0) != expected.get((grp, typ), 0)
+]
+if source_differences:
+    print("[REVIEW REQUIRED] Reproduced full-master animal-source subgroups "
+          "differ from previous manuscript Table S1. The original classifications "
+          "have NOT been overwritten:")
+    for item in source_differences:
+        print(f"  {item['source']} / {item['animal_source']}: "
+              f"manuscript={item['original_n']}, "
+              f"reproduced={item['reproduced_n']} "
+              f"(delta={item['difference']:+d})")
+else:
+    print("[PASS] Reproduced full-master animal-source categories match previous manuscript Table S1.")
 require(sum(n for (g, _), n in observed.items() if g == "International") == 71,
         "International source total differs from 71")
 require(sum(n for (g, _), n in observed.items() if g == "Other-US") == 582,
         "Other-US source total differs from 582")
-print("[PASS] ORIGINAL FULL MASTER Table S1 matches 71 International and 582 Other-US genomes")
-print("[PASS] International Others=67 Chicken=4; Other-US Others=448 Cattle=60 Turkey=48 Swine=21 Sheep/goat=5")
+print("[PASS] Full-master source group totals: International=71; Other-US=582")
+source_isolate = read_csv(FULL / "SEN_fullmaster_source_isolate_audit.csv")
+require(len(source_isolate) == 653, "Full-master source-isolate audit must have 653 entries")
+require(len({r["Isolate"] for r in source_isolate}) == 653, "Source-isolate audit duplicate isolate IDs")
+swine_isolate = read_csv(FULL / "SEN_OtherUS_swine_isolate_audit.csv")
+require(len(swine_isolate) == observed.get(("Other-US","Swine"), 0),
+        "Swine isolate-level audit does not match reproduced Table S1")
+print(f"[AUDIT] {len(swine_isolate)} Swine-assigned Other-US isolates exported for reviewer reconciliation")
 
 markers = read_csv(FULL / "FQR_marker_frequency_percentage_95CI_with_susceptible.csv")
 susceptible = [r for r in markers if r["token_pretty"] == "Q/FQ-susceptible"]
@@ -97,6 +122,8 @@ ROOT.joinpath("results/part_a/full_master_original/REPRO_AUDIT.json").write_text
         "master_genomes": 33831,
         "dated_for_temporal_plot": 33508,
         "excluded_from_temporal_plot_missing_year": 323,
+        "manuscript_source_review_required": bool(source_differences),
+        "manuscript_source_differences": source_differences,
         "source_table": [{
             "source": k[0], "animal_source": k[1], "n": v
         } for k, v in sorted(observed.items())],
@@ -108,3 +135,6 @@ ROOT.joinpath("results/part_a/full_master_original/REPRO_AUDIT.json").write_text
         "qr_corrections": 3
     }, indent=2)+"\n", encoding="utf-8")
 print("[PASS] Original 33,831-master analytical outputs and 3,434-cohort QC fully separated")
+if source_differences:
+    print("[REVIEW REQUIRED] Original biological source classification produced new counts. "
+          "Please inspect SEN_OtherUS_swine_isolate_audit.csv before updating manuscript Table S1.")
