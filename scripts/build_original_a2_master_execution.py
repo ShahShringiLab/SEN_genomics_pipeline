@@ -44,10 +44,28 @@ for index in range(3, 23):
         master.extend([
             'if (!exists("SEN") || nrow(SEN) != 33831L || dplyr::n_distinct(SEN$Run) != 33831L)',
             f'  stop("33,831-genome population compromised after original chunk {index}")'])
+    if index == 17:
+        # Reporting-only audit: preserve exact original source assignment and
+        # allow traceability of the 22-genome Swine/Others manuscript difference.
+        master.extend([
+            'source_audit <- SEN %>% dplyr::filter(Final_source %in% c("Other-US", "International")) %>%',
+            '  dplyr::transmute(Run, Isolate, \x60Isolation source\x60, Source_group, Final_source,',
+            '    Primary_source, Other_source_group, Isolate_identifiers=\x60Isolate identifiers\x60,',
+            '    Food_origin=\x60Food origin\x60)',
+            'stopifnot(nrow(source_audit)==653L)',
+            'readr::write_csv(source_audit, "SEN_fullmaster_source_isolate_audit.csv")',
+            'swine_audit <- source_audit %>% dplyr::filter(Final_source=="Other-US", Other_source_group=="Swine") %>%',
+            '  dplyr::mutate(matched_term=stringr::str_extract(stringr::str_to_lower(\x60Isolation source\x60),',
+            '    "\\\\b(swine|sow|pork|porcine)\\\\b"))',
+            'readr::write_csv(swine_audit, "SEN_OtherUS_swine_isolate_audit.csv")',
+            'cat("[AUDIT] Full-master source-isolate and Swine-category audit exported\\n")',
+        ])
     if index == 19:
         master.extend([
             'stopifnot(exists("den_year"), sum(den_year$N)==33508L)',
-            'stopifnot(exists("src_N"), sum(src_N$N_total)==33508L)',
+            'stopifnot(exists("src_N"), all(c("Source", "Source_lab") %in% names(src_N)))',
+            'stopifnot(dplyr::n_distinct(src_N$Source)==4L)',
+            'stopifnot(sum(!is.na(SEN$Collection_year) & as.integer(SEN$Collection_year)<=2025L)==33508L)',
             'cat("[PASS] Temporal dot plot: 33,508 dated genomes; <=2000 included\\n")'])
 master.append('cat("[PASS] All original full-master Rmd chunks 3-22: 33,831 genomes\\n")')
 master_file = out / "run_original_A2_master.R"
@@ -59,7 +77,28 @@ followups = [
     'setwd(file.path(Sys.getenv("SEN_ROOT"), "results/part_a/selected_original"))',
     'SEL <- readr::read_csv(' + canonical + ', show_col_types=FALSE)',
     'stopifnot(nrow(SEL)==3434L, dplyr::n_distinct(SEL$Isolate)==3434L)',
-    'cat("[INFO] Selected analysis: 3,434 frozen QC-merged genomes, no resampling\\n")']
+    'cat("[INFO] Selected analysis: 3,434 frozen QC-merged genomes, no resampling\\n")',
+    '# Original chunk 25 expects SEN_plot/SEL_plot created in earlier interactive',
+    '# sessions. Reconstruct ONLY these input views, using original Period rules.',
+    '# Keep master SEN at 33,831 rows; do not resample or change original tests.',
+    'stopifnot("FQR_genotype" %in% names(SEN))',
+    'make_period_original <- function(year) dplyr::case_when(',
+    '  year < 2018L ~ "Pre-2018",',
+    '  year >= 2018L & year <= 2020L ~ "2018-2020",',
+    '  year >= 2021L & year <= 2025L ~ "2021-2025",',
+    '  TRUE ~ NA_character_)',
+    'SEN_plot <- SEN %>% dplyr::mutate(row_id=dplyr::row_number(),',
+    '  Collection_year=as.integer(Collection_year),',
+    '  QR_genotype=as.integer(FQR_genotype),',
+    '  Period=make_period_original(Collection_year)) %>%',
+    '  dplyr::filter(!is.na(Period))',
+    'SEL_plot <- SEL %>% dplyr::mutate(Collection_year=as.integer(Collection_year),',
+    '  QR_genotype=as.integer(QR_genotype),',
+    '  Period=make_period_original(Collection_year)) %>%',
+    '  dplyr::filter(!is.na(Period))',
+    'stopifnot(nrow(SEN)==33831L, nrow(SEN_plot)==33508L,',
+    '  nrow(SEL)==3434L, nrow(SEL_plot)==3434L)',
+    'cat("[PASS] Original interactive period views restored: SEN_plot 33,508 dated, SEL_plot 3,434 selected\\n")']
 for index in range(24, 31):
     chunk = parts[index-1]
     chunk = chunk.replace('"Selected_3500_genomes.csv"', canonical)
