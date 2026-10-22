@@ -293,13 +293,29 @@ meta_df_master = pd.read_csv(metadata_path, sep="\t", low_memory=False)
 if "Sample" not in meta_df_master.columns or "Lineage" not in meta_df_master.columns:
     raise SystemExit("[ERROR] Clade_metadata.txt must have columns: Sample, Lineage")
 
-amr_df.rename(columns={amr_df.columns[0]: "Sample"} if amr_df.columns[0] != "Sample" else {}, inplace=True)
+# NEVER use "Protein id" (the first standard AMRFinderPlus column) as
+# an isolate/sample identifier. The master TSV must explicitly tag each row
+# with its originating SRR sample to support valid clade association tests.
+possible_sample_columns = ["Sample", "sample", "Sample ID", "Sample_ID", "sample_id"]
+found_sample_cols = [c for c in possible_sample_columns if c in amr_df.columns]
+if len(found_sample_cols) != 1:
+    raise SystemExit(
+        "[FAIL] AMRFinder master must have one explicit Sample column naming the "
+        "SRR isolate per gene hit. The plain 22-column AMRFinderPlus output "
+        "has no sample-to-clade join key. Do NOT rename Protein id to Sample. "
+        f"Found columns: {list(amr_df.columns)}. Rebuild master from per-SRR reports "
+        "with the filename-derived Sample column or point --amr-master to an "
+        "already sample-tagged master."
+    )
+amr_df = amr_df.rename(columns={found_sample_cols[0]:"Sample"})
 
 amr_df["Sample_raw"] = amr_df["Sample"].astype(str)
 amr_df = amr_df[~amr_df["Sample_raw"].str.startswith(EXCLUDE_SMOKE_PREFIX)].copy()
 
 amr_df["Sample"] = amr_df["Sample_raw"].map(normalize_sample_id)
 meta_df_master["Sample"] = meta_df_master["Sample"].map(normalize_sample_id)
+if amr_df["Sample"].isna().any() or not amr_df["Sample"].astype(str).str.fullmatch(r"SRR\d+").all():
+    raise SystemExit("[FAIL] Master gene-hit rows must have valid SRR sample identifiers; inspect Sample column.")
 
 meta_df_master = meta_df_master[meta_df_master["Lineage"] != "Reference"].copy()
 
