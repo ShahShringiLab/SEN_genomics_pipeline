@@ -251,16 +251,22 @@ save_side_by_side <- function(total_df, selected_df, metric, prefix) {
     "Temporal composition of SEN genomes by QR/FQR marker category (%)"
   }
 
-  combined <- ((p_total + p_selected) +
-    patchwork::plot_layout(ncol=2,guides="collect") +
-    patchwork::plot_annotation(
-      title=headline,
-      subtitle="Top five QR/FQR markers + Others + QS/FQS; each genome counted once",
-      theme=ggplot2::theme(
-        plot.title=ggplot2::element_text(hjust=0.5,face="bold",size=16),
-        plot.subtitle=ggplot2::element_text(hjust=0.5)
-      )
-    )) & ggplot2::theme(legend.position="right")
+  # wrap_plots() performs the composition inside the patchwork namespace.
+  # Direct p_total + p_selected fails on ggplot2 versions using S7 when
+  # patchwork's plot-composition operators are not attached to the session.
+  # Separate ggplot objects retain their individual count y-scales.
+  combined <- patchwork::wrap_plots(
+    plots=list(p_total,p_selected),
+    ncol=2,
+    guides="collect"
+  ) + patchwork::plot_annotation(
+    title=headline,
+    subtitle="Top five QR/FQR markers + Others + QS/FQS; each genome counted once",
+    theme=ggplot2::theme(
+      plot.title=ggplot2::element_text(hjust=0.5,face="bold",size=16),
+      plot.subtitle=ggplot2::element_text(hjust=0.5)
+    )
+  )
 
   for (ext in c("png","tif","pdf")) {
     target <- file.path(plot_out,paste0(prefix,".",ext))
