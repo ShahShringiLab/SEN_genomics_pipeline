@@ -83,6 +83,24 @@ for index in range(3, 23):
             'readr::write_csv(swine_audit, "SEN_OtherUS_swine_isolate_audit.csv")',
             'cat("[AUDIT] Full-master source-isolate and Swine-category audit exported\\n")',
         ])
+    if index == 22:
+        # Export the original Rmd-derived metadata before any selected analysis
+        # has an opportunity to mutate SEN. Keep all 51 raw fields separately.
+        master.extend([
+            'raw_header <- readr::read_csv(file.path(Sys.getenv("SEN_ROOT"),',
+            '  "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"),',
+            '  n_max=0, show_col_types=FALSE)',
+            'new_derived <- setdiff(names(SEN), names(raw_header))',
+            'stopifnot(length(new_derived)>0, all(c("Run","Isolate","Final_source",',
+            '  "Primary_source","Other_source_group") %in% names(SEN)))',
+            'rmd_export <- SEN[, c("Run","Isolate",new_derived), drop=FALSE]',
+            'rmd_export <- rmd_export %>% dplyr::mutate(dplyr::across(',
+            '  where(is.list), ~vapply(.x,function(x) paste(as.character(unlist(x)),collapse=";"),character(1))))',
+            'stopifnot(nrow(rmd_export)==33831L,dplyr::n_distinct(rmd_export$Run)==33831L)',
+            'readr::write_csv(rmd_export,"SEN_33831_original_Rmd_derived.csv",na="")',
+            'cat("[PASS] Original Rmd-derived full-master metadata exported: ",',
+            '  length(new_derived)," fields for 33,831 genomes\\n",sep="")',
+        ])
     if index == 19:
         master.extend([
             'stopifnot(exists("den_year"), sum(den_year$N)==33508L)',
