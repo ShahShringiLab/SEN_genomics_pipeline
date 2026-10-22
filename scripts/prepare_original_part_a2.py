@@ -44,15 +44,15 @@ assert rendered.count(old_facet) == 1, "Original facet N block must occur exactl
 rendered = rendered.replace(old_facet, new_facet, 1)
 
 # The Top-100 figure uses coord_flip(). Extend the horizontal count axis
-# to 250,000; suppress the endpoint's numeric tick label by stopping labeled
-# breaks at 200,000. This is an intentional tenfold change from 25,000.
+# to 25,000; suppress the endpoint's numeric tick label by stopping labeled
+# breaks at 20,000.
 old_top100 = """  scale_y_continuous(
     limits = c(0, 22000),
     expand = expansion(mult = c(0, 0.02))
   ) +"""
 new_top100 = """  scale_y_continuous(
-    limits = c(0, 250000),
-    breaks = seq(0, 200000, by = 50000),
+    limits = c(0, 25000),
+    breaks = seq(0, 20000, by = 5000),
     labels = scales::label_comma(),
     expand = expansion(mult = c(0, 0.02))
   ) +"""
@@ -84,5 +84,5 @@ print(f"[PASS] Original notebook preserved; master import and temporal facet N c
 print(f"[AUDIT] Original SHA-256: {sha}")
 print(f"[AUDIT] Removed {n_dropped} unintended pre-1990 temporal cutoffs; years <=2000 remain grouped.")
 print("[AUDIT] Dot plot facets and numerators use the same valid-year <=2025 population.")
-print("[AUDIT] FQR_marker_counts_top100 horizontal count axis extends to 250,000; endpoint 250,000 has no tick label.")
+print("[AUDIT] FQR_marker_counts_top100 horizontal count axis extends to 25,000; endpoint 25,000 has no tick label.")
 print("[NOTE] Notebook execution can depend on exploratory objects/interactive R chunks; validate outputs against the original.")
