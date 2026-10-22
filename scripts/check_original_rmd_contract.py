@@ -52,6 +52,11 @@ checks = [
      'SEN_33831_original_Rmd_derived.csv' in master),
     ('full-master stage never uses selected QC input', 'Finalupdated_SEN_Genomes1_QC_merged.csv' not in master),
     ('separate selected original stage uses QC input', 'Finalupdated_SEN_Genomes1_QC_merged.csv' in combined),
+    ('selected plotting inputs contain QR_status and corrected QR genotype checks',
+     combined.count('QR_status=dplyr::if_else(QR_genotype==1L')==2
+     and 'SEN$QR_genotype <- as.integer(SEN$FQR_genotype)' in combined),
+    ('selected resume script was generated from original master snapshot',
+     (root / "results/part_a/master_33831/original_execution/run_original_A2_selected_resume.R").is_file()),
     ('historical selection generation skipped', 'BEGIN USER ORIGINAL CHUNK 23' not in combined),
 ]
 for label, ok in checks:
