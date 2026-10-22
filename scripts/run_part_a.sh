@@ -20,6 +20,9 @@ for file in "${required[@]}"; do
   [[ -s "$file" ]] || { echo "[FAIL] Missing original input: $file" >&2; exit 1; }
 done
 
+echo "[PREFLIGHT] Check exact original 30-chunk Rmd and dataset boundaries"
+python3 scripts/check_original_rmd_contract.py
+
 echo "[1/6] Validate original datasets and frozen selection keys"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   python scripts/validate_part_a_inputs.py
