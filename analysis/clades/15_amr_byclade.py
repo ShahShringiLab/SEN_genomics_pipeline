@@ -4,6 +4,9 @@ import re
 from pathlib import Path
 import itertools
 import warnings
+import argparse
+import json
+from datetime import datetime, timezone
 
 import pandas as pd
 import numpy as np
@@ -23,10 +26,20 @@ warnings.filterwarnings("ignore", category=UserWarning)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASE_DIR = str(Path(os.environ.get("SEN_ROOT", REPO_ROOT)))
 
-amr_report_path = os.path.join(BASE_DIR, "AMRFinderplus", "master_AMRFinder_report.tsv")
+parser = argparse.ArgumentParser(description="AMRFinder clade stratification and audited Table S5 statistics")
+parser.add_argument("--amr-master", default=os.environ.get("SEN_AMRFINDER_MASTER", os.path.join(BASE_DIR, "AMRFinderplus", "master_AMRFinder_report.tsv")))
+parser.add_argument("--clade-metadata", default=os.environ.get("SEN_CLADE_METADATA", os.path.join(BASE_DIR, "metadata", "final_clade_metadata.tsv")))
+parser.add_argument("--scheme", choices=["Combined_Clade1", "Split_Clade1A1B"], help="Only run a single scheme; default both")
+parser.add_argument("--mode", choices=["With_Unassigned", "Without_Unassigned"], help="Only run a single mode; default both")
+parser.add_argument("--stats-only", action="store_true", help="Skip extremely large heatmaps but keep TSV and Excel statistics")
+parser.add_argument("--mc-resamples", type=int, default=100000, help="Monte Carlo resamples for sparse omnibus tests (default 100000)")
+args = parser.parse_args()
+if args.mc_resamples < 9999:
+    parser.error("--mc-resamples must be >= 9999 for scientifically meaningful sparse-test resolution")
+amr_report_path = args.amr_master
 
 metadata_path_candidates = [
-    os.environ.get("SEN_CLADE_METADATA", os.path.join(BASE_DIR, "metadata", "final_clade_metadata.tsv")),
+    args.clade_metadata,
     os.path.join(BASE_DIR, "iqtree_final", "ITOL", "Clade_metadata.txt"),
     os.path.join(BASE_DIR, "ITOL", "Clade_metadata.txt"),
     os.path.join(BASE_DIR, "iqtree", "ITOL", "Clade_metadata.txt"),
@@ -145,12 +158,9 @@ def read_master_tsv_robust(path: str, badlines_out: str):
     print(f"[INFO] master header fields = {expected_nf}")
 
     if bad:
-        print(f"[WARN] Found {len(bad)} malformed lines in master TSV.")
+        print(f"[FAIL] Found {len(bad)} malformed lines in master TSV.")
         pd.DataFrame(bad).to_csv(badlines_out, sep="\t", index=False)
-        print(f"[WARN] Bad line report saved: {badlines_out}")
-        df = pd.read_csv(path, sep="\t", engine="python", on_bad_lines="skip", low_memory=False)
-        print(f"[WARN] Loaded with skipped bad lines. Rows now={len(df)}")
-        return df
+        raise SystemExit(f"[FAIL] Refusing to silently omit AMRFinder rows. Inspect {badlines_out}")
 
     return pd.read_csv(path, sep="\t", low_memory=False)
 
@@ -162,7 +172,7 @@ def chi2_with_optional_montecarlo(table: np.ndarray):
         # Fixed seed + fixed number of resamples makes sparse-count handling
         # reproducible. SciPy >=1.15 requires a MonteCarloMethod instance.
         mc = MonteCarloMethod(
-            n_resamples=5000,
+            n_resamples=args.mc_resamples,
             rng=np.random.default_rng(12345),
         )
         mc_result = chi2_contingency(
@@ -172,7 +182,7 @@ def chi2_with_optional_montecarlo(table: np.ndarray):
         )
         return (
             float(mc_result.pvalue),
-            "chi-square (montecarlo, 5000 resamples, seed=12345)",
+            f"chi-square (montecarlo, {args.mc_resamples} resamples, seed=12345)",
             float(mc_result.statistic),
             np.nan,
         )
@@ -188,44 +198,37 @@ def odds_ratio_with_haldene(a, b, c, d, add=0.5):
     return ((a + add) / (b + add)) / ((c + add) / (d + add))
 
 def make_cld_letters(groups, p_adj_map, alpha=0.05):
-    if not p_adj_map or len(groups) == 0:
-        return {g: "" for g in groups}
-
-    def different(g1, g2):
-        if g1 == g2:
-            return False
-        key = tuple(sorted((g1, g2)))
-        p = p_adj_map.get(key, np.nan)
-        return (pd.notna(p) and p <= alpha)
-
-    letter_pool = list("abcdefghijklmnopqrstuvwxyz")
-    assign = {g: set() for g in groups}
-    remaining = set(groups)
-
-    while remaining and letter_pool:
-        L = letter_pool.pop(0)
-        block = []
-        for g in groups:
-            if g not in remaining:
-                continue
-            ok = True
-            for h in block:
-                if different(g, h):
-                    ok = False
-                    break
-            if ok:
-                block.append(g)
-
-        if not block:
-            g = next(iter(remaining))
-            block = [g]
-
-        for g in block:
-            assign[g].add(L)
-            if g in remaining:
-                remaining.remove(g)
-
-    return {g: "".join(sorted(assign[g])) for g in groups}
+    """Compact letter display: every non-significant pair shares a letter,
+    every significant pair shares none. Handles nontransitive Holm results
+    (e.g. A~B, B~C, yet A differs from C) via overlapping maximal cliques.
+    """
+    groups = list(groups)
+    if not groups:
+        return {}
+    def significant(a,b):
+        p = p_adj_map.get(tuple(sorted((a,b))), np.nan)
+        if not np.isfinite(p):
+            raise ValueError(f"Missing Holm-adjusted comparison: {a} vs {b}")
+        return bool(p <= alpha)
+    nonsig_cliques = []
+    for size in range(1,len(groups)+1):
+        for clique in itertools.combinations(groups,size):
+            if all(not significant(a,b) for a,b in itertools.combinations(clique,2)):
+                nonsig_cliques.append(clique)
+    maximal = [c for c in nonsig_cliques
+               if not any(set(c)<set(other) for other in nonsig_cliques)]
+    maximal.sort(key=lambda c:(-len(c),tuple(groups.index(x) for x in c)))
+    pool = "abcdefghijklmnopqrstuvwxyz"
+    if len(maximal)>len(pool):
+        raise ValueError("Too many CLD maximal cliques for the letter pool")
+    assigned = {g:"" for g in groups}
+    for idx,clique in enumerate(maximal):
+        for g in clique:
+            assigned[g] += pool[idx]
+    for a,b in itertools.combinations(groups,2):
+        shares=bool(set(assigned[a]) & set(assigned[b]))
+        assert shares != significant(a,b), f"CLD inconsistent: {a}/{b}"
+    return assigned
 
 def recode_lineages(meta_df: pd.DataFrame, scheme: str) -> pd.DataFrame:
     out = meta_df.copy()
@@ -360,8 +363,11 @@ print(f"[INFO] Raw metadata lineages found: {sorted(meta_df_master['Lineage'].dr
 # =============================================================================
 # RUN BOTH SCHEMES × MODES
 # =============================================================================
-for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
-    for mode in ["With_Unassigned", "Without_Unassigned"]:
+print(f"[AUDIT] Inputs: AMRFinder={amr_report_path}; clades={metadata_path}")
+print("[AUDIT] Testing uses ALL nonempty clades (including 0% and 100% cells).")
+print(f"[AUDIT] MC resamples={args.mc_resamples}, seed=12345; BH across all tested elements; pairwise Holm.")
+for scheme in ([args.scheme] if args.scheme else ["Combined_Clade1", "Split_Clade1A1B"]):
+    for mode in ([args.mode] if args.mode else ["With_Unassigned", "Without_Unassigned"]):
         print("\n" + "=" * 80)
         print(f"🚀 Processing scheme={scheme} | mode={mode}")
         print("=" * 80)
@@ -421,6 +427,12 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
         print("📊 Building per-element clade counts + stats...")
 
         clade_sizes = meta_df["Lineage"].value_counts().to_dict()
+        if scheme == "Split_Clade1A1B" and mode == "With_Unassigned":
+            expected_sizes = {"Clade 1A":169, "Clade 1B":759, "Clade 2":894,
+                              "Clade 3":1357, "Unassigned":127}
+            if clade_sizes != expected_sizes:
+                raise SystemExit(f"[FAIL] Clade membership differs from Table S5: {clade_sizes} != {expected_sizes}")
+            print("[PASS] Table S5 denominator: 3306 = 169 + 759 + 894 + 1357 + 127")
 
         def clade_header(c):
             return f"{c} (n={clade_sizes.get(c, 0)})"
@@ -441,8 +453,10 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
             absn = {c: ns[c] - pres[c] for c in clade_order}
             tot_pres = int(total_present.loc[symbol])
 
-            variable_clades = [c for c in clade_order if ns[c] > 0 and (0 < pres[c] < ns[c])]
-            used_clades_by_element[symbol] = variable_clades
+            # A clade that is 0% or 100% for a gene is CRITICAL evidence
+            # of clade enrichment, not a group to remove from the hypothesis.
+            tested_clades = [c for c in clade_order if ns[c] > 0]
+            used_clades_by_element[symbol] = tested_clades
 
             pval = np.nan
             method = ""
@@ -452,10 +466,12 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
 
             if tot_pres < MIN_TOTAL_PRESENT:
                 reason = f"rare (<{MIN_TOTAL_PRESENT} total present)"
-            elif len(variable_clades) < 2:
-                reason = "insufficient variable clades after zero/full exclusion"
+            elif tot_pres == sum(ns.values()):
+                reason = "invariant in all analyzed genomes"
+            elif len(tested_clades) < 2:
+                reason = "fewer than two populated clades"
             else:
-                table = np.array([[pres[c], absn[c]] for c in variable_clades], dtype=int)
+                table = np.array([[pres[c], absn[c]] for c in tested_clades], dtype=int)
                 try:
                     pval, method, chi2, dof = chi2_with_optional_montecarlo(table)
                 except Exception as e:
@@ -464,7 +480,7 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
             omnibus_rows.append({
                 "Element symbol": symbol,
                 "Total_Present": tot_pres,
-                "Tested_Clades": ",".join(variable_clades),
+                "Tested_Clades": ",".join(tested_clades),
                 "Test_Method": method,
                 "Chi2": chi2,
                 "DoF": dof,
@@ -497,11 +513,11 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
             ns   = {c: int(clade_sizes.get(c, 0)) for c in clade_order}
             absn = {c: ns[c] - pres[c] for c in clade_order}
 
-            variable_clades = used_clades_by_element.get(symbol, [])
-            if len(variable_clades) < 2:
+            tested_clades = used_clades_by_element.get(symbol, [])
+            if len(tested_clades) < 2:
                 continue
 
-            pairs = list(itertools.combinations(variable_clades, 2))
+            pairs = list(itertools.combinations(tested_clades, 2))
             pvals = []
             tmp_rows = []
 
@@ -538,9 +554,9 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
                 key = tuple(sorted((r["Group1"], r["Group2"])))
                 p_adj_map[key] = r["p_holm"]
 
-            cld_var = make_cld_letters(variable_clades, p_adj_map, alpha=ALPHA)
-            for c in variable_clades:
-                cld_letters_by_element[symbol][c] = cld_var.get(c, "")
+            cld_all = make_cld_letters(tested_clades, p_adj_map, alpha=ALPHA)
+            for c in tested_clades:
+                cld_letters_by_element[symbol][c] = cld_all.get(c, "")
 
         pairwise_df = pd.DataFrame(pairwise_rows)
         pairwise_df.to_csv(out["pairwise"], sep="\t", index=False)
@@ -593,6 +609,62 @@ for scheme in ["Combined_Clade1", "Split_Clade1A1B"]:
         summary_df.to_csv(out["table"], sep="\t", index=False)
         print(f"[OK] Summary (paper-style): {out['summary']}")
         print(f"[OK] ElementCounts TSV (same content): {out['table']}")
+
+        # Audit original manuscript claims, without silently forcing expected
+        # counts to match the current input data or overwriting old output.
+        if scheme == "Split_Clade1A1B" and mode == "With_Unassigned":
+            expected_s5 = {
+                "sseK3": [10,70,0,0,13],
+                "gogB": [0,0,0,0,22],
+                "ybtP": [0,0,0,0,10],
+                "gyrA_S83F": [0,3,6,0,2],
+                "mdsB": [169,759,894,1356,126],
+                "golT": [169,759,894,1357,118],
+                "sodC1": [169,759,894,1357,121],
+                "vasL": [169,759,894,1357,121],
+                "gtgA": [169,759,894,1357,102],
+                "pagO": [169,759,890,1357,125],
+                "allD": [169,759,891,1357,127],
+            }
+            table_s5_audit=[]
+            omnibus_lookup=omnibus_df.set_index("Element symbol")
+            for gene,expected in expected_s5.items():
+                observed=[int(counts_by_clade[c].get(gene,0)) for c in clade_order]
+                row=omnibus_lookup.loc[gene] if gene in omnibus_lookup.index else None
+                table_s5_audit.append({
+                    "Gene":gene, "Expected_clade_counts":",".join(map(str,expected)),
+                    "Observed_clade_counts":",".join(map(str,observed)),
+                    "Counts_match":observed==expected,
+                    "Omnibus_p":float(row["Stats p-value"]) if row is not None and pd.notna(row["Stats p-value"]) else np.nan,
+                    "FDR_BH":float(row["Stats FDR"]) if row is not None and pd.notna(row["Stats FDR"]) else np.nan,
+                    "Not_tested_reason":row["Reason_Not_Tested"] if row is not None else "not in AMRFinder data",
+                    "Compact_letters":",".join(cld_letters_by_element.get(gene,{}).get(c,"") for c in clade_order),
+                })
+            audit=pd.DataFrame(table_s5_audit)
+            audit_file=os.path.join(output_dir,"Table_S5_Flagged_Genes_Audit.tsv")
+            audit.to_csv(audit_file,sep="\t",index=False)
+            print("[AUDIT] Table S5 comparison:",audit_file)
+            print(audit.to_string(index=False))
+            if not audit["Counts_match"].all():
+                print("[REVIEW REQUIRED] Some master-derived gene counts differ from pasted Table S5; see audit before manuscript edits.")
+
+        if args.stats_only:
+            # Statistics and all sample-level binary calls are retained; only
+            # the huge 600-dpi figures are skipped for fast Table S5 auditing.
+            matrix_with_meta = pa.copy()
+            matrix_with_meta.insert(0, "Lineage", meta_df.set_index("Sample")
+                                    .loc[matrix_with_meta.index, "Lineage"].astype(str).values)
+            with pd.ExcelWriter(out["excel"],engine="openpyxl") as xw:
+                summary_df.to_excel(xw,sheet_name="Summary_ForPaper",index=False)
+                omnibus_df.to_excel(xw,sheet_name="Omnibus_Stats",index=False)
+                pairwise_df.to_excel(xw,sheet_name="Pairwise_Fisher_Holm",index=False)
+                meta_df.to_excel(xw,sheet_name="Sample_Clade_Metadata",index=False)
+                matrix_with_meta.to_excel(xw,sheet_name="PresenceAbsence_Matrix",index=True)
+                if scheme == "Split_Clade1A1B" and mode == "With_Unassigned":
+                    audit.to_excel(xw,sheet_name="Table_S5_Flagged_Audit",index=False)
+            print(f"[PASS] Stats-only Table S5 results: {output_dir}")
+            print(f"[OUTPUT] {out['excel']}")
+            continue
 
         print("🎨 Building heatmap (Types grouped together)...")
 
