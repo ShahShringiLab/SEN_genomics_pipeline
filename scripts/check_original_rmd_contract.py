@@ -48,6 +48,8 @@ checks = [
         re.findall(r'(?ms)^\x60\x60\x60\{r[^\n}]*\}\s*\n(.*?)^\x60\x60\x60\s*$', working)[3:22])),
     ('original full-master chunks source table', 'SEN_TableS1_final_source_decomposition.csv' in master),
     ('main full-master input check', '33831L' in master),
+    ('all full-master Rmd-derived fields are exported',
+     'SEN_33831_original_Rmd_derived.csv' in master),
     ('full-master stage never uses selected QC input', 'Finalupdated_SEN_Genomes1_QC_merged.csv' not in master),
     ('separate selected original stage uses QC input', 'Finalupdated_SEN_Genomes1_QC_merged.csv' in combined),
     ('historical selection generation skipped', 'BEGIN USER ORIGINAL CHUNK 23' not in combined),
