@@ -17,6 +17,12 @@ new='''file_path <- file.path(Sys.getenv("SEN_ROOT", unset=getwd()),
 SEN <- read_csv(file_path, col_types = cols(.default = col_character()))
 stopifnot(nrow(SEN)==33831L,ncol(SEN)==51L)'''
 rendered=text.replace(old,new,1)
+# Original phenotype script belongs to the same notebook. Correct the input
+# path ONLY; the original statistical analysis code remains unchanged.
+phenotype_old = '"FDASEN_AMRPhenotype2.csv"'
+phenotype_new = 'file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "data/part_a/phenotype/FDASEN_AMRPhenotype2.csv")'
+assert rendered.count(phenotype_old) == 1, "Original phenotype input path not uniquely identified"
+rendered = rendered.replace(phenotype_old, phenotype_new, 1)
 # The original dot plot uses source-specific facet labels. Its N must reflect
 # precisely the plotted source population: any valid year <=2025.
 # Historical years <=2000 are grouped under the single <=2000 category.
@@ -63,8 +69,8 @@ assert n_dropped in (4, 6), (
     f"Expected 4 or 6 temporal lower-year cutoffs, found {n_dropped}. "
     "Refusing an unverified edit."
 )
-# Strict reproducibility: only input, facet N, temporal cutoff and Top100 axis may change.
-expected = text.replace(old, new, 1).replace(old_facet, new_facet, 1).replace(old_top100, new_top100, 1)
+# Strict reproducibility: only both input paths, facet N, temporal cutoff and Top100 axis may change.
+expected = text.replace(old, new, 1).replace(phenotype_old, phenotype_new, 1).replace(old_facet, new_facet, 1).replace(old_top100, new_top100, 1)
 expected, expected_n = re.subn(lower_cutoff, "", expected)
 assert expected_n == n_dropped and rendered == expected
 out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
