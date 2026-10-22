@@ -51,6 +51,10 @@ fi
 
 python3 scripts/validate_full_master_repro.py
 
+echo "[ADD-ON] International decomposed animal-source figure (N=71)"
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
+  Rscript analysis/part_a/10_international_animal_source_plot.R
+
 echo "[ADD-ON] Seven-bucket Top-5 temporal charts and reconciled master/selected metadata"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
@@ -66,3 +70,4 @@ echo "[RESULTS] Original 3,434 analyses: results/part_a/selected_original/"
 echo "[RESULTS] 3,434 metadata/QC: results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv"
 echo "[RESULTS] Master/selected enriched metadata: results/part_a/reconciled_metadata/"
 echo "[RESULTS] Seven-bucket full/selected Top-5 temporal stacks: results/part_a/temporal_top5/"
+echo "[RESULTS] International decomposed-source plot: results/part_a/full_master_original/international_animal_source/"
