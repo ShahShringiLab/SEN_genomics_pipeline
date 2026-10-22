@@ -60,6 +60,18 @@ Expected group totals: **International 71**, **Other-US 582**. Corrected parser 
 
 The alternative extracted scripts `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are **not invoked by the publication reproducer**, because their 3,434-genome inputs would mislabel full-master results. Their old outputs must not be used for master population claims.
 
+## Recover from an error after full-master analysis has completed
+
+If original chunks 3–22 already ran and `results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv` exists, **you do not need to recalculate 33,831-genome full-master figures**. Reuse the verified original raw and Rmd-derived snapshots to rehydrate the complete `SEN` object and rerun only the selected-genome analyses (chunks 24–30), then the new metadata and paired temporal plots:
+
+```bash
+cd ~/SEN_PartA_clean
+git pull --ff-only origin feature/part-a2-master-33831-parsed-snapshot-20261021
+bash scripts/run_part_a_selected_resume.sh 2>&1 | tee selected_resume_rerun.log
+```
+
+The resume runner checks all prerequisite snapshots and exits rather than silently regenerating or substituting selected data. Its R log is `results/part_a/master_33831/original_execution/selected_resume.log`. It reconstructs the original binary `QR_genotype` alias omitted with historical selection chunk 23 and ensures `QR_status` is present in both plotting views, leaving the original full-master analysis unchanged. The older original marker-occurrence stacks may sum to more than genome totals when multiple marker hits occur; the separate seven-category `temporal_top5/` outputs count each genome once.
+
 ## Fresh clone and rerun
 
 Keep the previous working folder until the new clone passes.
