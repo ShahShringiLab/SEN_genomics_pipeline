@@ -167,6 +167,44 @@ all_file = out / "run_original_A2_all.R"
 all_file.write_text(
     'source(file.path(Sys.getenv("SEN_ROOT"), "results/part_a/master_33831/original_execution/run_original_A2_master.R"))\n'
     + "\n".join(followups)+"\n", encoding="utf-8")
+
+# Faster RESTART after original full-master chunks 3-22 have already finished:
+# reconstruct the same 33,831-row SEN dataframe from the parser-only raw
+# snapshot and the original Rmd-derived field snapshot captured after chunk 22.
+# No original full-population calculations are redone or replaced.
+resume = [
+    'options(warn=1)',
+    'suppressPackageStartupMessages({',
+    'library(dplyr); library(tidyr); library(readr); library(stringr)',
+    'library(ggplot2); library(lubridate); library(purrr); library(patchwork)',
+    'library(scales); library(forcats)',
+    '})',
+    'raw_path <- file.path(Sys.getenv("SEN_ROOT"),',
+    '  "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv")',
+    'derived_path <- file.path(Sys.getenv("SEN_ROOT"),',
+    '  "results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv")',
+    'stopifnot(file.exists(raw_path),file.exists(derived_path))',
+    'master_raw <- readr::read_csv(raw_path,',
+    '  col_types=readr::cols(.default=readr::col_character()), show_col_types=FALSE)',
+    'master_derived <- readr::read_csv(derived_path,',
+    '  col_types=readr::cols(.default=readr::col_character()), show_col_types=FALSE)',
+    'stopifnot(nrow(master_raw)==33831L,ncol(master_raw)==51L,',
+    '  nrow(master_derived)==33831L,',
+    '  all(c("Run","Isolate","Source","Collection_year","FQR_genotype")',
+    '    %in% names(master_derived)),',
+    '  !anyDuplicated(master_raw$Run), !anyDuplicated(master_derived$Run),',
+    '  !anyDuplicated(master_raw$Isolate), !anyDuplicated(master_derived$Isolate),',
+    '  !any(names(master_derived)[!names(master_derived) %in% c("Run","Isolate")]',
+    '    %in% names(master_raw)))',
+    'SEN <- dplyr::left_join(master_raw,master_derived,by=c("Run","Isolate"))',
+    'stopifnot(nrow(SEN)==33831L, dplyr::n_distinct(SEN$Run)==33831L,',
+    '  !anyNA(SEN$Source),!anyNA(SEN$FQR_genotype),',
+    '  !anyNA(SEN$Collection_year[!is.na(SEN$Collection_year)]))',
+    'cat("[PASS] Rehydrated original full-master SEN dataframe from completed master result; N=33,831\\n")',
+]
+resume_file = out / "run_original_A2_selected_resume.R"
+resume_file.write_text("\n".join(resume+followups)+"\n", encoding="utf-8")
+print(f"[READY] Resume only original selected chunks 24-30 (full master unchanged): {resume_file}")
 print(f"[READY] Original full-master (3-22): {master_file}")
 print(f"[READY] Original full + selected followups (24-30): {all_file}")
 print("[AUDIT] Original selection-generation chunk 23 intentionally skipped; existing QC-merged cohort reused")
