@@ -33,6 +33,27 @@ New charts in `results/part_a/temporal_top5/` render the **total master and sele
 
 No sampling is repeated, no original code is rewritten and no biological source result is forced to match the older Table S1. The independent validator `scripts/validate_enriched_metadata_outputs.py` verifies exact key and QC reconciliation and chart totals.
 
+### International animal/decomposed-source figure (N = 71)
+
+`analysis/part_a/10_international_animal_source_plot.R` reads the original full-master
+`SEN_TableS1_final_source_decomposition.csv` and independently exports a dedicated
+International decomposed animal-source bar chart, rather than reusing the QR/FQR
+stacked source plot. It shows **Others = 67 (94.4%)** and **Chicken = 4 (5.6%)**,
+with both genome counts and percentages labeled and a centered title. Its
+data CSV, PNG, TIFF and PDF are written to
+`results/part_a/full_master_original/international_animal_source/`.
+
+To run **only this figure** from existing finished full-master results:
+
+```bash
+cd ~/SEN_PartA_clean
+git pull --ff-only origin feature/part-a2-master-33831-parsed-snapshot-20261021
+conda run --no-capture-output -n sen_stats env SEN_ROOT="$PWD" \
+  Rscript analysis/part_a/10_international_animal_source_plot.R
+```
+
+The normal full and selected-resume runners also regenerate this figure.
+
 ### Source decomposition audit
 
 The original master's manuscript table `SEN_TableS1_final_source_decomposition.csv` must contain:
