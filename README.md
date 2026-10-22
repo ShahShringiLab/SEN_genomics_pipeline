@@ -46,6 +46,8 @@ The complete original Part A notebook is preserved under provenance/ and is the 
 bash scripts/run_part_a.sh 2>&1 | tee original_part_a_rerun.log
 ```
 
+**Additional October 22 outputs:** A Top-100 marker figure with axis extending to **250,000** but no endpoint tick label; paired full-master and selected-cohort Top-5 + Others + QS/FQS temporal count/percentage plots (exactly one category per genome); `SEN_33831_full_enriched_metadata.csv` (all original master columns and every original Rmd-derived field) and `SEN_3434_selected_enriched_QC_metadata.csv` (all original selected metadata plus QC and matched master fields). See `results/part_a/reconciled_metadata/` and `results/part_a/temporal_top5/` after the rerun; neither output replaces the archival data or original publication analyses.
+
 See **[Part A original-method reproducibility and fresh clone](analysis/part_a/README.md)**. The legacy files `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are *not* used by this official full-master runner because they had been executed on the wrong genomic denominator. The run fails if the expected 33,831-master International/Other-US source decomposition differs from the original manuscript Table S1.
 
 ### Part B1 — read retrieval, trimming and quality control
