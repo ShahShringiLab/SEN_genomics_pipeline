@@ -39,16 +39,19 @@ The complete original Part A notebook is preserved under provenance/ and is the 
 - Original Rmd chunks **3–22** run on the **33,831-genome master**, including phenotype trends, marker frequencies, International/Other-US source refinement, temporal graphs and diversity.
 - Historical selection-generator chunk **23 is not rerun**: the original 3,434 selected genomes are a fixed final cohort.
 - Original Rmd chunks **24–30** use that **3,434-genome cohort after QC merge**, while the master object remains 33,831 genomes.
-- Deliberate edits only: strict CSV parsing and input paths; historical **≤2000** bin includes all dated pre-1990 genomes (33,508 dated total); consistent dot-plot source-facet Ns; Top-100 marker count axis to 25,000; selection/QC audit.
+- Deliberate edits only: strict CSV parsing and input paths; historical **≤2000** bin includes all dated pre-1990 genomes (33,508 dated total); consistent dot-plot source-facet Ns; Top-100 marker count axis to 25,000; consistent `SEN3` → `SEN` naming in the generated working copy; selection/QC audit.
 - Full-master output: `results/part_a/full_master_original/`. Selected original output: `results/part_a/selected_original/`. QC merge output: `results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv`.
 
 ```bash
 bash scripts/run_part_a.sh 2>&1 | tee original_part_a_rerun.log
 ```
 
-**Additional October 22 outputs:** A Top-100 marker figure with axis extending to **25,000** but no endpoint tick label; paired full-master and selected-cohort Top-5 + Others + QS/FQS temporal count/percentage plots (exactly one category per genome); `SEN_33831_full_enriched_metadata.csv` (all original master columns and every original Rmd-derived field) and `SEN_3434_selected_enriched_QC_metadata.csv` (all original selected metadata plus QC and matched master fields). See `results/part_a/reconciled_metadata/` and `results/part_a/temporal_top5/` after the rerun; neither output replaces the archival data or original publication analyses.
+**Additional October 2026 Part A2 outputs:** A Top-100 marker figure with axis extending to **25,000** but no endpoint tick label; paired full-master and selected-cohort Top-5 + Others + QS/FQS temporal count/percentage plots (exactly one category per genome); `SEN_33831_full_enriched_metadata.csv` (all original master columns and every original Rmd-derived field) and `SEN_3434_selected_enriched_QC_metadata.csv` (all original selected metadata plus QC and matched master fields). See `results/part_a/reconciled_metadata/` and `results/part_a/temporal_top5/` after the rerun; neither output replaces the archival data or original publication analyses.
 
-See **[Part A original-method reproducibility and fresh clone](analysis/part_a/README.md)**. The legacy files `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are *not* used by this official full-master runner because they had been executed on the wrong genomic denominator. The run fails if the expected 33,831-master International/Other-US source decomposition differs from the original manuscript Table S1.
+See **[Updated Part A2 release and execution](docs/PART_A2_UPDATED.md)** and
+**[Part A2 analysis details](analysis/part_a/README.md)**. This release tracks
+only Part A2 source and cohort analyses; Table S5 verification is a separate
+clade-analysis workstream. The legacy files `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are *not* used by this official full-master runner because they had been executed on the wrong genomic denominator. If the reproduced International/Other-US source subgroups differ from an earlier manuscript Table S1, the validator reports **[REVIEW REQUIRED]** and saves the isolate-level audit without changing source assignments.
 
 ### Part B1 — read retrieval, trimming and quality control
 
