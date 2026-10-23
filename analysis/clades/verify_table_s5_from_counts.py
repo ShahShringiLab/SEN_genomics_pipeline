@@ -193,19 +193,16 @@ def manuscript_style(ws, table):
                 cell.border = Border(top=Side(style="medium",color="53647B"))
         ws.row_dimensions[i].height = 23
         prior_type = category
-    # Keep original superscript Unicode glyphs directly in the Excel cells.
-    note_row = len(table)+3
-    ws.cell(note_row,1,
-        "Superscript letters: original SEN pipeline Holm-adjusted Fisher "
-        "pairwise groupings; letters are only assigned to tested variable clades.")
-    ws.cell(note_row+1,1,
-        "Blank letters may indicate a nonsignificant result or a 0%/100% "
-        "clade excluded by the original pipeline. No statistics were changed.")
-    ws.cell(note_row+2,1,
-        "BH-FDR is calculated over available published determinants only "
-        "(not the unavailable complete AMRFinder master family).")
-    for i in range(note_row,note_row+3):
-        ws.cell(i,1).font=Font(name="Aptos",size=10,italic=True,color="58677B")
+    # Data range remains exactly the manuscript rows (no trailing note
+    # rows that could be misinterpreted as extra genes by Excel/pandas).
+    from openpyxl.comments import Comment
+    ws.cell(1, table.shape[1]).comment = Comment(
+        "Superscript letters reproduce the original SEN Holm-adjusted "
+        "Fisher groupings only for tested variable clades. Blank letters "
+        "can mean FDR nonsignificance or original 0%/100% clade exclusion. "
+        "BH FDR is limited to available published genes, not the "
+        "unavailable complete AMRFinder master.", "SEN pipeline"
+    )
 
 
 def run():
