@@ -1,0 +1,49 @@
+name: Verify Table S5 count-only SEN main replica
+on:
+  push:
+    branches:
+      - feature/part-a2-master-33831-parsed-snapshot-20261021
+    paths:
+      - analysis/clades/verify_table_s5_from_counts.py
+      - data/table_s5/Table_S5_published_pure_counts.tsv
+      - .github/workflows/table-s5-count-replica.yml
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install exact stats interface dependencies
+        run: python -m pip install 'numpy<3' 'scipy==1.15.3' pandas statsmodels openpyxl
+      - name: Compile count replica
+        run: python -m py_compile analysis/clades/verify_table_s5_from_counts.py
+      - name: Run all four configurations with real published counts
+        run: python analysis/clades/verify_table_s5_from_counts.py
+      - name: Assert original output structure
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('results/table_s5_count_only_main_replica')
+          for s in ('Combined_Clade1','Split_Clade1A1B'):
+              for m in ('With_Unassigned','Without_Unassigned'):
+                  d=root/s/m
+                  for f in ('AMRFinder_Omnibus_Stats.tsv','AMRFinder_Pairwise_Fisher.tsv','AMRFinder_ByClade_Summary.tsv','AMRFinder_ByClade_ElementCounts.tsv','AMRFinder_ByClade_Summary.xlsx','COUNT_ONLY_LIMITATIONS.txt'):
+                      assert (d/f).is_file(),d/f
+                  a=pd.read_csv(d/'AMRFinder_ByClade_Summary.tsv',sep='\t')
+                  assert len(a)>35, (d,len(a))
+                  b=pd.read_csv(d/'AMRFinder_Omnibus_Stats.tsv',sep='\t')
+                  assert set(a['Element symbol'])==set(b['Element symbol'])
+                  x=pd.ExcelFile(d/'AMRFinder_ByClade_Summary.xlsx')
+                  assert x.sheet_names==['Summary_ForPaper','Omnibus_Stats','Pairwise_Fisher_Holm'],x.sheet_names
+          print('PASS: All four configurations and their five output tables/workbooks')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: table-s5-replicated-results
+          path: results/table_s5_count_only_main_replica/
+          retention-days: 7
