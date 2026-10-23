@@ -190,167 +190,167 @@ def run():
             def clade_header(c):
                 return f"{c} (n={clade_sizes.get(c,0)})"
             print(f"[MODE] {scheme}/{mode} : {sum(clade_sizes.values())} genomes, {len(symbols)} present elements")
-        omnibus_rows = []
-        used_clades_by_element = {}
+            omnibus_rows = []
+            used_clades_by_element = {}
 
-        for symbol in pa.columns:
-            pres = {c: int(counts_by_clade[c].loc[symbol]) for c in clade_order}
-            ns   = {c: int(clade_sizes.get(c, 0)) for c in clade_order}
-            absn = {c: ns[c] - pres[c] for c in clade_order}
-            tot_pres = int(total_present.loc[symbol])
+            for symbol in pa.columns:
+                pres = {c: int(counts_by_clade[c].loc[symbol]) for c in clade_order}
+                ns   = {c: int(clade_sizes.get(c, 0)) for c in clade_order}
+                absn = {c: ns[c] - pres[c] for c in clade_order}
+                tot_pres = int(total_present.loc[symbol])
 
-            variable_clades = [c for c in clade_order if ns[c] > 0 and (0 < pres[c] < ns[c])]
-            used_clades_by_element[symbol] = variable_clades
+                variable_clades = [c for c in clade_order if ns[c] > 0 and (0 < pres[c] < ns[c])]
+                used_clades_by_element[symbol] = variable_clades
 
-            pval = np.nan
-            method = ""
-            chi2 = np.nan
-            dof = np.nan
-            reason = ""
+                pval = np.nan
+                method = ""
+                chi2 = np.nan
+                dof = np.nan
+                reason = ""
 
-            if tot_pres < MIN_TOTAL_PRESENT:
-                reason = f"rare (<{MIN_TOTAL_PRESENT} total present)"
-            elif len(variable_clades) < 2:
-                reason = "insufficient variable clades after zero/full exclusion"
-            else:
-                table = np.array([[pres[c], absn[c]] for c in variable_clades], dtype=int)
-                try:
-                    pval, method, chi2, dof = chi2_with_optional_montecarlo(table)
-                except Exception as e:
-                    reason = f"chi2 failed: {e}"
+                if tot_pres < MIN_TOTAL_PRESENT:
+                    reason = f"rare (<{MIN_TOTAL_PRESENT} total present)"
+                elif len(variable_clades) < 2:
+                    reason = "insufficient variable clades after zero/full exclusion"
+                else:
+                    table = np.array([[pres[c], absn[c]] for c in variable_clades], dtype=int)
+                    try:
+                        pval, method, chi2, dof = chi2_with_optional_montecarlo(table)
+                    except Exception as e:
+                        reason = f"chi2 failed: {e}"
 
-            omnibus_rows.append({
-                "Element symbol": symbol,
-                "Total_Present": tot_pres,
-                "Tested_Clades": ",".join(variable_clades),
-                "Test_Method": method,
-                "Chi2": chi2,
-                "DoF": dof,
-                "Stats p-value": pval,
-                "Stats FDR": np.nan,
-                "Reason_Not_Tested": reason,
-            })
-
-        omnibus_df = pd.DataFrame(omnibus_rows)
-
-        p_num = pd.to_numeric(omnibus_df["Stats p-value"], errors="coerce")
-        tested_mask = p_num.notna()
-        if tested_mask.sum() > 0:
-            _, fdr_vals, _, _ = multipletests(p_num.loc[tested_mask].values.astype(float), method="fdr_bh")
-            omnibus_df.loc[tested_mask, "Stats FDR"] = fdr_vals
-
-        omnibus_df.to_csv(out["omnibus"], sep="\t", index=False)
-        print(f"[OK] Omnibus stats: {out['omnibus']}")
-
-        print("📊 Running post-hoc pairwise Fisher (Holm within element) for significant elements...")
-
-        fdr_num = pd.to_numeric(omnibus_df["Stats FDR"], errors="coerce")
-        sig_elements = omnibus_df.loc[tested_mask & (fdr_num <= ALPHA), "Element symbol"].tolist()
-
-        pairwise_rows = []
-        cld_letters_by_element = {e: {c: "" for c in clade_order} for e in pa.columns}
-
-        for symbol in sig_elements:
-            pres = {c: int(counts_by_clade[c].loc[symbol]) for c in clade_order}
-            ns   = {c: int(clade_sizes.get(c, 0)) for c in clade_order}
-            absn = {c: ns[c] - pres[c] for c in clade_order}
-
-            variable_clades = used_clades_by_element.get(symbol, [])
-            if len(variable_clades) < 2:
-                continue
-
-            pairs = list(itertools.combinations(variable_clades, 2))
-            pvals = []
-            tmp_rows = []
-
-            for a, b in pairs:
-                a1, a0 = pres[a], absn[a]
-                b1, b0 = pres[b], absn[b]
-
-                _, p_raw = fisher_exact([[a1, a0], [b1, b0]], alternative="two-sided")
-                or05 = odds_ratio_with_haldene(a1, a0, b1, b0, add=0.5)
-
-                tmp_rows.append({
+                omnibus_rows.append({
                     "Element symbol": symbol,
-                    "Group1": a,
-                    "Group2": b,
-                    "G1_present": a1,
-                    "G1_absent": a0,
-                    "G2_present": b1,
-                    "G2_absent": b0,
-                    "OR_0.5": or05,
-                    "p_raw": float(p_raw),
-                    "p_holm": np.nan,
+                    "Total_Present": tot_pres,
+                    "Tested_Clades": ",".join(variable_clades),
+                    "Test_Method": method,
+                    "Chi2": chi2,
+                    "DoF": dof,
+                    "Stats p-value": pval,
+                    "Stats FDR": np.nan,
+                    "Reason_Not_Tested": reason,
                 })
-                pvals.append(float(p_raw))
 
-            if pvals:
-                _, p_holm, _, _ = multipletests(pvals, method="holm")
-                for i in range(len(tmp_rows)):
-                    tmp_rows[i]["p_holm"] = float(p_holm[i])
+            omnibus_df = pd.DataFrame(omnibus_rows)
 
-            pairwise_rows.extend(tmp_rows)
+            p_num = pd.to_numeric(omnibus_df["Stats p-value"], errors="coerce")
+            tested_mask = p_num.notna()
+            if tested_mask.sum() > 0:
+                _, fdr_vals, _, _ = multipletests(p_num.loc[tested_mask].values.astype(float), method="fdr_bh")
+                omnibus_df.loc[tested_mask, "Stats FDR"] = fdr_vals
 
-            p_adj_map = {}
-            for r in tmp_rows:
-                key = tuple(sorted((r["Group1"], r["Group2"])))
-                p_adj_map[key] = r["p_holm"]
+            omnibus_df.to_csv(out["omnibus"], sep="\t", index=False)
+            print(f"[OK] Omnibus stats: {out['omnibus']}")
 
-            cld_var = make_cld_letters(variable_clades, p_adj_map, alpha=ALPHA)
-            for c in variable_clades:
-                cld_letters_by_element[symbol][c] = cld_var.get(c, "")
+            print("📊 Running post-hoc pairwise Fisher (Holm within element) for significant elements...")
 
-        pairwise_df = pd.DataFrame(pairwise_rows)
-        pairwise_df.to_csv(out["pairwise"], sep="\t", index=False)
-        print(f"[OK] Pairwise stats: {out['pairwise']}")
+            fdr_num = pd.to_numeric(omnibus_df["Stats FDR"], errors="coerce")
+            sig_elements = omnibus_df.loc[tested_mask & (fdr_num <= ALPHA), "Element symbol"].tolist()
 
-        summary_rows = []
-        p_map = dict(zip(omnibus_df["Element symbol"], omnibus_df["Stats p-value"]))
-        f_map = dict(zip(omnibus_df["Element symbol"], omnibus_df["Stats FDR"]))
+            pairwise_rows = []
+            cld_letters_by_element = {e: {c: "" for c in clade_order} for e in pa.columns}
 
-        for symbol in pa.columns:
-            t = sym_to_type.get(symbol, "NA")
-            nm = sym_to_name.get(symbol, "NA")
+            for symbol in sig_elements:
+                pres = {c: int(counts_by_clade[c].loc[symbol]) for c in clade_order}
+                ns   = {c: int(clade_sizes.get(c, 0)) for c in clade_order}
+                absn = {c: ns[c] - pres[c] for c in clade_order}
 
-            letters = cld_letters_by_element.get(symbol, {c: "" for c in clade_order})
+                variable_clades = used_clades_by_element.get(symbol, [])
+                if len(variable_clades) < 2:
+                    continue
 
-            row = {
-                "Type": t,
-                "Element symbol": symbol,
-                "Element name": nm,
-                "Total (n)": int(total_present.loc[symbol]),
-            }
-            for c in clade_order:
-                n = int(clade_sizes.get(c, 0))
-                cnt = int(counts_by_clade[c].loc[symbol]) if n > 0 else 0
-                row[clade_header(c)] = format_cell(cnt, n, letters.get(c, ""))
+                pairs = list(itertools.combinations(variable_clades, 2))
+                pvals = []
+                tmp_rows = []
 
-            pval = p_map.get(symbol, np.nan)
-            fdr  = f_map.get(symbol, np.nan)
-            row["Stats p-value"] = "" if pd.isna(pval) else float(pval)
-            row["Stats FDR"]     = "" if pd.isna(fdr) else float(fdr)
+                for a, b in pairs:
+                    a1, a0 = pres[a], absn[a]
+                    b1, b0 = pres[b], absn[b]
 
-            summary_rows.append(row)
+                    _, p_raw = fisher_exact([[a1, a0], [b1, b0]], alternative="two-sided")
+                    or05 = odds_ratio_with_haldene(a1, a0, b1, b0, add=0.5)
 
-        summary_df = pd.DataFrame(summary_rows)
+                    tmp_rows.append({
+                        "Element symbol": symbol,
+                        "Group1": a,
+                        "Group2": b,
+                        "G1_present": a1,
+                        "G1_absent": a0,
+                        "G2_present": b1,
+                        "G2_absent": b0,
+                        "OR_0.5": or05,
+                        "p_raw": float(p_raw),
+                        "p_holm": np.nan,
+                    })
+                    pvals.append(float(p_raw))
 
-        _tested = pd.to_numeric(summary_df["Stats p-value"], errors="coerce").notna()
-        _total  = pd.to_numeric(summary_df["Total (n)"], errors="coerce").fillna(0).astype(int)
+                if pvals:
+                    _, p_holm, _, _ = multipletests(pvals, method="holm")
+                    for i in range(len(tmp_rows)):
+                        tmp_rows[i]["p_holm"] = float(p_holm[i])
 
-        summary_df["_tested_sort"] = _tested
-        summary_df["_total_sort"] = _total
+                pairwise_rows.extend(tmp_rows)
 
-        summary_df = (
-            summary_df.sort_values(["_tested_sort", "_total_sort", "Type", "Element symbol"],
-                                   ascending=[False, False, True, True])
-                     .drop(columns=["_tested_sort", "_total_sort"])
-                     .reset_index(drop=True)
-        )
+                p_adj_map = {}
+                for r in tmp_rows:
+                    key = tuple(sorted((r["Group1"], r["Group2"])))
+                    p_adj_map[key] = r["p_holm"]
 
-        summary_df.to_csv(out["summary"], sep="\t", index=False)
-        summary_df.to_csv(out["table"], sep="\t", index=False)
-        print(f"[OK] Summary (paper-style): {out['summary']}")
-        print(f"[OK] ElementCounts TSV (same content): {out['table']}")
+                cld_var = make_cld_letters(variable_clades, p_adj_map, alpha=ALPHA)
+                for c in variable_clades:
+                    cld_letters_by_element[symbol][c] = cld_var.get(c, "")
+
+            pairwise_df = pd.DataFrame(pairwise_rows)
+            pairwise_df.to_csv(out["pairwise"], sep="\t", index=False)
+            print(f"[OK] Pairwise stats: {out['pairwise']}")
+
+            summary_rows = []
+            p_map = dict(zip(omnibus_df["Element symbol"], omnibus_df["Stats p-value"]))
+            f_map = dict(zip(omnibus_df["Element symbol"], omnibus_df["Stats FDR"]))
+
+            for symbol in pa.columns:
+                t = sym_to_type.get(symbol, "NA")
+                nm = sym_to_name.get(symbol, "NA")
+
+                letters = cld_letters_by_element.get(symbol, {c: "" for c in clade_order})
+
+                row = {
+                    "Type": t,
+                    "Element symbol": symbol,
+                    "Element name": nm,
+                    "Total (n)": int(total_present.loc[symbol]),
+                }
+                for c in clade_order:
+                    n = int(clade_sizes.get(c, 0))
+                    cnt = int(counts_by_clade[c].loc[symbol]) if n > 0 else 0
+                    row[clade_header(c)] = format_cell(cnt, n, letters.get(c, ""))
+
+                pval = p_map.get(symbol, np.nan)
+                fdr  = f_map.get(symbol, np.nan)
+                row["Stats p-value"] = "" if pd.isna(pval) else float(pval)
+                row["Stats FDR"]     = "" if pd.isna(fdr) else float(fdr)
+
+                summary_rows.append(row)
+
+            summary_df = pd.DataFrame(summary_rows)
+
+            _tested = pd.to_numeric(summary_df["Stats p-value"], errors="coerce").notna()
+            _total  = pd.to_numeric(summary_df["Total (n)"], errors="coerce").fillna(0).astype(int)
+
+            summary_df["_tested_sort"] = _tested
+            summary_df["_total_sort"] = _total
+
+            summary_df = (
+                summary_df.sort_values(["_tested_sort", "_total_sort", "Type", "Element symbol"],
+                                       ascending=[False, False, True, True])
+                         .drop(columns=["_tested_sort", "_total_sort"])
+                         .reset_index(drop=True)
+            )
+
+            summary_df.to_csv(out["summary"], sep="\t", index=False)
+            summary_df.to_csv(out["table"], sep="\t", index=False)
+            print(f"[OK] Summary (paper-style): {out['summary']}")
+            print(f"[OK] ElementCounts TSV (same content): {out['table']}")
 
 
             with pd.ExcelWriter(out["excel"],engine="openpyxl") as xw:
