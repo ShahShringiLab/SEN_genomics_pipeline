@@ -1,0 +1,38 @@
+name: Verify Part A2 SEN variable rename
+on:
+  push:
+    branches:
+      - feature/part-a2-master-33831-parsed-snapshot-20261021
+    paths:
+      - scripts/prepare_original_part_a2.py
+      - provenance/SEN_Genomes2.Rmd
+      - .github/workflows/part-a2-sen-name-check.yml
+  workflow_dispatch:
+jobs:
+  validate-part-a2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Part A2 preparation code
+        run: python -m py_compile scripts/prepare_original_part_a2.py
+      - name: Preflight original 30-chunk source and generated execution code
+        run: python scripts/check_original_rmd_contract.py
+      - name: Assert SEN3 removed from Part A2 working code
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          archived=Path('provenance/SEN_Genomes2.Rmd').read_text()
+          rendered=Path('analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd').read_text()
+          master=Path('results/part_a/master_33831/original_execution/run_original_A2_master.R').read_text()
+          original=Path('provenance/SEN_Genomes2_uploaded_original_20261021.Rmd').read_text()
+          for tag, text in [('archived',archived),('working',rendered),('generated-master',master)]:
+              assert 'SEN3' not in text,tag
+              assert 'SEN <- SEN %>%' in text,tag
+              for name in ('animal','environmental','food','unknown'):
+                  assert f'plot_iso_counts(SEN, "{name}")' in text,(tag,name)
+          assert original.count('SEN3')==5,'Historical original must remain immutable'
+          print('[PASS] Archived and generated Part A2 use SEN; original SHA check passed')
+          PY

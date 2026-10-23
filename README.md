@@ -7,7 +7,7 @@ The repository implements the complete study workflow in two connected parts:
 - **Part A** — phenotype resistance trends, QR/FQR genotype epidemiology, source/origin classification, marker diversity, and construction/validation of the final 3,434-genome cohort.
 - **Part B** — read retrieval and QC, Enteritidis confirmation, core-SNP phylogenomics, recombination filtering, clade analysis, assembly/pangenome analysis, and AMR/virulence/plasmid analyses.
 
-The original exploratory Part A notebook is preserved under provenance/. Linux-executable production scripts live under analysis/part_a/.
+The complete original Part A notebook is preserved under provenance/ and is the authority for Part A statistical analyses. See analysis/part_a/README.md for the original-code runner and population separation.
 
 ## Repository structure
 
@@ -32,65 +32,23 @@ The original exploratory Part A notebook is preserved under provenance/. Linux-e
 
 ## Study workflow
 
-### Part A1 — phenotype resistance trends
+### Part A — reproduce the complete ORIGINAL Rmd (33,831 full master)
 
-Input:
+**Authoritative source:** `provenance/SEN_Genomes2_uploaded_original_20261021.Rmd` (all 30 chunks). Do not substitute the modular 3,434-genome marker/source/diversity scripts for full-master analyses.
 
-    data/part_a/phenotype/FDASEN_AMRPhenotype2.csv
+- Original Rmd chunks **3–22** run on the **33,831-genome master**, including phenotype trends, marker frequencies, International/Other-US source refinement, temporal graphs and diversity.
+- Historical selection-generator chunk **23 is not rerun**: the original 3,434 selected genomes are a fixed final cohort.
+- Original Rmd chunks **24–30** use that **3,434-genome cohort after QC merge**, while the master object remains 33,831 genomes.
+- Deliberate edits only: strict CSV parsing and input paths; historical **≤2000** bin includes all dated pre-1990 genomes (33,508 dated total); consistent dot-plot source-facet Ns; Top-100 marker count axis to 25,000; selection/QC audit.
+- Full-master output: `results/part_a/full_master_original/`. Selected original output: `results/part_a/selected_original/`. QC merge output: `results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv`.
 
-The production analysis reproduces the Human-versus-Chicken temporal analysis of ciprofloxacin resistance, nalidixic-acid reduced susceptibility/resistance, and the combined QR/FQR phenotype metric with 95% confidence intervals.
+```bash
+bash scripts/run_part_a.sh 2>&1 | tee original_part_a_rerun.log
+```
 
-Run:
+**Additional October 22 outputs:** A Top-100 marker figure with axis extending to **25,000** but no endpoint tick label; paired full-master and selected-cohort Top-5 + Others + QS/FQS temporal count/percentage plots (exactly one category per genome); `SEN_33831_full_enriched_metadata.csv` (all original master columns and every original Rmd-derived field) and `SEN_3434_selected_enriched_QC_metadata.csv` (all original selected metadata plus QC and matched master fields). See `results/part_a/reconciled_metadata/` and `results/part_a/temporal_top5/` after the rerun; neither output replaces the archival data or original publication analyses.
 
-    conda run --no-capture-output -n sen_stats \
-      env SEN_ROOT="$PWD" \
-      Rscript analysis/part_a/01_phenotype_trends.R
-
-### Part A2 — genotype epidemiology and cohort construction
-
-Inputs:
-
-    data/part_a/genotype/US-SEN_12192025.csv
-    data/part_a/selection/Selected_updated_Isolate.csv
-    data/part_a/selection/Finalupdated_SEN_Genomes1.csv
-
-Part A2:
-
-1. derives collection year and broad QR/FQR genotype status from the master genotype/metadata table;
-2. reproduces the Human/Chicken/Other and US/non-US source logic;
-3. applies the final 3,434-isolate selection key;
-4. validates rebuilt QR/FQR status, collection year and final source against the committed final cohort;
-5. summarizes QR/FQR marker frequency, marker burden, temporal/source patterns, and multi-marker combinations;
-6. reproduces final source/origin profiles, including International and Other-US animal-source composition;
-7. quantifies QR/FQR diversity and composition using Hill numbers, bootstrap confidence intervals, and permutation tests.
-
-Run the complete Part A workflow with:
-
-    bash scripts/run_part_a.sh
-
-A successful run ends with:
-
-    SEN PART A: PASS
-
-That PASS is emitted only after both the canonical-input/handoff validator and
-the generated-output validator succeed. The latter verifies the rebuilt
-3,434-genome cohort, the expected three QR-status audit differences, final
-source counts, phenotype output dimensions, diversity source coverage, and key
-figure artifacts.
-
-Generated outputs are written beneath results/part_a/ and are intentionally not version-controlled.
-
-The archived master genotype CSV is preserved unchanged. Its known CSV quoting/escaped-comma artifacts are normalized only in memory by the Part A reader before strict row/column validation.
-
-The broad QR/FQR marker rule reconstructed from the original notebook differs from the committed final QR_genotype for three isolates. The workflow writes these discrepancies to an audit table and uses the committed final QR_genotype for downstream production analyses rather than silently changing either record.
-
-Fresh-Linux instructions: docs/PART_A_FRESH_LINUX.md.
-
-### Part A2 master-population reproducibility (33,831 genomes)
-
-The original notebook (`provenance/SEN_Genomes2.Rmd`) analyzed the **full 33,831-genome master population** before genome selection. A reproducible master-population extension now exports the correctly parsed **51 original columns to XLSX/CSV before creating any derived fields**, then produces full-population QR/FQR marker, temporal dot/bar, source and sampling-audit outputs. The original Part A1 and selected 3,434-genome workflows remain intact.
-
-Run: `bash scripts/run_part_a_master.sh` after installing `r-writexl` in `sen_stats`. See [the exact cloning, output and scope instructions](docs/PART_A_33831_MASTER.md).
+See **[Part A original-method reproducibility and fresh clone](analysis/part_a/README.md)**. The legacy files `01_phenotype_trends.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, and `05_diversity_composition.R` are *not* used by this official full-master runner because they had been executed on the wrong genomic denominator. The run fails if the expected 33,831-master International/Other-US source decomposition differs from the original manuscript Table S1.
 
 ### Part B1 — read retrieval, trimming and quality control
 
@@ -201,20 +159,18 @@ Run the static publication audit with:
 
     bash scripts/publication_audit.sh
 
-Part A performs two runtime validation layers: it first validates all committed
-inputs and the 3,434-accession Part A -> Part B handoff, then validates generated
-Part A outputs before reporting PASS. Part B includes a representative smoke
+Part A validates original input contracts, then independently audits full 33,831-genome original figures/source counts and the 3,434-genome selected/QC handoff before reporting PASS. Part B includes a representative smoke
 workflow and canonical metadata/clade-count checks.
 
 ## Provenance
 
 The original working genomics repository is ajulojays/SENBio-Final.
 
-The original Part A exploratory analysis notebook is retained as:
+The full, user-uploaded 30-chunk original is tracked at:
 
-    provenance/SEN_Genomes2.Rmd
+    provenance/SEN_Genomes2_uploaded_original_20261021.Rmd
 
-The notebook is preserved for analytical provenance. The production workflow should be run from the modular scripts under analysis/part_a/, not by executing the exploratory notebook top-to-bottom.
+The earlier 26-chunk `provenance/SEN_Genomes2.Rmd` remains historical provenance. The official Part A workflow extracts and executes the 30-chunk original with only documented deliberate edits, and preserves the frozen selected cohort rather than rerunning historical subsampling.
 
 ## Release status
 

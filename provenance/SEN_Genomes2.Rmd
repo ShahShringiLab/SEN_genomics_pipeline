@@ -1757,7 +1757,7 @@ library(ggplot2)
 library(tidyr)
 
 # ---- standardize columns ----
-SEN3 <- SEN %>%
+SEN <- SEN %>%
   mutate(
     Source_type = str_to_lower(str_trim(as.character(`Source type`))),
     Source_type = if_else(is.na(Source_type) | Source_type == "", "unknown", Source_type),
@@ -1793,10 +1793,10 @@ plot_iso_counts <- function(df, stype, top_n = 50) {
 }
 
 # ---- plots for requested source types ----
-print(plot_iso_counts(SEN3, "animal"))
-print(plot_iso_counts(SEN3, "environmental"))
-print(plot_iso_counts(SEN3, "food"))
-print(plot_iso_counts(SEN3, "unknown"))
+print(plot_iso_counts(SEN, "animal"))
+print(plot_iso_counts(SEN, "environmental"))
+print(plot_iso_counts(SEN, "food"))
+print(plot_iso_counts(SEN, "unknown"))
 
 
 

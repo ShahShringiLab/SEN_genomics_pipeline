@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "analysis/part_a/lib/common.R"))
 
-input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes_rebuilt.csv")
-if (!file.exists(input)) stop("Run analysis/part_a/02_build_final_cohort.R first.")
+input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")
+if (!file.exists(input)) stop("Run python3 scripts/merge_qc_full_metadata.py first.")
 outdir <- ensure_dir(sen_path("results/part_a/genotype_summary"))
 
 sen <- read_csv(input, show_col_types=FALSE)
 assert_columns(
   sen,
   c("Isolate","AMR genotypes core","QR_genotype","Collection_year","Source","Clade"),
-  "rebuilt cohort"
+  "QC-merged 3,434-genome cohort"
 )
 
 tok <- sen %>%
