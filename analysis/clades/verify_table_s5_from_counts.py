@@ -154,6 +154,60 @@ def build_output_paths(base_out: str):
 
 
 
+def manuscript_style(ws, table):
+    """Readable publication layout. Display only; no statistical calculations."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    ws.sheet_view.showGridLines = False
+    ws.freeze_panes = "C2"
+    ws.auto_filter.ref = f"A1:{get_column_letter(table.shape[1])}{len(table)+1}"
+    ws.row_dimensions[1].height = 36
+    header_fill = PatternFill("solid", fgColor="203451")
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = Font(name="Aptos", size=11, bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    widths = {"Type":17, "Gene":21, "Total (n)":14,
+              "Stats p-value":18, "Stats FDR":18}
+    for j, column in enumerate(table.columns, 1):
+        width = widths.get(column, 23 if "(n=" in column else 19)
+        ws.column_dimensions[get_column_letter(j)].width = width
+
+    prior_type = None
+    for i, category in enumerate(table["Type"], 2):
+        base_fill = ("F1F5FA" if i%2==0 else "FFFFFF")
+        if category != prior_type:
+            base_fill = {"AMR":"E6EFFB", "STRESS":"E8F3EA",
+                         "VIRULENCE":"F6EDF7"}.get(category, "E6EFFB")
+        for cell in ws[i]:
+            cell.fill = PatternFill("solid", fgColor=base_fill)
+            cell.font = Font(name="Aptos", size=10,
+                             bold=(cell.column<=2),
+                             color="203451" if cell.column<=2 else "1F2937")
+            cell.alignment = Alignment(
+                vertical="center",
+                horizontal="left" if cell.column<=2 else "center"
+            )
+            if category != prior_type:
+                cell.border = Border(top=Side(style="medium",color="53647B"))
+        ws.row_dimensions[i].height = 23
+        prior_type = category
+    # Keep original superscript Unicode glyphs directly in the Excel cells.
+    note_row = len(table)+3
+    ws.cell(note_row,1,
+        "Superscript letters: original SEN pipeline Holm-adjusted Fisher "
+        "pairwise groupings; letters are only assigned to tested variable clades.")
+    ws.cell(note_row+1,1,
+        "Blank letters may indicate a nonsignificant result or a 0%/100% "
+        "clade excluded by the original pipeline. No statistics were changed.")
+    ws.cell(note_row+2,1,
+        "BH-FDR is calculated over available published determinants only "
+        "(not the unavailable complete AMRFinder master family).")
+    for i in range(note_row,note_row+3):
+        ws.cell(i,1).font=Font(name="Aptos",size=10,italic=True,color="58677B")
+
+
 def run():
     p = argparse.ArgumentParser()
     p.add_argument("--counts",type=Path,default=ROOT/"data/table_s5/Table_S5_published_pure_counts.tsv")
@@ -358,7 +412,35 @@ def run():
 
             # The original workbook is preserved. Excel mirrors of every
             # individual TSV are also written for direct inspection on AjuloPC.
+            # Reorder the original pipeline's formatted table to the exact
+            # published manuscript gene order and hide the unavailable
+            # Element name field. Superscript letters remain unchanged.
+            manuscript_columns = (
+                ["Type", "Gene", "Total (n)"]
+                + [clade_header(c) for c in clade_order]
+                + ["Stats p-value", "Stats FDR"]
+            )
+            paper_by_gene = summary_df.set_index("Element symbol",drop=False)
+            published_order = [
+                symbol for symbol in df["Gene"].tolist() if symbol in paper_by_gene.index
+            ]
+            manuscript_rows = paper_by_gene.loc[published_order]
+            manuscript_df = manuscript_rows.rename(
+                columns={"Element symbol":"Gene"}
+            )[manuscript_columns].reset_index(drop=True)
+            ms_tsv = outdir / "Table_S5_Manuscript_Ready.tsv"
+            ms_xlsx = outdir / "Table_S5_Manuscript_Ready.xlsx"
+            manuscript_df.to_csv(ms_tsv,sep="\t",index=False)
+            with pd.ExcelWriter(ms_xlsx,engine="openpyxl") as paper_writer:
+                manuscript_df.to_excel(
+                    paper_writer,sheet_name="Manuscript_Table_S5",index=False
+                )
+                manuscript_style(
+                    paper_writer.sheets["Manuscript_Table_S5"],manuscript_df
+                )
             with pd.ExcelWriter(out["excel"],engine="openpyxl") as xw:
+                manuscript_df.to_excel(xw,sheet_name="Manuscript_Table_S5",index=False)
+                manuscript_style(xw.sheets["Manuscript_Table_S5"],manuscript_df)
                 summary_df.to_excel(xw,sheet_name="Summary_ForPaper",index=False)
                 omnibus_df.to_excel(xw,sheet_name="Omnibus_Stats",index=False)
                 pairwise_df.to_excel(xw,sheet_name="Pairwise_Fisher_Holm",index=False)
@@ -371,7 +453,8 @@ def run():
             summary_df.to_excel(Path(out["table"]).with_suffix(".xlsx"),
                                 sheet_name="ElementCounts",index=False)
             excel_results.append((scheme, mode, summary_df.copy(),
-                                  omnibus_df.copy(), pairwise_df.copy()))
+                                  omnibus_df.copy(), pairwise_df.copy(),
+                                  manuscript_df.copy()))
             (outdir/"COUNT_ONLY_LIMITATIONS.txt").write_text(
                 "Source: SEN_genomics_pipeline main 15_amr_byclade.py (a937dee96017627756145183f0e26abf203fedfb)\n"
                 "Original tests, parameters, exclusions, Holm/BH and sort copied unchanged.\n"
@@ -394,14 +477,18 @@ def run():
                 "Combined and split schemes are analysed separately, with and without Unassigned",
             ]
         }).to_excel(writer,sheet_name="ReadMe",index=False)
-        for scheme, mode, summary, omnibus, pairwise in excel_results:
+        for scheme, mode, summary, omnibus, pairwise, manuscript in excel_results:
             prefix = ("C1" if scheme=="Combined_Clade1" else "Split") + (
                 "_With" if mode=="With_Unassigned" else "_Without"
             )
+            manuscript_sheet = prefix+"_Manuscript"
+            manuscript.to_excel(writer,sheet_name=manuscript_sheet,index=False)
+            manuscript_style(writer.sheets[manuscript_sheet],manuscript)
             summary.to_excel(writer,sheet_name=prefix+"_Summary",index=False)
             omnibus.to_excel(writer,sheet_name=prefix+"_Omnibus",index=False)
             pairwise.to_excel(writer,sheet_name=prefix+"_Pairwise",index=False)
     print(f"[OK] Combined Excel workbook: {combined_path}")
+    print("[OK] Manuscript-ready Table S5 as separate TSV/XLSX plus first worksheet in each summary workbook")
     print("[PASS] Four original main-branch configurations complete")
 if __name__=="__main__":
     run()
