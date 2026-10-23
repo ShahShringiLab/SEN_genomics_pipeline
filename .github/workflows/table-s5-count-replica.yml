@@ -5,6 +5,7 @@ on:
       - feature/part-a2-master-33831-parsed-snapshot-20261021
     paths:
       - analysis/clades/verify_table_s5_from_counts.py
+      - analysis/clades/verify_table_s5_manuscript_locked.py
       - data/table_s5/Table_S5_published_pure_counts.tsv
       - .github/workflows/table-s5-count-replica.yml
   workflow_dispatch:
@@ -22,6 +23,10 @@ jobs:
         run: python -m py_compile analysis/clades/verify_table_s5_from_counts.py
       - name: Run all four configurations with real published counts
         run: python analysis/clades/verify_table_s5_from_counts.py
+      - name: Verify exact historical manuscript p-values and FDR for all 42 genes
+        run: |
+          python -m py_compile analysis/clades/verify_table_s5_manuscript_locked.py
+          python analysis/clades/verify_table_s5_manuscript_locked.py
       - name: Assert original output structure
         run: |
           python - <<'PY'
@@ -63,5 +68,7 @@ jobs:
         if: success()
         with:
           name: table-s5-replicated-results
-          path: results/table_s5_count_only_main_replica/
+          path: |
+            results/table_s5_count_only_main_replica/
+            results/table_s5_original_manuscript_locked/
           retention-days: 7
