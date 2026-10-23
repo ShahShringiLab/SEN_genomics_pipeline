@@ -44,7 +44,7 @@ jobs:
                       ('AMRFinder_Pairwise_Fisher','Pairwise_Fisher_Holm'),
                       ('AMRFinder_ByClade_ElementCounts','ElementCounts'),
                   ):
-                      text=pd.read_csv(d/(base+'.tsv'),sep='\\t')
+                      text=pd.read_csv(d/(base+'.tsv'),sep='\t')
                       xl=pd.read_excel(d/(base+'.xlsx'),sheet_name=sheet)
                       pd.testing.assert_frame_equal(text,xl,check_dtype=False)
           combined=root/'Table_S5_All_Configurations.xlsx'
@@ -53,7 +53,6 @@ jobs:
           assert len(book.sheet_names)==14,book.sheet_names
           assert (root/'Table_S5_published_pure_counts.xlsx').is_file()
           print('PASS: All four configurations, TSV/XLSX mirrors and 14-sheet combined workbook')
-          print('PASS: All four configurations and their five output tables/workbooks')
           PY
       - uses: actions/upload-artifact@v4
         if: success()
