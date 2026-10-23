@@ -73,8 +73,9 @@ assert n_dropped in (4, 6), (
 )
 # User-requested variable normalization in Part A2 working code. Keep the
 # uploaded historical original unchanged so its SHA-256 provenance check holds.
-assert rendered.count("SEN3") == 5, (
-    f"Expected exactly five original SEN3 references, found {rendered.count('SEN3')}"
+n_sen3 = rendered.count("SEN3")
+assert n_sen3 in (0, 5), (
+    f"Expected either the archived SEN-normalized notebook or five original SEN3 references; found {n_sen3}"
 )
 rendered = rendered.replace("SEN3", "SEN")
 assert "SEN3" not in rendered
@@ -90,7 +91,7 @@ out.write_text(rendered,encoding="utf-8")
 sha=hashlib.sha256(original.read_bytes()).hexdigest()
 (out.parent/"ORIGINAL_SHA256.txt").write_text(f"{sha}  {original.name}\n")
 print(f"[PASS] Uploaded original preserved; prepared Part A2 working notebook: {out}")
-print("[PASS] All five SEN3 references renamed to SEN in the working notebook.")
+print(f"[PASS] Part A2 working notebook uses SEN exclusively (renamed {n_sen3} SEN3 references).")
 print(f"[AUDIT] Original SHA-256: {sha}")
 print(f"[AUDIT] Removed {n_dropped} unintended pre-1990 temporal cutoffs; years <=2000 remain grouped.")
 print("[AUDIT] Dot plot facets and numerators use the same valid-year <=2025 population.")
