@@ -168,6 +168,9 @@ def run():
     if df[["Type","Gene"]].isna().any().any():
         raise ValueError("Missing element identity")
     lookup = df.set_index("Gene")
+    args.out.mkdir(parents=True, exist_ok=True)
+    df.to_excel(args.out / "Table_S5_published_pure_counts.xlsx", sheet_name="Pure_Counts", index=False)
+    excel_results = []
     print("[REFERENCE] SEN_genomics_pipeline main 15_amr_byclade.py blob a937dee96017627756145183f0e26abf203fedfb")
     print("[LIMIT] BH FDR is computed over the 42 displayed genes only")
     print("[LIMIT] Only group-level data and output tables are reproducible")
@@ -353,10 +356,22 @@ def run():
             print(f"[OK] ElementCounts TSV (same content): {out['table']}")
 
 
+            # The original workbook is preserved. Excel mirrors of every
+            # individual TSV are also written for direct inspection on AjuloPC.
             with pd.ExcelWriter(out["excel"],engine="openpyxl") as xw:
                 summary_df.to_excel(xw,sheet_name="Summary_ForPaper",index=False)
                 omnibus_df.to_excel(xw,sheet_name="Omnibus_Stats",index=False)
                 pairwise_df.to_excel(xw,sheet_name="Pairwise_Fisher_Holm",index=False)
+            # Summary.xlsx above already mirrors Summary.tsv (and includes
+            # omnibus/pairwise sheets). Do not overwrite that workbook.
+            omnibus_df.to_excel(Path(out["omnibus"]).with_suffix(".xlsx"),
+                                sheet_name="Omnibus_Stats",index=False)
+            pairwise_df.to_excel(Path(out["pairwise"]).with_suffix(".xlsx"),
+                                 sheet_name="Pairwise_Fisher_Holm",index=False)
+            summary_df.to_excel(Path(out["table"]).with_suffix(".xlsx"),
+                                sheet_name="ElementCounts",index=False)
+            excel_results.append((scheme, mode, summary_df.copy(),
+                                  omnibus_df.copy(), pairwise_df.copy()))
             (outdir/"COUNT_ONLY_LIMITATIONS.txt").write_text(
                 "Source: SEN_genomics_pipeline main 15_amr_byclade.py (a937dee96017627756145183f0e26abf203fedfb)\n"
                 "Original tests, parameters, exclusions, Holm/BH and sort copied unchanged.\n"
@@ -366,6 +381,27 @@ def run():
                 "AMRFinder_PresenceAbsence_Matrix.tsv, sample QC or heatmap PNG/PDF.\n"
             )
             print(f"[OK] Excel and count-derived results: {outdir}")
+    # All four analysis configurations in one workbook, produced locally
+    # whenever this script is run. This does not recompute or modify any test.
+    combined_path = args.out / "Table_S5_All_Configurations.xlsx"
+    with pd.ExcelWriter(combined_path, engine="openpyxl") as writer:
+        df.to_excel(writer,sheet_name="Original_Pure_Counts",index=False)
+        pd.DataFrame({
+            "Important notes": [
+                "Statistics copied from SEN genomics main 15_amr_byclade.py",
+                "BH-FDR family is limited to published Table S5 determinants",
+                "Source input is aggregate clade counts; no sample-level matrix is reconstructed",
+                "Combined and split schemes are analysed separately, with and without Unassigned",
+            ]
+        }).to_excel(writer,sheet_name="ReadMe",index=False)
+        for scheme, mode, summary, omnibus, pairwise in excel_results:
+            prefix = ("C1" if scheme=="Combined_Clade1" else "Split") + (
+                "_With" if mode=="With_Unassigned" else "_Without"
+            )
+            summary.to_excel(writer,sheet_name=prefix+"_Summary",index=False)
+            omnibus.to_excel(writer,sheet_name=prefix+"_Omnibus",index=False)
+            pairwise.to_excel(writer,sheet_name=prefix+"_Pairwise",index=False)
+    print(f"[OK] Combined Excel workbook: {combined_path}")
     print("[PASS] Four original main-branch configurations complete")
 if __name__=="__main__":
     run()
