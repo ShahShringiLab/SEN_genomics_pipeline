@@ -71,16 +71,26 @@ assert n_dropped in (4, 6), (
     f"Expected 4 or 6 temporal lower-year cutoffs, found {n_dropped}. "
     "Refusing an unverified edit."
 )
-# Strict reproducibility: only both input paths, facet N, temporal cutoff and Top100 axis may change.
+# User-requested variable normalization in Part A2 working code. Keep the
+# uploaded historical original unchanged so its SHA-256 provenance check holds.
+assert rendered.count("SEN3") == 5, (
+    f"Expected exactly five original SEN3 references, found {rendered.count('SEN3')}"
+)
+rendered = rendered.replace("SEN3", "SEN")
+assert "SEN3" not in rendered
+# Strict reproducibility: only the previously audited adjustments plus the
+# five explicitly requested SEN3 -> SEN variable references may change.
 expected = text.replace(old, new, 1).replace(phenotype_old, phenotype_new, 1).replace(old_facet, new_facet, 1).replace(old_top100, new_top100, 1)
 expected, expected_n = re.subn(lower_cutoff, "", expected)
+expected = expected.replace("SEN3", "SEN")
 assert expected_n == n_dropped and rendered == expected
 out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 out.parent.mkdir(parents=True,exist_ok=True)
 out.write_text(rendered,encoding="utf-8")
 sha=hashlib.sha256(original.read_bytes()).hexdigest()
 (out.parent/"ORIGINAL_SHA256.txt").write_text(f"{sha}  {original.name}\n")
-print(f"[PASS] Original notebook preserved; master import and temporal facet N corrected: {out}")
+print(f"[PASS] Uploaded original preserved; prepared Part A2 working notebook: {out}")
+print("[PASS] All five SEN3 references renamed to SEN in the working notebook.")
 print(f"[AUDIT] Original SHA-256: {sha}")
 print(f"[AUDIT] Removed {n_dropped} unintended pre-1990 temporal cutoffs; years <=2000 remain grouped.")
 print("[AUDIT] Dot plot facets and numerators use the same valid-year <=2025 population.")
