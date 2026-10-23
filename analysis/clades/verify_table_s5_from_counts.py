@@ -1,114 +1,197 @@
 #!/usr/bin/env python3
-"""Reanalyse published Table S5 from five-clade gene-positive counts (no AMRFinder master).
-Tests mirror 15_amr_byclade.py, using ALL clades including 0% and 100% cells.
-BH applies only across the 42 displayed genes; it cannot recreate an unknown
-larger AMRFinder multiple-testing family or original Monte Carlo draw.
+"""Historical ORIGINAL 15_amr_byclade.py statistics, applied to published Table S5 counts.
+
+No corrections or statistical substitutions. Exact original function bodies
+are copied from ajulojays/SENBio-Final main:15_amr_byclade.py.
+
+Limitations of a count-only subset: original AMRFinder master contains additional
+loci that change BH FDR across the complete testing family; original code's
+legacy Monte Carlo API may TypeError in modern SciPy and silently use Pearson.
+These caveats are printed/reported; the original behavior is NOT modified.
 """
 import argparse
 import itertools
-import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, fisher_exact, MonteCarloMethod
+from scipy.stats import chi2_contingency, fisher_exact
 from statsmodels.stats.multitest import multipletests
 
 ROOT=Path(__file__).resolve().parents[2]
-CLADE={'Clade 1A':169,'Clade 1B':759,'Clade 2':894,'Clade 3':1357,'Unassigned':127}
-GROUPS=list(CLADE)
-SUP=dict(zip('abcdef','ᵃᵇᶜᵈᵉᶠ'))
+clade_order=["Clade 1A","Clade 1B","Clade 2","Clade 3","Unassigned"]
+clade_sizes={"Clade 1A":169,"Clade 1B":759,"Clade 2":894,"Clade 3":1357,"Unassigned":127}
+MIN_TOTAL_PRESENT=10
+ALPHA=0.05
+SUPERSCRIPT={"a":"ᵃ","b":"ᵇ","c":"ᶜ","d":"ᵈ","e":"ᵉ","f":"ᶠ","g":"ᵍ","h":"ʰ","i":"ᶦ"}
 
-def make_letters(groups,pmap,alpha=0.05):
-    """Verified maximal-clique compact-letter display (nonsignificant pairs share a letter)."""
-    def different(a,b):return pmap[tuple(sorted((a,b)))]<=alpha
-    viable=[]
-    for k in range(1,len(groups)+1):
-        for c in itertools.combinations(groups,k):
-            if all(not different(a,b) for a,b in itertools.combinations(c,2)):viable.append(c)
-    maximal=[c for c in viable if not any(set(c)<set(other) for other in viable)]
-    maximal.sort(key=lambda c:(-len(c),tuple(groups.index(g) for g in c)))
-    if len(maximal)>26:raise ValueError('Too many CLD letters')
-    assigned={g:'' for g in groups}
-    for i,c in enumerate(maximal):
-        for g in c:assigned[g]+=chr(97+i)
-    for a,b in itertools.combinations(groups,2):
-        assert bool(set(assigned[a])&set(assigned[b])) != different(a,b)
-    return assigned
+# Verbatim statistical functions from the original pre-correction script.
+def chi2_with_optional_montecarlo(table: np.ndarray):
+    chi2, p, dof, expected = chi2_contingency(table, correction=False)
+    method = "chi-square"
+    if np.any(expected < 5):
+        try:
+            chi2_mc, p_mc, dof_mc, _ = chi2_contingency(
+                table, correction=False, method="montecarlo", num_resamples=5000
+            )
+            return float(p_mc), "chi-square (montecarlo)", float(chi2_mc), int(dof_mc)
+        except TypeError:
+            pass
+        except Exception:
+            pass
+    return float(p), method, float(chi2), int(dof)
 
-def count_cell(n,N,letters=''):
-    pct='0%' if n==0 else '<0.1%' if 100*n/N<0.1 else f'{100*n/N:.1f}%'
-    return f'{n} ({pct})'+''.join(SUP.get(k,k) for k in letters)
+def odds_ratio_with_haldene(a, b, c, d, add=0.5):
+    return ((a + add) / (b + add)) / ((c + add) / (d + add))
 
-def main():
-    p=argparse.ArgumentParser()
-    p.add_argument('--counts',type=Path,default=ROOT/'data/table_s5/Table_S5_published_pure_counts.tsv')
-    p.add_argument('--out',type=Path,default=ROOT/'results/table_s5_count_reanalysis')
-    p.add_argument('--mc-resamples',type=int,default=100000)
-    p.add_argument('--seed',type=int,default=12345)
-    a=p.parse_args()
-    if a.mc_resamples<9999:p.error('Monte Carlo resamples must be >=9999')
-    df=pd.read_csv(a.counts,sep='\t')
-    assert list(df.columns)==['Type','Gene',*GROUPS]
-    assert len(df)==42 and df.Gene.is_unique and not df.isna().any().any()
-    assert df.Type.value_counts().to_dict()=={'VIRULENCE':26,'AMR':13,'STRESS':3}
-    assert sum(CLADE.values())==3306
-    for clade,n in CLADE.items():
-        x=df[clade]
-        assert pd.api.types.is_integer_dtype(x) and x.between(0,n).all(),clade
-    a.out.mkdir(parents=True,exist_ok=True)
-    df.to_csv(a.out/'Table_S5_verified_original_counts.tsv',sep='\t',index=False)
-    omnibus=[]
+def make_cld_letters(groups, p_adj_map, alpha=0.05):
+    if not p_adj_map or len(groups) == 0:
+        return {g: "" for g in groups}
+
+    def different(g1, g2):
+        if g1 == g2:
+            return False
+        key = tuple(sorted((g1, g2)))
+        p = p_adj_map.get(key, np.nan)
+        return (pd.notna(p) and p <= alpha)
+
+    letter_pool = list("abcdefghijklmnopqrstuvwxyz")
+    assign = {g: set() for g in groups}
+    remaining = set(groups)
+
+    while remaining and letter_pool:
+        L = letter_pool.pop(0)
+        block = []
+        for g in groups:
+            if g not in remaining:
+                continue
+            ok = True
+            for h in block:
+                if different(g, h):
+                    ok = False
+                    break
+            if ok:
+                block.append(g)
+
+        if not block:
+            g = next(iter(remaining))
+            block = [g]
+
+        for g in block:
+            assign[g].add(L)
+            if g in remaining:
+                remaining.remove(g)
+
+    return {g: "".join(sorted(assign[g])) for g in groups}
+
+
+def pct_format(count,denom):
+    if denom<=0:return ""
+    if count==0:return "0%"
+    pct=100.0*count/denom
+    if 0<pct<0.1:return "<0.1%"
+    if abs(pct-round(pct))<1e-12:return f"{int(round(pct))}%"
+    return f"{pct:.1f}%"
+
+def format_cell(count,denom,sup_letters=""):
+    p=pct_format(count,denom)
+    if p=="":return ""
+    if sup_letters:return f"{count} ({p}){''.join(SUPERSCRIPT.get(ch,ch) for ch in sup_letters)}"
+    return f"{count} ({p})"
+
+def run():
+    parser=argparse.ArgumentParser(description="Historical exact 15_amr_byclade.py statistical logic applied to Table S5 counts")
+    parser.add_argument("--counts",type=Path,default=ROOT/"data/table_s5/Table_S5_published_pure_counts.tsv")
+    parser.add_argument("--out",type=Path,default=ROOT/"results/table_s5_historical_replication")
+    args=parser.parse_args()
+    df=pd.read_csv(args.counts,sep="\t")
+    assert list(df.columns)==["Type","Gene",*clade_order]
+    assert len(df)==42 and df["Gene"].is_unique
+    for c in clade_order:
+        assert pd.api.types.is_integer_dtype(df[c]) and df[c].between(0,clade_sizes[c]).all()
+    args.out.mkdir(parents=True,exist_ok=True)
+    df.to_csv(args.out/"Table_S5_original_pure_counts.tsv",sep="\t",index=False)
+    records=[]
+    used_clades_by_element={}
     for _,r in df.iterrows():
-        n=int(r[GROUPS].sum())
-        table=np.array([[int(r[g]),CLADE[g]-int(r[g])] for g in GROUPS])
-        pval=np.nan;method='not tested';reason=''
-        if n<10:reason='rarity: fewer than 10 positive genomes'
-        elif n==3306:reason='invariant presence'
+        symbol=r["Gene"]
+        pres={c:int(r[c]) for c in clade_order}
+        ns={c:clade_sizes[c] for c in clade_order}
+        absn={c:ns[c]-pres[c] for c in clade_order}
+        tot_pres=sum(pres.values())
+        # Original rule - DO NOT change or include 0%/100% clades.
+        variable_clades=[c for c in clade_order if ns[c]>0 and (0<pres[c]<ns[c])]
+        used_clades_by_element[symbol]=variable_clades
+        pval=np.nan;method="";chi2=np.nan;dof=np.nan;reason=""
+        if tot_pres<MIN_TOTAL_PRESENT:
+            reason=f"rare (<{MIN_TOTAL_PRESENT} total present)"
+        elif len(variable_clades)<2:
+            reason="insufficient variable clades after zero/full exclusion"
         else:
-            result=chi2_contingency(table,correction=False)
-            if (result.expected_freq<5).any():
-                mc=MonteCarloMethod(n_resamples=a.mc_resamples,rng=np.random.default_rng(a.seed))
-                pval=float(chi2_contingency(table,correction=False,method=mc).pvalue)
-                method=f'chi-square Monte Carlo n={a.mc_resamples} seed={a.seed}'
-            else:
-                pval=float(result.pvalue);method='Pearson chi-square'
-        omnibus.append({'Type':r.Type,'Gene':r.Gene,'Total_present':n,'Omnibus_p':pval,'FDR_BH_displayed_42_loci':np.nan,'Test_method':method,'Reason_not_tested':reason})
-    om=pd.DataFrame(omnibus)
-    tested=om.Omnibus_p.notna()
-    if tested.any():om.loc[tested,'FDR_BH_displayed_42_loci']=multipletests(om.loc[tested,'Omnibus_p'],method='fdr_bh')[1]
-    om.to_csv(a.out/'Table_S5_omnibus_BH.tsv',sep='\t',index=False)
-    lookup=om.set_index('Gene');pairwise=[];summary=[]
+            table=np.array([[pres[c],absn[c]] for c in variable_clades],dtype=int)
+            try:
+                pval,method,chi2,dof=chi2_with_optional_montecarlo(table)
+            except Exception as e:
+                reason=f"chi2 failed: {e}"
+        records.append({"Element symbol":symbol,"Type":r["Type"],"Total_Present":tot_pres,
+                        "Tested_Clades":",".join(variable_clades),"Test_Method":method,
+                        "Chi2":chi2,"DoF":dof,"Stats p-value":pval,
+                        "Stats FDR":np.nan,"Reason_Not_Tested":reason})
+    omnibus_df=pd.DataFrame(records)
+    p_num=pd.to_numeric(omnibus_df["Stats p-value"],errors="coerce")
+    tested_mask=p_num.notna()
+    if tested_mask.sum()>0:
+        _,fdr_vals,_,_=multipletests(p_num.loc[tested_mask].values.astype(float),method="fdr_bh")
+        omnibus_df.loc[tested_mask,"Stats FDR"]=fdr_vals
+    omnibus_df.to_csv(args.out/"AMRFinder_Omnibus_Stats.tsv",sep="\t",index=False)
+    fdr_num=pd.to_numeric(omnibus_df["Stats FDR"],errors="coerce")
+    sig_elements=omnibus_df.loc[tested_mask&(fdr_num<=ALPHA),"Element symbol"].tolist()
+    pairwise_rows=[]
+    cld_letters_by_element={e:{c:"" for c in clade_order} for e in df.Gene}
+    for symbol in sig_elements:
+        row=df.loc[df.Gene==symbol].iloc[0]
+        pres={c:int(row[c]) for c in clade_order}
+        ns={c:clade_sizes[c] for c in clade_order}
+        absn={c:ns[c]-pres[c] for c in clade_order}
+        variable_clades=used_clades_by_element.get(symbol,[])
+        if len(variable_clades)<2:continue
+        pairs=list(itertools.combinations(variable_clades,2))
+        pvals=[];tmp_rows=[]
+        for a,b in pairs:
+            a1,a0=pres[a],absn[a];b1,b0=pres[b],absn[b]
+            _,p_raw=fisher_exact([[a1,a0],[b1,b0]],alternative="two-sided")
+            or05=odds_ratio_with_haldene(a1,a0,b1,b0,add=0.5)
+            tmp_rows.append({"Element symbol":symbol,"Group1":a,"Group2":b,
+                             "G1_present":a1,"G1_absent":a0,"G2_present":b1,
+                             "G2_absent":b0,"OR_0.5":or05,"p_raw":float(p_raw),"p_holm":np.nan})
+            pvals.append(float(p_raw))
+        if pvals:
+            _,p_holm,_,_=multipletests(pvals,method="holm")
+            for i in range(len(tmp_rows)):tmp_rows[i]["p_holm"]=float(p_holm[i])
+        pairwise_rows.extend(tmp_rows)
+        p_adj_map={}
+        for rr in tmp_rows:
+            key=tuple(sorted((rr["Group1"],rr["Group2"])))
+            p_adj_map[key]=rr["p_holm"]
+        cld_var=make_cld_letters(variable_clades,p_adj_map,alpha=ALPHA)
+        for c in variable_clades:cld_letters_by_element[symbol][c]=cld_var.get(c,"")
+    pd.DataFrame(pairwise_rows).to_csv(args.out/"AMRFinder_Pairwise_Fisher.tsv",sep="\t",index=False)
+    p_map=dict(zip(omnibus_df["Element symbol"],omnibus_df["Stats p-value"]))
+    f_map=dict(zip(omnibus_df["Element symbol"],omnibus_df["Stats FDR"]))
+    summary=[]
     for _,r in df.iterrows():
-        entry=lookup.loc[r.Gene];letters={g:'' for g in GROUPS}
-        if pd.notna(entry.FDR_BH_displayed_42_loci) and entry.FDR_BH_displayed_42_loci<=0.05:
-            prs=[]
-            for g,h in itertools.combinations(GROUPS,2):
-                x,y=int(r[g]),int(r[h])
-                odds,raw=fisher_exact([[x,CLADE[g]-x],[y,CLADE[h]-y]],alternative='two-sided')
-                prs.append({'Gene':r.Gene,'Group1':g,'Group2':h,'G1_present':x,'G1_absent':CLADE[g]-x,'G2_present':y,'G2_absent':CLADE[h]-y,'Odds_ratio':odds,'p_raw':raw})
-            adjusted=multipletests([v['p_raw'] for v in prs],method='holm')[1]
-            pmap={}
-            for v,q in zip(prs,adjusted):
-                v['p_holm']=float(q)
-                pmap[tuple(sorted((v['Group1'],v['Group2'])))]=float(q)
-            pairwise.extend(prs)
-            letters=make_letters(GROUPS,pmap)
-        row={'Type':r.Type,'Gene':r.Gene,'Total (n=3306)':int(r[GROUPS].sum())}
-        for g in GROUPS:row[f'{g} (n={CLADE[g]})']=count_cell(int(r[g]),CLADE[g],letters[g])
-        row.update({'Omnibus_p':entry.Omnibus_p,'FDR_BH_displayed_42_loci':entry.FDR_BH_displayed_42_loci,'Test_method':entry.Test_method})
-        summary.append(row)
-    pd.DataFrame(pairwise).to_csv(a.out/'Table_S5_pairwise_Fisher_Holm.tsv',sep='\t',index=False)
-    pd.DataFrame(summary).to_csv(a.out/'Table_S5_corrected_for_review.tsv',sep='\t',index=False)
-    watch=['sseK3','gogB','ybtP','gyrA_S83F','mdsB','golT','sodC1','vasL','gtgA','pagO','allD']
-    audit=om[om.Gene.isin(watch)]
-    audit.to_csv(a.out/'Table_S5_flagged_gene_audit.tsv',sep='\t',index=False)
-    with (a.out/'analysis_manifest.json').open('w') as f:json.dump({
-        'source':str(a.counts),'gene_rows':len(df),'total_genomes':3306,
-        'clade_sizes':CLADE,'FDR_scope':'Only the 42 published Table S5 loci',
-        'monte_carlo_resamples':a.mc_resamples,'seed':a.seed,
-        'comparison':'Fisher exact all 10 pairs, Holm within gene, maximal-clique CLD'
-    },f,indent=2)
-    print('[PASS] Published counts and clade denominators verified')
-    print('[PASS] Written:',a.out)
-    print(audit[['Gene','Omnibus_p','FDR_BH_displayed_42_loci']].to_string(index=False))
-if __name__=='__main__':main()
+        symbol=r.Gene
+        item={"Type":r.Type,"Element symbol":symbol,"Total (n)":int(r[clade_order].sum())}
+        letters=cld_letters_by_element[symbol]
+        for c in clade_order:
+            item[f"{c} (n={clade_sizes[c]})"]=format_cell(int(r[c]),clade_sizes[c],letters[c])
+        item["Stats p-value"]="" if pd.isna(p_map[symbol]) else float(p_map[symbol])
+        item["Stats FDR"]="" if pd.isna(f_map[symbol]) else float(f_map[symbol])
+        summary.append(item)
+    summary_df=pd.DataFrame(summary)
+    summary_df.to_csv(args.out/"AMRFinder_ByClade_Summary.tsv",sep="\t",index=False)
+    print("[PASS] Exact historical statistical selection, testing, Holm and greedy-letter logic run on 42 published genes.")
+    print("[CAVEAT] Historical Monte Carlo call uses an unsupported legacy signature on SciPy 1.15.3; on TypeError it falls back to asymptotic chi-square, as in the original script.")
+    print("[CAVEAT] BH FDR covers only the 42 displayed genes, not all original AMRFinder elements.")
+    print("[OUTPUT]",args.out)
+    print(omnibus_df.loc[omnibus_df["Element symbol"].isin(["sseK3","gogB","ybtP","gyrA_S83F"])].to_string(index=False))
+if __name__=="__main__":run()
