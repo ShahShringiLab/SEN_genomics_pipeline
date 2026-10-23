@@ -1,4 +1,4 @@
-# Part A2 master-population run (33,831 genomes)
+> **Updated workflow (23 October 2026):** [SEN Part A2 — consolidated updated workflow](PART_A2_UPDATED.md). This document describes an earlier modular master-only route; the publication-facing current workflow uses `scripts/run_part_a.sh` and the original 30-chunk Rmd. It does not run any Table S5 verification.\n\n# Part A2 master-population run (33,831 genomes)
 
 The original Part A2 notebook remains unchanged at `provenance/SEN_Genomes2.Rmd`. **The 33,831-genome master population is the denominator** for original-population QR/FQR, source, marker and temporal summaries. The 3,434 selected and 3,306 final-phylogeny cohorts are separate sampling/validation stages.
 

@@ -1,0 +1,63 @@
+name: Verify Part A2 SEN variable rename
+on:
+  push:
+    branches:
+      - feature/part-a2-updated-20261023
+    paths:
+      - scripts/prepare_original_part_a2.py
+      - provenance/SEN_Genomes2.Rmd
+      - docs/PART_A2_UPDATED.md
+      - analysis/part_a/README.md
+      - README.md
+      - .github/workflows/part-a2-sen-name-check.yml
+  workflow_dispatch:
+jobs:
+  validate-part-a2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert clean Part A2 scope excludes Table S5 files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          # This branch retains main's independent clade-analysis files.
+          # No Table S5 verification scripts/data may be added by Part A2.
+          import subprocess
+          changed = subprocess.check_output(
+              ['git','diff','--name-only','origin/main...HEAD'], text=True
+          ).splitlines()
+          forbidden = [p for p in changed if (
+              p.startswith('data/table_s5/') or
+              p.startswith('analysis/clades/') or
+              p == 'scripts/run_amrfinder_table_s5_audit.sh' or
+              p == 'tests/test_amrfinder_clade_stats.py' or
+              'table-s5' in p.lower()
+          )]
+          assert not forbidden, forbidden
+          print('[PASS] Part A2-only diff excludes Table S5 and other clade analyses')
+          PY
+      - name: Compile Part A2 preparation code
+        run: python -m py_compile scripts/prepare_original_part_a2.py
+      - name: Preflight original 30-chunk source and generated execution code
+        run: python scripts/check_original_rmd_contract.py
+      - name: Assert SEN3 removed from Part A2 working code
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          archived=Path('provenance/SEN_Genomes2.Rmd').read_text()
+          rendered=Path('analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd').read_text()
+          master=Path('results/part_a/master_33831/original_execution/run_original_A2_master.R').read_text()
+          original=Path('provenance/SEN_Genomes2_uploaded_original_20261021.Rmd').read_text()
+          for tag, text in [('archived',archived),('working',rendered),('generated-master',master)]:
+              assert 'SEN3' not in text,tag
+              assert 'SEN <- SEN %>%' in text,tag
+              for name in ('animal','environmental','food','unknown'):
+                  assert f'plot_iso_counts(SEN, "{name}")' in text,(tag,name)
+          assert original.count('SEN3')==5,'Historical original must remain immutable'
+          print('[PASS] Archived and generated Part A2 use SEN; original SHA check passed')
+          PY
