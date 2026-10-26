@@ -94,6 +94,21 @@ validated snapshots exist, avoid an expensive rerun:
 bash scripts/run_part_a_selected_resume.sh 2>&1 | tee part_a2_selected_resume.log
 ```
 
+## Final-run CSV parsing and QR change audit
+
+Every full run now writes `results/part_a/master_33831/00_parsed_raw/SEN_CSV_Malformed_Before_After.xlsx` with exactly two sheets:
+
+- **Before:** the affected source CSV rows as parsed *without* the in-memory quoting/escaped-comma fixes, including raw field counts, row positions and displaced values.
+- **After:** the corresponding records from the validated 33,831 × 51 corrected master snapshot, in the original column layout.
+
+Additional audit files in the same folder:
+
+- `SEN_CSV_Parsing_Field_Differences.csv` — affected CSV row, before/after field values, and corrected Run/Isolate identifiers. The 24 escaped commas and one doubled-quote anomaly are tracked as source occurrences; they are **not** assumed to be 25 distinct isolates.
+- `SEN_CSV_Parsing_Change_Summary.csv` — counts of affected rows, changed cells and source-text anomalies.
+- `SEN_QR_Genotype_Before_After_3_Genomes.csv` — each of the **three** audited changes between original and corrected selected-cohort QR genotypes, retaining accession IDs and marker information.
+
+The 22-genome Swine/Others difference was traced by manual isolate review to the CSV parsing issue. The source audit keeps the raw and corrected values so this attribution can be checked at record level; this does **not** mean the 22 genomes changed full-master source-group totals. Corrected QR calls may affect QR-based counts and plots, but **no numerical effect is asserted without comparing outputs**. The original temporal-plot population remains **33,508 genomes with collection years** (323 missing-year records excluded), and this audit does not modify any figure or statistical algorithm.
+
 ## Main outputs
 
 | Directory | Deliverable |
