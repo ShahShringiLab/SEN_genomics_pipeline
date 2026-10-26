@@ -13,6 +13,9 @@ fi
 echo "[1/4] Strict 33,831 x 51 parsed raw snapshot and metadata QC"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript analysis/part_a/00_parse_master_33831.R
+echo "[AUDIT] Save raw malformed rows before/after parser and all corrected QR genotypes"
+conda run --no-capture-output -n sen_stats \
+  python scripts/audit_part_a2_csv_repairs.py
 echo "[2/4] Prepare original Rmd with consistent temporal eligibility (all dated years <=2025)"
 python3 scripts/prepare_original_part_a2.py "$NOTEBOOK"
 echo "[3/4] Generate year × source × marker sampling/QC table and weights"
