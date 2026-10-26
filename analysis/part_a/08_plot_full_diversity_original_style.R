@@ -215,6 +215,23 @@ p_comp <- ggplot(
     width = 0.85
   ) +
 
+  # Freeze the original manuscript color-to-marker mapping (not ggplot's
+  # automatic factor-order palette, which can change after a full-cohort rerun).
+  scale_fill_manual(
+    values = c(
+      "gyrA_D87G" = "#F8766D",
+      "gyrA_D87C" = "#F8766D",
+      "gyrA_D87Y" = "#B79F00",
+      "gyrA_S83Y" = "#00BA38",
+      "gyrA_D87N" = "#00BFC4",
+      "others"   = "#619CFF",
+      "qnrB19"   = "#F564E3"
+    ),
+    breaks = c("gyrA_D87G", "gyrA_D87C", "gyrA_D87Y",
+               "gyrA_S83Y", "gyrA_D87N", "others", "qnrB19"),
+    drop = TRUE
+  ) +
+
   scale_y_continuous(
     labels = scales::percent_format(
       accuracy = 1
