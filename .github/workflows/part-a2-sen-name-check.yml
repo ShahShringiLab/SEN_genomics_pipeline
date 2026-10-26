@@ -5,6 +5,8 @@ on:
       - feature/part-a2-updated-20261023
     paths:
       - scripts/prepare_original_part_a2.py
+      - scripts/audit_part_a2_csv_repairs.py
+      - scripts/run_master_part_a2.sh
       - provenance/SEN_Genomes2.Rmd
       - docs/PART_A2_UPDATED.md
       - analysis/part_a/README.md
@@ -40,6 +42,39 @@ jobs:
           )]
           assert not forbidden, forbidden
           print('[PASS] Part A2-only diff excludes Table S5 and other clade analyses')
+          PY
+      - name: Install audit workbook dependencies
+        run: python -m pip install pandas openpyxl
+      - name: Prepare source-normalized audit test snapshot
+        run: |
+          python - <<'PY'
+          import sys,csv
+          from pathlib import Path
+          sys.path.insert(0,'scripts')
+          from validate_part_a_inputs import normalized_master_rows
+          _,records=normalized_master_rows(Path('data/part_a/genotype/US-SEN_12192025.csv'))
+          target=Path('results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          with target.open('w',newline='',encoding='utf-8') as f:
+              writer=csv.DictWriter(f,fieldnames=records[0].keys())
+              writer.writeheader();writer.writerows(records)
+          PY
+      - name: Verify before/after parsing audit and QR corrections
+        run: |
+          python scripts/audit_part_a2_csv_repairs.py
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('results/part_a/master_33831/00_parsed_raw')
+          p=root/'SEN_CSV_Malformed_Before_After.xlsx'
+          xl=pd.ExcelFile(p)
+          assert xl.sheet_names==['Before','After'],xl.sheet_names
+          a=pd.read_excel(p,'Before');b=pd.read_excel(p,'After')
+          assert len(a)==len(b)>0
+          assert a.Original_CSV_Row.tolist()==b.Original_CSV_Row.tolist()
+          q=pd.read_csv(root/'SEN_QR_Genotype_Before_After_3_Genomes.csv')
+          assert len(q)==3
+          print('[PASS] Two-sheet malformed source audit and three QR genotype corrections')
           PY
       - name: Compile Part A2 preparation code
         run: python -m py_compile scripts/prepare_original_part_a2.py
