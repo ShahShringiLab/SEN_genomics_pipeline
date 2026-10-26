@@ -9,6 +9,15 @@ comp <- readr::read_csv(file.path(outdir,"QR_composition_bySource.csv"),show_col
 source_levels <- c("Human","Chicken-US","Other-US","International")
 div_sum$Source <- factor(div_sum$Source, levels=source_levels)
 comp$Source <- factor(comp$Source, levels=source_levels)
+# Match the original figure's legend order from top to bottom. ggplot stacks
+# factor levels in reverse order, so this also fixes the bar segment arrangement.
+marker_order <- c("gyrA_D87G", "gyrA_D87C", "gyrA_D87Y",
+                  "gyrA_S83Y", "gyrA_D87N", "others", "qnrB19")
+observed_markers <- unique(as.character(comp$marker_group))
+unexpected <- setdiff(observed_markers, marker_order)
+if (length(unexpected)) stop("Unexpected QR marker groups: ", paste(unexpected,collapse=", "))
+comp$marker_group <- factor(as.character(comp$marker_group),
+                            levels=marker_order[marker_order %in% observed_markers])
 # Historical plot letters were manually entered without inference; do not assert
 # those letters on updated statistics unless independently revalidated.
 
@@ -227,8 +236,8 @@ p_comp <- ggplot(
       "others"   = "#619CFF",
       "qnrB19"   = "#F564E3"
     ),
-    breaks = c("gyrA_D87G", "gyrA_D87C", "gyrA_D87Y",
-               "gyrA_S83Y", "gyrA_D87N", "others", "qnrB19"),
+    limits = levels(comp$marker_group),
+    breaks = levels(comp$marker_group),
     drop = TRUE
   ) +
 
