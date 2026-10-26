@@ -39,7 +39,6 @@ def run():
     for position,(parsed,clean) in enumerate(zip(original[1:],corrected),start=2):
         # Matching positional rows is validated on *unaltered stable accession*
         # identifiers when those columns were not displaced.
-        source_line=RAW.read_text(encoding="utf-8-sig").splitlines()[position-1] if False else None
         if len(parsed)<51:
             padded=parsed+[""]*(51-len(parsed))
         else:
@@ -72,6 +71,16 @@ def run():
     assert rawtext.count(r"\,")==24,rawtext.count(r"\,")
     assert rawtext.count(',""Exudate, Left Heel"","clinical",')==1
     pd.DataFrame(deltas).to_csv(DELTA,index=False)
+    # Preserve all archived-to-corrected QR calls from the frozen selected
+    # QC audit without recalculating genotypes or changing plot inputs.
+    qc_path=ROOT/"data/part_a/selection/Selected_US-SEN_12192025_QCAUDIT_R1_qr_clade.csv"
+    with qc_path.open(encoding="utf-8-sig",newline="") as fh:
+        qc=list(csv.DictReader(fh))
+    qr_deltas=[dict(row) for row in qc if row["QR_genotype_original"] != row["QR_genotype"]]
+    assert len(qr_deltas)==3,(len(qr_deltas))
+    qr_path=OUT/"SEN_QR_Genotype_Before_After_3_Genomes.csv"
+    pd.DataFrame(qr_deltas).to_csv(qr_path,index=False)
+
     pd.DataFrame([{"Metric":"raw_rows","Value":33831},
                   {"Metric":"corrected_rows","Value":len(corrected)},
                   {"Metric":"affected_row_count","Value":len(before)},
@@ -99,6 +108,7 @@ def run():
     print("[OUTPUT]",MALFORMED)
     print("[OUTPUT]",DELTA)
     print("[OUTPUT]",SUMMARY)
+    print("[OUTPUT]",qr_path)
 
 if __name__=="__main__":
     run()
