@@ -134,6 +134,81 @@ if (nrow(reconciliation))
   message("[REVIEW] ",nrow(reconciliation),
           " selected-versus-master field discrepancies exported; none overwritten")
 
+# Publication-ready common schema: preserve all existing metadata while exposing
+# original Rmd-derived variables under their canonical unprefixed names.
+# The full population has no clade/QC-audit designation; these fields remain
+# exclusive to the selected cohort. Missing historical values are kept missing.
+common_fields <- c(
+  "QR_genotype","FQR_genotype","Collection_date_raw","Collection_date_clean",
+  "Collection_date_parsed","Collection_year","Source","Origin_group",
+  "Source_group","row_id","Year","Source_raw","Source3","NonUS","QR_group",
+  "Outbreak_clean","Location_clean","AMR_pattern","QR_genotype_archived",
+  "FQR_genotype_archived","QR_status","QR_marker_count","QR_markers","QR_corrected")
+selected_only_fields <- c("Clade","Final_phylogeny","AUDIT")
+
+# The original 51 source columns, Rmd_ derivations and Audit_ comparisons remain
+# available under their original names. Canonical outputs are additive.
+field_from <- function(df, candidates, default=NA_character_) {
+  for (nm in candidates) if (nm %in% names(df)) return(as.character(df[[nm]]))
+  rep(default,nrow(df))
+}
+add_common_fields <- function(df, is_selected) {
+  if (is_selected) {
+    # Selected original/QC fields are authoritative; fill only absent columns.
+    for (nm in common_fields) if (!(nm %in% names(df)))
+      df[[nm]] <- field_from(df,c(paste0("Rmd_",nm)))
+  } else {
+    # Full master: binary genotype is derived from core-marker calls, not date.
+    df$QR_genotype <- as.integer(df$Audit_QR_marker_count > 0L)
+    df$FQR_genotype <- df$QR_genotype
+    df$QR_status <- ifelse(df$QR_genotype==1L,
+                           "QR/FQR marker-positive","QR/FQR marker-negative")
+    df$QR_marker_count <- as.integer(df$Audit_QR_marker_count)
+    df$QR_markers <- as.character(df$Audit_QR_marker_tokens)
+    # No QC correction has been adjudicated across all 33,831 genomes.
+    df$QR_corrected <- NA_character_
+    df$QR_genotype_archived <- field_from(df,c("Rmd_QR_genotype","Rmd_FQR_genotype"))
+    df$FQR_genotype_archived <- field_from(df,c("Rmd_FQR_genotype"))
+    for (nm in setdiff(common_fields,c("QR_genotype","FQR_genotype",
+                         "QR_status","QR_marker_count","QR_markers",
+                         "QR_corrected","QR_genotype_archived",
+                         "FQR_genotype_archived"))) {
+      if (!(nm %in% names(df))) df[[nm]] <- field_from(df,c(paste0("Rmd_",nm)))
+    }
+  }
+  # Canonical fields derived identically across both sets.
+  df$Collection_year <- as.integer(df$Audit_Collection_year)
+  df$Source <- as.character(df$Audit_Source)
+  df$Origin_group <- field_from(df,c("Rmd_Origin_group"))
+  df$Source_group <- field_from(df,c("Rmd_Source_group"))
+  df$Collection_date_raw <- field_from(df,c("Rmd_Collection_date_raw","Collection date"))
+  df$Collection_date_clean <- field_from(df,c("Rmd_Collection_date_clean"))
+  df$Collection_date_parsed <- field_from(df,c("Rmd_Collection_date_parsed"))
+  df$row_id <- as.integer(match(df$Run,raw$Run))
+  df$Year <- as.integer(df$Collection_year)
+  df$Source_raw <- field_from(df,c("Rmd_Source_raw","Rmd_Source"))
+  df$Source3 <- dplyr::case_when(df$Source=="Human"~"Human",
+    df$Source=="Chicken-US"~"Chicken", TRUE~"Other")
+  df$NonUS <- df$Source=="International"
+  df$QR_group <- ifelse(as.integer(df$QR_genotype)==1L,"QR","NON-QR")
+  df$Outbreak_clean <- stringr::str_squish(field_from(df,c("Outbreak_clean","Outbreak")))
+  df$Location_clean <- stringr::str_squish(field_from(df,c("Location_clean","Location")))
+  df$AMR_pattern <- assign_amr_pattern(df[["AMR genotypes core"]])
+  stopifnot(all(common_fields %in% names(df)),!anyDuplicated(df$Run))
+  df
+}
+full <- add_common_fields(full,FALSE)
+sel_aug <- add_common_fields(sel_aug,TRUE)
+# Full file cannot acquire selected-only QC/clade columns (including prefixed
+# copies) merely because 3,434 selected records were joined for auditing.
+full <- full[,!names(full) %in%
+   c(selected_only_fields,paste0("QC_",selected_only_fields)),drop=FALSE]
+stopifnot(!any(selected_only_fields %in% names(full)),
+          all(selected_only_fields %in% names(sel_aug)),
+          nrow(full)==33831L,nrow(sel_aug)==3434L,
+          all(common_fields %in% names(full)),
+          all(common_fields %in% names(sel_aug)))
+
 full_path <- file.path(out,"SEN_33831_full_enriched_metadata.csv")
 sel_path <- file.path(out,"SEN_3434_selected_enriched_QC_metadata.csv")
 readr::write_csv(full,full_path,na="")
