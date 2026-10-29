@@ -5842,6 +5842,12 @@ ggsave(
 ## QR rows were combined before non-QR rows and then truncated.
 ## Final global downsampling could further change the distribution.
 ## The archived selected cohort is authoritative for observed counts.
+## HISTORICAL GENOME SELECTION — RECONSTRUCTED
+## Original selection operations preserved without modern 4:1 enforcement.
+## The 70:30 values were attempted allocations, not achieved final proportions.
+## Each year's allocations could overfill source-period quotas.
+## QR rows preceded NON-QR rows in truncation; global downsampling could alter ratios.
+## The archived selected cohort is authoritative for observed distribution.
 ## FINAL 3500-GENOME SELECTION SCRIPT
 ## GUARANTEE: ALL NON-US INCLUDED
 ## ============================================================
@@ -5880,7 +5886,7 @@ B_targets <- tibble(
   target  = c(500,250,100, 700,400,150)
 ) %>%
   mutate(
-    # Attempted allocation, not the achieved sampling ratio.
+    # Attempted allocation, NOT a final enforced 70:30 ratio.
     target_QR  = round(target * 0.70),
     target_NQR = target - target_QR
   )
@@ -6007,8 +6013,7 @@ B_sel <- map_dfr(seq_len(nrow(B_targets)), function(i){
     rem <- pool %>% anti_join(picked, by="row_id") %>% filter(QR_group==qr_label)
     if (need_n <= 0 || nrow(rem)==0) return(rem[0,])
 
-    # Historical behavior: need_n is reused for EACH year.
-    # This can over-allocate before subsequent truncation.
+    # need_n is reused in every year: historical over-allocation behavior.
     map_dfr(unique(rem$Year), function(y){
       py <- rem %>% filter(Year==y)
       if (nrow(py)==0) return(py)
@@ -6027,8 +6032,7 @@ B_sel <- map_dfr(seq_len(nrow(B_targets)), function(i){
     fill_group("NON-QR", tNQ)
   ) %>% distinct(row_id,.keep_all=TRUE)
 
-  # Historical behavior: QR rows occur before NON-QR rows.
-  # Truncation does not enforce the attempted 70:30 allocation.
+  # QR rows precede NON-QR; truncation may favor QR.
   picked %>% slice_head(n=tQR+tNQ) %>% mutate(section=sec)
 })
 
