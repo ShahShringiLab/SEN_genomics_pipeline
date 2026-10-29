@@ -1757,7 +1757,7 @@ library(ggplot2)
 library(tidyr)
 
 # ---- standardize columns ----
-SEN <- SEN %>%
+SEN3 <- SEN %>%
   mutate(
     Source_type = str_to_lower(str_trim(as.character(`Source type`))),
     Source_type = if_else(is.na(Source_type) | Source_type == "", "unknown", Source_type),
@@ -1793,10 +1793,10 @@ plot_iso_counts <- function(df, stype, top_n = 50) {
 }
 
 # ---- plots for requested source types ----
-print(plot_iso_counts(SEN, "animal"))
-print(plot_iso_counts(SEN, "environmental"))
-print(plot_iso_counts(SEN, "food"))
-print(plot_iso_counts(SEN, "unknown"))
+print(plot_iso_counts(SEN3, "animal"))
+print(plot_iso_counts(SEN3, "environmental"))
+print(plot_iso_counts(SEN3, "food"))
+print(plot_iso_counts(SEN3, "unknown"))
 
 
 
@@ -5153,11 +5153,42 @@ library(ggplot2)
 library(patchwork)
 
 # =========================================================
-# A) Build iso_mat from marker_long (one row per isolate)
+# A) Full-population source-level QR/FQR diversity
+#    NO collection-year filtering; year-based figures above are unchanged.
+#    QR/FQR calls use AMRFinderPlus 'AMR genotypes core', consistent with
+#    the updated master-population definition.
 # =========================================================
 source_levels <- c("Human", "Chicken-US", "Other-US", "International")
 
-iso_mat <- marker_long %>%
+stopifnot(all(c("Source", "AMR genotypes core") %in% names(SEN)))
+diversity_tokens <- SEN %>%
+  mutate(
+    row_id = row_number(),
+    token = str_extract_all(
+      coalesce(as.character(.data[["AMR genotypes core"]]), ""),
+      "[^,=\\s]+(?==)"
+    )
+  ) %>%
+  select(row_id, Source, token) %>%
+  unnest_longer(token) %>%
+  mutate(
+    token_norm = str_to_lower(str_replace_all(str_trim(token), "\\s+", "")),
+    token_pretty = pretty_token(token_norm)
+  ) %>%
+  filter(str_detect(token_norm, qr_regex)) %>%
+  distinct(row_id, Source, token_pretty)
+
+diversity_top5 <- diversity_tokens %>%
+  count(token_pretty, sort = TRUE) %>%
+  slice_head(n = 5) %>%
+  pull(token_pretty)
+
+diversity_marker_long <- diversity_tokens %>%
+  mutate(marker_group = if_else(token_pretty %in% diversity_top5,
+                                token_pretty, "others")) %>%
+  distinct(row_id, Source, marker_group)
+
+iso_mat <- diversity_marker_long %>%
   mutate(value = 1L) %>%
   select(row_id, Source, marker_group, value) %>%
   distinct() %>%
@@ -5842,7 +5873,7 @@ B_targets <- tibble(
   target  = c(500,250,100, 700,400,150)
 ) %>%
   mutate(
-    target_QR  = round(target * 0.70),
+    target_QR  = round(target * 0.80),
     target_NQR = target - target_QR
   )
 
@@ -5962,31 +5993,62 @@ B_sel <- map_dfr(seq_len(nrow(B_targets)), function(i){
   pool <- B_pool %>%
     filter(Year >= yrs$y_min, Year <= yrs$y_max, Source3==s3)
 
-  picked <- pool[0,]
 
-  fill_group <- function(qr_label, need_n) {
-    rem <- pool %>% anti_join(picked, by="row_id") %>% filter(QR_group==qr_label)
-    if (need_n <= 0 || nrow(rem)==0) return(rem[0,])
+  # Apply a single 4:1 QR:QS target across this source-period.
+  # Reallocate unavailable QR/QS quota without exceeding the target.
+  goal <- min(tQR + tNQ, nrow(pool))
+  nQR <- min(tQR, sum(pool$QR_group == "QR"))
+  nNQ <- min(tNQ, sum(pool$QR_group == "NON-QR"))
 
-    map_dfr(unique(rem$Year), function(y){
-      py <- rem %>% filter(Year==y)
-      if (nrow(py)==0) return(py)
+  if (nQR + nNQ < goal) {
+    nQR <- min(sum(pool$QR_group == "QR"),
+               goal - nNQ)
+    nNQ <- min(sum(pool$QR_group == "NON-QR"),
+               goal - nQR)
+  }
 
-      props <- py %>% count(AMR_pattern) %>% mutate(w=n/sum(n))
-      alloc <- props %>% mutate(n_take=round(w*need_n))
-      py %>% left_join(alloc, by="AMR_pattern") %>%
-        group_by(AMR_pattern) %>%
-        group_modify(~ safe_sample(.x, unique(.x$n_take))) %>%
-        ungroup()
+  # Proportional allocation across collection year and AMR pattern.
+  stratified_sample <- function(df, need) {
+    if (need <= 0 || nrow(df) == 0) return(df[0,])
+
+    cells <- df %>%
+      count(Year, AMR_pattern, name = "available") %>%
+      mutate(
+        expected = available / sum(available) * need,
+        take = floor(expected),
+        remainder = expected - take
+      )
+
+    remaining <- need - sum(cells$take)
+
+    if (remaining > 0) {
+      ix <- order(-cells$remainder, -cells$available,
+                  cells$Year, cells$AMR_pattern)
+      cells$take[ix[seq_len(remaining)]] <-
+        cells$take[ix[seq_len(remaining)]] + 1L
+    }
+
+    map_dfr(seq_len(nrow(cells)), function(j) {
+      df %>%
+        filter(Year == cells$Year[j],
+               AMR_pattern == cells$AMR_pattern[j]) %>%
+        safe_sample(cells$take[j])
     })
   }
 
   picked <- bind_rows(
-    fill_group("QR", tQR),
-    fill_group("NON-QR", tNQ)
-  ) %>% distinct(row_id,.keep_all=TRUE)
+    stratified_sample(pool %>% filter(QR_group == "QR"), nQR),
+    stratified_sample(pool %>% filter(QR_group == "NON-QR"), nNQ)
+  ) %>%
+    distinct(row_id, .keep_all = TRUE)
 
-  picked %>% slice_head(n=tQR+tNQ) %>% mutate(section=sec)
+  stopifnot(nrow(picked) == goal)
+
+  cat("[BLOCK B]", sec, s3,
+      "QR:", nQR, "QS:", nNQ, "\\n")
+
+  picked %>% mutate(section = sec)
+
 })
 
 ## ============================================================
