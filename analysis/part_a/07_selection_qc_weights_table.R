@@ -36,6 +36,20 @@ stopifnot(length(analyzed_runs)==3306L, all(analyzed_runs %in% selected$Run))
 master$Analyzed_post_QC <- master$Run %in% analyzed_runs
 stopifnot(sum(master$Selected_pre_QC)==3434L,sum(master$Analyzed_post_QC)==3306L,
  all(!master$Analyzed_post_QC | master$Selected_pre_QC))
+# Restrict BOTH reporting tables to 1990-2025 and records with missing year.
+# Historical source/master remains unchanged; only the accounting view is filtered.
+excluded_out_of_range <- master %>%
+ dplyr::filter(!is.na(Year_of_isolation) &
+  (Year_of_isolation < 1990L | Year_of_isolation > 2025L))
+stopifnot(nrow(excluded_out_of_range)==18L)
+master <- master %>%
+ dplyr::filter(is.na(Year_of_isolation) |
+  (Year_of_isolation >= 1990L & Year_of_isolation <= 2025L))
+stopifnot(nrow(master)==33813L)
+cat("[INFO] Excluded dated isolates outside 1990-2025: ",
+ nrow(excluded_out_of_range)," (selected: ",
+ sum(excluded_out_of_range$Selected_pre_QC),"; analyzed: ",
+ sum(excluded_out_of_range$Analyzed_post_QC),").\\n",sep="")
 # Do not manufacture year for missing-year genomes. Keep a separate explicit
 # missing-year stratum so that all 33,831 master records are reconciled.
 master$Year_of_isolation_label <- ifelse(is.na(master$Year_of_isolation),
@@ -75,9 +89,9 @@ tab <- master %>%
  "% of available selected"=Pct_of_available_selected,
  "% of available analyzed"=Pct_of_available_analyzed,
  "Weight (N ÷ n)"=Weight_N_div_n)
-stopifnot(sum(tab[["Available genomes (N)"]])==33831L,
- sum(tab[["Selected genomes (pre-QC)"]])==3434L,
- sum(tab[["Analyzed genomes (post-QC) (n)"]])==3306L)
+stopifnot(sum(tab[["Available genomes (N)"]])==nrow(master),
+ sum(tab[["Selected genomes (pre-QC)"]])==sum(master$Selected_pre_QC),
+ sum(tab[["Analyzed genomes (post-QC) (n)"]])==sum(master$Analyzed_post_QC))
 out <- ensure_dir(sen_path("results/part_a/master_33831/sampling_qc_table"))
 readr::write_csv(tab,file.path(out,"year_source_marker_selection_QC_weights.csv"),na="")
 if (!requireNamespace("writexl",quietly=TRUE)) stop("Install r-writexl for XLSX export")
@@ -94,11 +108,6 @@ period_specs <- tibble::tibble(
   Start=c(1990L,2018L,2021L,NA_real_),
   End=c(2017L,2020L,2025L,NA_real_)
 )
-excluded_pre1990 <- master %>% dplyr::filter(!is.na(Year_of_isolation), Year_of_isolation < 1990L)
-stopifnot(nrow(excluded_pre1990)==18L)
-cat("[INFO] Excluded pre-1990 isolates from period table: ", nrow(excluded_pre1990),
-    " (selected: ",sum(excluded_pre1990$Selected_pre_QC),
-    "; analyzed: ",sum(excluded_pre1990$Analyzed_post_QC),").\\n",sep="")
 period_input <- purrr::pmap_dfr(period_specs, function(Period,Start,End) {
   master %>%
     dplyr::filter(if (is.na(Start)) is.na(Year_of_isolation) else
@@ -144,12 +153,12 @@ for (p in period_specs$Period) {
     sum(observed[["Selected genomes (pre-QC)"]])==sum(expected$Selected_pre_QC),
     sum(observed$n)==sum(expected$Analyzed_post_QC))
 }
-stopifnot(sum(period_tab$N)==33831L-nrow(excluded_pre1990),
-          sum(period_tab[["Selected genomes (pre-QC)"]])==3434L-sum(excluded_pre1990$Selected_pre_QC),
-          sum(period_tab$n)==3306L-sum(excluded_pre1990$Analyzed_post_QC))
+stopifnot(sum(period_tab$N)==nrow(master),
+          sum(period_tab[["Selected genomes (pre-QC)"]])==sum(master$Selected_pre_QC),
+          sum(period_tab$n)==sum(master$Analyzed_post_QC))
 readr::write_csv(period_tab,
   file.path(out,"period_source_marker_selection_QC_weights.csv"),na="")
 writexl::write_xlsx(list(Period_source_marker=period_tab),
   file.path(out,"period_source_marker_selection_QC_weights.xlsx"))
 cat("[PASS] Period grouping table: ",nrow(period_tab),
-  " strata (1990-2017, 2018-2020, 2021-2025, Missing year); pre-1990 excluded and totals verified.\\n",sep="")
+  " strata (1990-2017, 2018-2020, 2021-2025, Missing year); out-of-range years excluded and totals verified.\\n",sep="")
