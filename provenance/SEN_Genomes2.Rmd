@@ -5835,6 +5835,13 @@ ggsave(
 
 ```{r}
 ## ============================================================
+## HISTORICAL GENOME SELECTION — RECONSTRUCTED
+## Original selection operations are preserved.
+## The 70:30 values were attempted allocations, NOT enforced final proportions.
+## Year-wise allocation could exceed the requested source-period quotas.
+## QR rows were combined before non-QR rows and then truncated.
+## Final global downsampling could further change the distribution.
+## The archived selected cohort is authoritative for observed counts.
 ## FINAL 3500-GENOME SELECTION SCRIPT
 ## GUARANTEE: ALL NON-US INCLUDED
 ## ============================================================
@@ -5873,7 +5880,8 @@ B_targets <- tibble(
   target  = c(500,250,100, 700,400,150)
 ) %>%
   mutate(
-    target_QR  = round(target * 0.80),
+    # Attempted allocation, not the achieved sampling ratio.
+    target_QR  = round(target * 0.70),
     target_NQR = target - target_QR
   )
 
@@ -5993,62 +6001,35 @@ B_sel <- map_dfr(seq_len(nrow(B_targets)), function(i){
   pool <- B_pool %>%
     filter(Year >= yrs$y_min, Year <= yrs$y_max, Source3==s3)
 
+  picked <- pool[0,]
 
-  # Apply a single 4:1 QR:QS target across this source-period.
-  # Reallocate unavailable QR/QS quota without exceeding the target.
-  goal <- min(tQR + tNQ, nrow(pool))
-  nQR <- min(tQR, sum(pool$QR_group == "QR"))
-  nNQ <- min(tNQ, sum(pool$QR_group == "NON-QR"))
+  fill_group <- function(qr_label, need_n) {
+    rem <- pool %>% anti_join(picked, by="row_id") %>% filter(QR_group==qr_label)
+    if (need_n <= 0 || nrow(rem)==0) return(rem[0,])
 
-  if (nQR + nNQ < goal) {
-    nQR <- min(sum(pool$QR_group == "QR"),
-               goal - nNQ)
-    nNQ <- min(sum(pool$QR_group == "NON-QR"),
-               goal - nQR)
-  }
+    # Historical behavior: need_n is reused for EACH year.
+    # This can over-allocate before subsequent truncation.
+    map_dfr(unique(rem$Year), function(y){
+      py <- rem %>% filter(Year==y)
+      if (nrow(py)==0) return(py)
 
-  # Proportional allocation across collection year and AMR pattern.
-  stratified_sample <- function(df, need) {
-    if (need <= 0 || nrow(df) == 0) return(df[0,])
-
-    cells <- df %>%
-      count(Year, AMR_pattern, name = "available") %>%
-      mutate(
-        expected = available / sum(available) * need,
-        take = floor(expected),
-        remainder = expected - take
-      )
-
-    remaining <- need - sum(cells$take)
-
-    if (remaining > 0) {
-      ix <- order(-cells$remainder, -cells$available,
-                  cells$Year, cells$AMR_pattern)
-      cells$take[ix[seq_len(remaining)]] <-
-        cells$take[ix[seq_len(remaining)]] + 1L
-    }
-
-    map_dfr(seq_len(nrow(cells)), function(j) {
-      df %>%
-        filter(Year == cells$Year[j],
-               AMR_pattern == cells$AMR_pattern[j]) %>%
-        safe_sample(cells$take[j])
+      props <- py %>% count(AMR_pattern) %>% mutate(w=n/sum(n))
+      alloc <- props %>% mutate(n_take=round(w*need_n))
+      py %>% left_join(alloc, by="AMR_pattern") %>%
+        group_by(AMR_pattern) %>%
+        group_modify(~ safe_sample(.x, unique(.x$n_take))) %>%
+        ungroup()
     })
   }
 
   picked <- bind_rows(
-    stratified_sample(pool %>% filter(QR_group == "QR"), nQR),
-    stratified_sample(pool %>% filter(QR_group == "NON-QR"), nNQ)
-  ) %>%
-    distinct(row_id, .keep_all = TRUE)
+    fill_group("QR", tQR),
+    fill_group("NON-QR", tNQ)
+  ) %>% distinct(row_id,.keep_all=TRUE)
 
-  stopifnot(nrow(picked) == goal)
-
-  cat("[BLOCK B]", sec, s3,
-      "QR:", nQR, "QS:", nNQ, "\\n")
-
-  picked %>% mutate(section = sec)
-
+  # Historical behavior: QR rows occur before NON-QR rows.
+  # Truncation does not enforce the attempted 70:30 allocation.
+  picked %>% slice_head(n=tQR+tNQ) %>% mutate(section=sec)
 })
 
 ## ============================================================
@@ -6074,6 +6055,1755 @@ cat("FINAL N =", nrow(sel_all), "\n")
 write.csv(sel_all, "Selected_3500_genomes.csv", row.names=FALSE)
 
 ```
+
+#check for outbreak
+```{r}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+
+# =========================================================
+# 1. CLEAN OUTBREAK FIELD EXACTLY AS IN SELECTION SCRIPT
+# =========================================================
+
+clean_na <- function(x) {
+  x <- str_squish(as.character(x))
+  x[x %in% c("", "NA", "N/A", "none", "null")] <- NA
+  x
+}
+
+SEL_outbreak_check <- SEL %>%
+  mutate(
+    Collection_year = as.integer(Collection_year),
+    Outbreak_check = clean_na(Outbreak)
+  )
+
+
+# =========================================================
+# 2. HOW MANY GENOMES HAVE AN OUTBREAK DESIGNATION?
+# =========================================================
+
+cat("\n========================================\n")
+cat("OVERALL OUTBREAK STATUS\n")
+cat("========================================\n")
+
+SEL_outbreak_check %>%
+  summarise(
+    Total_genomes = n(),
+    Outbreak_associated = sum(!is.na(Outbreak_check)),
+    No_outbreak_designation = sum(is.na(Outbreak_check)),
+    Percent_outbreak = round(
+      100 * Outbreak_associated / Total_genomes,
+      2
+    )
+  ) %>%
+  print()
+
+
+# =========================================================
+# 3. WHAT VALUES ACTUALLY OCCUR IN OUTBREAK?
+# =========================================================
+
+cat("\n========================================\n")
+cat("OUTBREAK VALUES\n")
+cat("========================================\n")
+
+SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  count(Outbreak_check, sort = TRUE) %>%
+  print(n = Inf)
+
+
+# =========================================================
+# 4. NUMBER OF OUTBREAK-ASSOCIATED GENOMES PER YEAR
+#
+# THIS DIRECTLY TESTS:
+# "Outbreak-associated isolates were limited to one per year"
+# =========================================================
+
+cat("\n========================================\n")
+cat("OUTBREAK-ASSOCIATED GENOMES PER YEAR\n")
+cat("========================================\n")
+
+outbreak_by_year <- SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  count(Collection_year, name = "n_outbreak_genomes") %>%
+  arrange(Collection_year)
+
+print(outbreak_by_year, n = Inf)
+
+
+# =========================================================
+# 5. YEARS HAVING >1 OUTBREAK-ASSOCIATED GENOME
+# =========================================================
+
+cat("\n========================================\n")
+cat("YEARS WITH >1 OUTBREAK-ASSOCIATED GENOME\n")
+cat("========================================\n")
+
+outbreak_by_year %>%
+  filter(n_outbreak_genomes > 1) %>%
+  print(n = Inf)
+
+
+# =========================================================
+# 6. OUTBREAK GENOMES BY YEAR + OUTBREAK LABEL
+#
+# This distinguishes:
+#   multiple genomes from SAME outbreak
+# vs
+#   multiple DIFFERENT outbreaks in same year.
+# =========================================================
+
+cat("\n========================================\n")
+cat("OUTBREAK LABELS BY YEAR\n")
+cat("========================================\n")
+
+outbreak_label_year <- SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  count(
+    Collection_year,
+    Outbreak_check,
+    name = "n_genomes"
+  ) %>%
+  arrange(
+    Collection_year,
+    desc(n_genomes)
+  )
+
+print(outbreak_label_year, n = Inf)
+
+
+# =========================================================
+# 7. SAME OUTBREAK REPRESENTED BY >1 GENOME IN SAME YEAR
+#
+# This may actually be the biologically important check.
+# =========================================================
+
+cat("\n========================================\n")
+cat("SAME OUTBREAK WITH >1 GENOME PER YEAR\n")
+cat("========================================\n")
+
+duplicate_outbreak_year <- outbreak_label_year %>%
+  filter(n_genomes > 1)
+
+print(duplicate_outbreak_year, n = Inf)
+
+
+# =========================================================
+# 8. OUTBREAK REPRESENTATION BY SOURCE
+# =========================================================
+
+cat("\n========================================\n")
+cat("OUTBREAK GENOMES BY YEAR AND SOURCE\n")
+cat("========================================\n")
+
+SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  count(
+    Collection_year,
+    Source,
+    name = "n_outbreak_genomes"
+  ) %>%
+  arrange(
+    Collection_year,
+    Source
+  ) %>%
+  print(n = Inf)
+
+
+# =========================================================
+# 9. OUTBREAK REPRESENTATION BY QR/FQR STATUS
+# =========================================================
+
+cat("\n========================================\n")
+cat("OUTBREAK GENOMES BY YEAR AND QR/FQR\n")
+cat("========================================\n")
+
+SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  mutate(
+    QR_status = case_when(
+      as.integer(QR_genotype) == 1L ~ "QR/FQR",
+      as.integer(QR_genotype) == 0L ~ "QS/FQS",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  count(
+    Collection_year,
+    QR_status,
+    name = "n_outbreak_genomes"
+  ) %>%
+  arrange(
+    Collection_year,
+    QR_status
+  ) %>%
+  print(n = Inf)
+
+
+# =========================================================
+# 10. FULL AUDIT TABLE
+#
+# Shows exactly which genomes are outbreak-associated.
+# =========================================================
+
+outbreak_audit <- SEL_outbreak_check %>%
+  filter(!is.na(Outbreak_check)) %>%
+  select(
+    row_id,
+    Strain,
+    `Isolate identifiers`,
+    Collection_year,
+    Source,
+    Source3,
+    QR_genotype,
+    Outbreak,
+    Outbreak_check,
+    `SNP cluster`,
+    BioSample,
+    Assembly
+  ) %>%
+  arrange(
+    Collection_year,
+    Outbreak_check,
+    Source
+  )
+
+cat("\n========================================\n")
+cat("FULL OUTBREAK AUDIT\n")
+cat("========================================\n")
+
+print(outbreak_audit, n = Inf)
+
+
+# =========================================================
+# 11. FINAL PASS / FAIL TEST
+# =========================================================
+
+max_outbreak_per_year <- outbreak_by_year %>%
+  summarise(
+    max_n = max(n_outbreak_genomes, na.rm = TRUE)
+  ) %>%
+  pull(max_n)
+
+cat("\n========================================\n")
+cat("ONE OUTBREAK GENOME PER YEAR TEST\n")
+cat("========================================\n")
+
+if (length(max_outbreak_per_year) == 0 ||
+    is.infinite(max_outbreak_per_year)) {
+
+  cat("NO OUTBREAK-ASSOCIATED GENOMES DETECTED\n")
+
+} else if (max_outbreak_per_year <= 1) {
+
+  cat("PASS: No year contains >1 outbreak-associated genome.\n")
+
+} else {
+
+  cat("FAIL: At least one year contains >1 outbreak-associated genome.\n")
+  cat("Maximum outbreak-associated genomes in a single year =",
+      max_outbreak_per_year, "\n")
+}
+
+```
+#Selection Rationale
+
+```{r}
+# ============================================================
+# 0. PACKAGES
+# ============================================================
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(forcats)
+
+
+# ============================================================
+# 1. BASIC CHECKS
+#
+# SEN = original full dataset
+# SEL = selected dataset
+#
+# Do NOT expect derived columns such as row_id or QR_genotype
+# to already exist in the original SEN dataframe.
+# ============================================================
+
+required_SEN <- c(
+  "Collection_year",
+  "AMR genotypes"
+)
+
+required_SEL <- c(
+  "row_id",
+  "Collection_year",
+  "QR_genotype",
+  "AMR genotypes"
+)
+
+missing_SEN <- setdiff(required_SEN, names(SEN))
+missing_SEL <- setdiff(required_SEL, names(SEL))
+
+if (length(missing_SEN) > 0) {
+  stop(
+    "Missing required columns in SEN: ",
+    paste(missing_SEN, collapse = ", ")
+  )
+}
+
+if (length(missing_SEL) > 0) {
+  stop(
+    "Missing required columns in SEL: ",
+    paste(missing_SEL, collapse = ", ")
+  )
+}
+
+
+cat("\n============================================\n")
+cat("INPUT DATASET SIZES\n")
+cat("============================================\n")
+
+cat("Total SEN genomes:", nrow(SEN), "\n")
+cat("Selected genomes:", nrow(SEL), "\n")
+
+cat(
+  "Selected percentage:",
+  round(100 * nrow(SEL) / nrow(SEN), 2),
+  "%\n"
+)
+
+
+# ============================================================
+# 2. TEMPORAL BLOCK FUNCTION
+# ============================================================
+
+make_period <- function(year) {
+
+  case_when(
+    year < 2018 ~ "Pre-2018",
+    year >= 2018 & year <= 2020 ~ "2018-2020",
+    year >= 2021 & year <= 2025 ~ "2021-2025",
+    TRUE ~ NA_character_
+  )
+}
+
+period_levels <- c(
+  "Pre-2018",
+  "2018-2020",
+  "2021-2025"
+)
+
+
+# ============================================================
+# 3. PREPARE TOTAL DATASET
+#
+# IMPORTANT:
+# Original SEN does not contain row_id / QR_genotype.
+#
+# row_id is recreated exactly as in the original selection
+# script:
+#
+#     row_id = row_number()
+#
+# QR/FQR status must come from the original QR classification.
+# First determine which QR/FQR-related columns are available.
+# ============================================================
+
+cat("\n============================================\n")
+cat("QR/FQR-RELATED COLUMNS IN ORIGINAL SEN\n")
+cat("============================================\n")
+
+qr_candidate_columns <- names(SEN)[
+  str_detect(
+    names(SEN),
+    regex(
+      "QR|quinolone|cipro|fluoro",
+      ignore_case = TRUE
+    )
+  )
+]
+
+print(qr_candidate_columns)
+
+
+# ============================================================
+# 4. CHECK WHETHER ORIGINAL SEN HAS QR_genotype UNDER
+#    A DIFFERENT NAME
+# ============================================================
+
+cat("\n============================================\n")
+cat("ALL ORIGINAL SEN COLUMN NAMES\n")
+cat("============================================\n")
+
+print(names(SEN))
+
+
+# ============================================================
+# STOP HERE TEMPORARILY IF NO QR STATUS COLUMN EXISTS
+# ============================================================
+# ============================================================
+# 4. VERIFY TEMPORAL BLOCK COUNTS
+# ============================================================
+
+cat("\n============================================\n")
+cat("TOTAL GENOMES BY TEMPORAL BLOCK\n")
+cat("============================================\n")
+
+total_period_counts <- SEN_plot %>%
+  count(Period, name = "N")
+
+print(total_period_counts)
+
+
+cat("\n============================================\n")
+cat("SELECTED GENOMES BY TEMPORAL BLOCK\n")
+cat("============================================\n")
+
+selected_period_counts <- SEL_plot %>%
+  count(Period, name = "N")
+
+print(selected_period_counts)
+
+
+cat("\n============================================\n")
+cat("SELECTED QR/FQR STATUS BY TEMPORAL BLOCK\n")
+cat("============================================\n")
+
+SEL_plot %>%
+  count(
+    Period,
+    QR_status,
+    name = "N"
+  ) %>%
+  group_by(Period) %>%
+  mutate(
+    Percent = round(
+      100 * N / sum(N),
+      2
+    )
+  ) %>%
+  ungroup() %>%
+  print(n = Inf)
+
+
+# ============================================================
+# 5. QR/FQR MARKER NORMALIZATION
+#
+# Same logic used in previous QR/FQR visualization.
+# ============================================================
+
+pretty_token <- function(x) {
+
+  x <- str_trim(x)
+
+  x <- str_replace_all(
+    x,
+    "\\s+",
+    ""
+  )
+
+  x <- str_replace_all(
+    x,
+    "-",
+    "_"
+  )
+
+  # ----------------------------------------------------------
+  # QRDR genes
+  # ----------------------------------------------------------
+
+  x <- str_replace(
+    x,
+    regex("^gyra_", ignore_case = TRUE),
+    "gyrA_"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^gyrb_", ignore_case = TRUE),
+    "gyrB_"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^parc_", ignore_case = TRUE),
+    "parC_"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^pare_", ignore_case = TRUE),
+    "parE_"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^pard_", ignore_case = TRUE),
+    "parD_"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^grla_", ignore_case = TRUE),
+    "grlA_"
+  )
+
+  # ----------------------------------------------------------
+  # Plasmid-mediated quinolone resistance genes
+  # ----------------------------------------------------------
+
+  x <- str_replace(
+    x,
+    regex("^qnras", ignore_case = TRUE),
+    "qnrAS"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnra", ignore_case = TRUE),
+    "qnrA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnrb", ignore_case = TRUE),
+    "qnrB"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnrc", ignore_case = TRUE),
+    "qnrC"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnrd", ignore_case = TRUE),
+    "qnrD"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnre", ignore_case = TRUE),
+    "qnrE"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnrs", ignore_case = TRUE),
+    "qnrS"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qnrvc", ignore_case = TRUE),
+    "qnrVC"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^qepa", ignore_case = TRUE),
+    "qepA"
+  )
+
+  # ----------------------------------------------------------
+  # Other relevant quinolone-associated genes
+  # ----------------------------------------------------------
+
+  x <- str_replace(
+    x,
+    regex("^nfxb", ignore_case = TRUE),
+    "nfxB"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^emrr", ignore_case = TRUE),
+    "emrR"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^norm", ignore_case = TRUE),
+    "norM"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^pmra", ignore_case = TRUE),
+    "pmrA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^acrb", ignore_case = TRUE),
+    "acrB"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^acra", ignore_case = TRUE),
+    "acrA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^tolc", ignore_case = TRUE),
+    "tolC"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^crpp", ignore_case = TRUE),
+    "crpP"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^oqxa", ignore_case = TRUE),
+    "oqxA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^oqxb", ignore_case = TRUE),
+    "oqxB"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^rama", ignore_case = TRUE),
+    "ramA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^ramr", ignore_case = TRUE),
+    "ramR"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^mara", ignore_case = TRUE),
+    "marA"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^marr", ignore_case = TRUE),
+    "marR"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^soxr", ignore_case = TRUE),
+    "soxR"
+  )
+
+  x <- str_replace(
+    x,
+    regex("^soxs", ignore_case = TRUE),
+    "soxS"
+  )
+
+  # ----------------------------------------------------------
+  # AAC(6')-Ib-cr
+  # ----------------------------------------------------------
+
+  x <- str_replace(
+    x,
+    regex(
+      "^aac\\(?6'?\\)?[_-]?ib[_-]?cr",
+      ignore_case = TRUE
+    ),
+    "aac(6')-Ib-cr"
+  )
+
+  # ----------------------------------------------------------
+  # Uppercase amino-acid substitution suffix
+  #
+  # Example:
+  # gyrA_d87y -> gyrA_D87Y
+  # gyrA_s83y -> gyrA_S83Y
+  # ----------------------------------------------------------
+
+  has_suffix <- str_detect(
+    x,
+    "_"
+  )
+
+  ifelse(
+    has_suffix,
+    paste0(
+      str_extract(x, "^[^_]+"),
+      "_",
+      toupper(
+        str_extract(
+          x,
+          "(?<=_).+$"
+        )
+      )
+    ),
+    x
+  )
+
+}
+
+
+# ============================================================
+# 6. QR/FQR REGEX
+# ============================================================
+
+qr_regex <- regex(
+  paste0(
+    "^(",
+    "gyrA|",
+    "gyrB|",
+    "parC|",
+    "parE|",
+    "parD|",
+    "grlA|",
+    "qnrAS|",
+    "qnrA|",
+    "qnrB|",
+    "qnrC|",
+    "qnrD|",
+    "qnrE|",
+    "qnrS|",
+    "qnrVC|",
+    "qepA|",
+    "nfxB|",
+    "emrR|",
+    "norM|",
+    "pmrA|",
+    "acrB|",
+    "acrA|",
+    "tolC|",
+    "crpP|",
+    "oqxA|",
+    "oqxB|",
+    "ramA|",
+    "ramR|",
+    "marA|",
+    "marR|",
+    "soxR|",
+    "soxS|",
+    "aac\\(6'\\)-Ib-cr",
+    ")"
+  ),
+  ignore_case = TRUE
+)
+
+
+# ============================================================
+# 7. FUNCTION TO EXTRACT QR/FQR MARKERS
+#
+# IMPORTANT:
+# Only QR_genotype == 1 genomes are used here.
+#
+# Each marker is counted once per genome.
+# ============================================================
+
+extract_qr_markers <- function(df) {
+
+  df %>%
+    filter(
+      QR_genotype == 1L,
+      !is.na(`AMR genotypes`)
+    ) %>%
+
+    select(
+      row_id,
+      Period,
+      `AMR genotypes`
+    ) %>%
+
+    mutate(
+      AMR_text = as.character(
+        `AMR genotypes`
+      )
+    ) %>%
+
+    # Extract entries such as:
+    # gyrA_D87Y=...
+    # qnrB19=...
+    #
+    # We capture the token immediately before "=".
+    mutate(
+      raw_tokens = str_extract_all(
+        AMR_text,
+        "[^,=\\s]+(?==)"
+      )
+    ) %>%
+
+    select(
+      -`AMR genotypes`,
+      -AMR_text
+    ) %>%
+
+    unnest(
+      cols = raw_tokens
+    ) %>%
+
+    mutate(
+      marker = pretty_token(
+        raw_tokens
+      )
+    ) %>%
+
+    filter(
+      !is.na(marker),
+      str_detect(
+        marker,
+        qr_regex
+      )
+    ) %>%
+
+    distinct(
+      row_id,
+      Period,
+      marker
+    )
+
+}
+
+
+# ============================================================
+# 8. EXTRACT MARKERS FROM TOTAL AND SELECTED DATASETS
+# ============================================================
+
+SEN_qr_tokens <- extract_qr_markers(
+  SEN_plot
+)
+
+SEL_qr_tokens <- extract_qr_markers(
+  SEL_plot
+)
+
+
+# ============================================================
+# 9. CALCULATE TOP 5 QR/FQR MARKERS FROM TOTAL POPULATION ONLY
+# ============================================================
+
+top5_table <- SEN_qr_tokens %>%
+  count(
+    marker,
+    name = "n_genomes"
+  ) %>%
+  arrange(
+    desc(n_genomes),
+    marker
+  ) %>%
+  slice_head(
+    n = 5
+  )
+
+
+top5_markers <- top5_table$marker
+
+
+cat("\n============================================\n")
+cat("TOP 5 QR/FQR MARKERS - TOTAL POPULATION\n")
+cat("============================================\n")
+
+print(
+  top5_table,
+  n = Inf
+)
+
+
+cat(
+  "\nMarkers used in BOTH total and selected plots:\n"
+)
+
+print(
+  top5_markers
+)
+
+
+# ============================================================
+# 10. VERIFY TOP 5 REPRESENTATION IN SELECTED DATA
+# ============================================================
+
+cat("\n============================================\n")
+cat("TOP 5 MARKERS IN SELECTED DATASET\n")
+cat("============================================\n")
+
+SEL_qr_tokens %>%
+  filter(
+    marker %in% top5_markers
+  ) %>%
+  count(
+    marker,
+    name = "n_selected_genomes"
+  ) %>%
+  arrange(
+    match(marker, top5_markers)
+  ) %>%
+  print(n = Inf)
+
+
+# ============================================================
+# 11. IMPORTANT QR/FQR VALIDATION
+#
+# Determine how many QR/FQR genomes have:
+#   0 detected markers
+#   1 detected marker
+#   >1 detected marker
+#
+# User previously found ~99.5% of QR/FQR genomes carry
+# a single QR/FQR marker.
+# ============================================================
+
+validate_marker_number <- function(df, tokens, label) {
+
+  result <- df %>%
+    filter(
+      QR_genotype == 1L
+    ) %>%
+    select(
+      row_id,
+      Period
+    ) %>%
+    left_join(
+      tokens %>%
+        count(
+          row_id,
+          name = "n_markers"
+        ),
+      by = "row_id"
+    ) %>%
+    mutate(
+      n_markers = replace_na(
+        n_markers,
+        0L
+      ),
+
+      marker_class = case_when(
+        n_markers == 0 ~ "0 markers detected",
+        n_markers == 1 ~ "1 marker",
+        n_markers > 1 ~ ">1 marker"
+      )
+    )
+
+  cat("\n============================================\n")
+  cat(label, "- QR/FQR MARKER VALIDATION\n")
+  cat("============================================\n")
+
+  result %>%
+    count(
+      marker_class,
+      name = "N"
+    ) %>%
+    mutate(
+      Percent = round(
+        100 * N / sum(N),
+        3
+      )
+    ) %>%
+    print(n = Inf)
+
+  result
+}
+
+
+SEN_marker_validation <- validate_marker_number(
+  SEN_plot,
+  SEN_qr_tokens,
+  "TOTAL"
+)
+
+
+SEL_marker_validation <- validate_marker_number(
+  SEL_plot,
+  SEL_qr_tokens,
+  "SELECTED"
+)
+
+
+# ============================================================
+# 12. BUILD STACKED PLOT DATA
+#
+# STACK:
+#   QS/FQS
+#   Top 5 markers
+#   others
+#
+# QS/FQS is derived directly from QR_genotype == 0.
+#
+# QR/FQR genomes are represented by their marker.
+#
+# For QR/FQR genomes:
+#   - Top 5 marker -> corresponding marker category
+#   - any other QR marker -> "others"
+#   - no parsed QR marker -> "others"
+#
+# This ensures every QR/FQR genome remains represented.
+# ============================================================
+
+build_plot_data <- function(df, tokens) {
+
+  # ----------------------------------------------------------
+  # QS/FQS genomes
+  # ----------------------------------------------------------
+
+  qs <- df %>%
+    filter(
+      QR_genotype == 0L
+    ) %>%
+    transmute(
+      row_id,
+      Period,
+      Category = "QS/FQS"
+    )
+
+
+  # ----------------------------------------------------------
+  # QR/FQR genomes with parsed markers
+  # ----------------------------------------------------------
+
+  qr_with_marker <- df %>%
+    filter(
+      QR_genotype == 1L
+    ) %>%
+    select(
+      row_id,
+      Period
+    ) %>%
+    left_join(
+      tokens,
+      by = c(
+        "row_id",
+        "Period"
+      )
+    ) %>%
+    mutate(
+      Category = case_when(
+        marker %in% top5_markers ~ marker,
+        TRUE ~ "others"
+      )
+    ) %>%
+    select(
+      row_id,
+      Period,
+      Category
+    )
+
+
+  # ----------------------------------------------------------
+  # Combine
+  # ----------------------------------------------------------
+
+  bind_rows(
+    qs,
+    qr_with_marker
+  )
+
+}
+
+
+SEN_stack_long <- build_plot_data(
+  SEN_plot,
+  SEN_qr_tokens
+)
+
+SEL_stack_long <- build_plot_data(
+  SEL_plot,
+  SEL_qr_tokens
+)
+
+
+# ============================================================
+# 13. CATEGORY ORDER
+#
+# QS/FQS FIRST -> appears at TOP of stack with normal geom_col.
+#
+# Then Top 5 markers.
+# Then others.
+# ============================================================
+
+category_levels <- c(
+  "QS/FQS",
+  top5_markers,
+  "others"
+)
+
+
+SEN_stack_long <- SEN_stack_long %>%
+  mutate(
+    Category = factor(
+      Category,
+      levels = category_levels
+    )
+  )
+
+
+SEL_stack_long <- SEL_stack_long %>%
+  mutate(
+    Category = factor(
+      Category,
+      levels = category_levels
+    )
+  )
+
+
+# ============================================================
+# 14. COUNT TABLES
+# ============================================================
+
+SEN_count <- SEN_stack_long %>%
+  count(
+    Period,
+    Category,
+    name = "Count"
+  ) %>%
+  complete(
+    Period = factor(
+      period_levels,
+      levels = period_levels
+    ),
+    Category = factor(
+      category_levels,
+      levels = category_levels
+    ),
+    fill = list(
+      Count = 0
+    )
+  )
+
+
+SEL_count <- SEL_stack_long %>%
+  count(
+    Period,
+    Category,
+    name = "Count"
+  ) %>%
+  complete(
+    Period = factor(
+      period_levels,
+      levels = period_levels
+    ),
+    Category = factor(
+      category_levels,
+      levels = category_levels
+    ),
+    fill = list(
+      Count = 0
+    )
+  )
+
+
+# ============================================================
+# 15. PERCENTAGE TABLES
+#
+# DENOMINATOR = ALL GENOMES IN TEMPORAL BLOCK
+# ============================================================
+
+SEN_denominator <- SEN_plot %>%
+  count(
+    Period,
+    name = "Total_N"
+  )
+
+
+SEL_denominator <- SEL_plot %>%
+  count(
+    Period,
+    name = "Total_N"
+  )
+
+
+SEN_percent <- SEN_count %>%
+  left_join(
+    SEN_denominator,
+    by = "Period"
+  ) %>%
+  mutate(
+    Percent = 100 * Count / Total_N
+  )
+
+
+SEL_percent <- SEL_count %>%
+  left_join(
+    SEL_denominator,
+    by = "Period"
+  ) %>%
+  mutate(
+    Percent = 100 * Count / Total_N
+  )
+
+
+# ============================================================
+# 16. IMPORTANT COUNT VALIDATION
+#
+# Because ~99.5% of QR/FQR genomes have a single marker,
+# marker-level counts should very closely match genome totals.
+#
+# This prints:
+# actual genomes per period
+# vs
+# plotted stacked observations per period
+# ============================================================
+
+cat("\n============================================\n")
+cat("TOTAL DATA - STACK VALIDATION\n")
+cat("============================================\n")
+
+SEN_count %>%
+  group_by(Period) %>%
+  summarise(
+    Plotted_count = sum(Count),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    SEN_denominator,
+    by = "Period"
+  ) %>%
+  mutate(
+    Difference = Plotted_count - Total_N
+  ) %>%
+  print(n = Inf)
+
+
+cat("\n============================================\n")
+cat("SELECTED DATA - STACK VALIDATION\n")
+cat("============================================\n")
+
+SEL_count %>%
+  group_by(Period) %>%
+  summarise(
+    Plotted_count = sum(Count),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    SEL_denominator,
+    by = "Period"
+  ) %>%
+  mutate(
+    Difference = Plotted_count - Total_N
+  ) %>%
+  print(n = Inf)
+
+
+# ============================================================
+# 17. COLORS
+#
+# Consistent colors across ALL FOUR plots.
+#
+# QS/FQS = light grey
+# Markers = distinct colors
+# others = dark grey
+# ============================================================
+
+marker_palette <- c(
+  "#D9D9D9",
+  "#0072B2",
+  "#D55E00",
+  "#009E73",
+  "#CC79A7",
+  "#E69F00",
+  "#666666"
+)
+
+names(marker_palette) <- category_levels
+
+
+# ============================================================
+# 18. COMMON THEME
+# ============================================================
+
+theme_sen <- theme_classic(
+  base_size = 14
+) +
+  theme(
+    axis.text.x = element_text(
+      size = 12,
+      face = "bold",
+      colour = "black"
+    ),
+
+    axis.text.y = element_text(
+      size = 11,
+      colour = "black"
+    ),
+
+    axis.title = element_text(
+      size = 13,
+      face = "bold"
+    ),
+
+    plot.title = element_text(
+      size = 15,
+      face = "bold",
+      hjust = 0
+    ),
+
+    plot.subtitle = element_text(
+      size = 11,
+      hjust = 0
+    ),
+
+    legend.title = element_blank(),
+
+    legend.text = element_text(
+      size = 11
+    ),
+
+    legend.position = "right",
+
+    panel.grid.major.y = element_line(
+      colour = "grey90",
+      linewidth = 0.35
+    ),
+
+    panel.grid.major.x = element_blank(),
+
+    panel.grid.minor = element_blank(),
+
+    plot.margin = margin(
+      10,
+      15,
+      10,
+      10
+    )
+  )
+
+
+# ============================================================
+# 19. TOTAL GENOMES - COUNT PLOT
+# ============================================================
+
+p_total_count <- ggplot(
+  SEN_count,
+  aes(
+    x = Period,
+    y = Count,
+    fill = Category
+  )
+) +
+
+  geom_col(
+    width = 0.72
+  ) +
+
+  scale_fill_manual(
+    values = marker_palette,
+    drop = FALSE
+  ) +
+
+  scale_y_continuous(
+    labels = comma,
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    title = "Total available SEN genomes",
+    subtitle = "Counts by temporal sampling period and QR/FQR genotype",
+    x = "Temporal period",
+    y = "Number of genomes",
+    fill = NULL
+  ) +
+
+  theme_sen
+
+
+# ============================================================
+# 20. TOTAL GENOMES - PERCENTAGE PLOT
+# ============================================================
+
+p_total_percent <- ggplot(
+  SEN_percent,
+  aes(
+    x = Period,
+    y = Percent,
+    fill = Category
+  )
+) +
+
+  geom_col(
+    width = 0.72
+  ) +
+
+  geom_text(
+    data = SEN_denominator,
+    aes(
+      x = Period,
+      y = 103,
+      label = paste0(
+        "N = ",
+        comma(Total_N)
+      )
+    ),
+    inherit.aes = FALSE,
+    size = 4,
+    fontface = "bold"
+  ) +
+
+  scale_fill_manual(
+    values = marker_palette,
+    drop = FALSE
+  ) +
+
+  scale_y_continuous(
+    limits = c(0, 108),
+    breaks = seq(
+      0,
+      100,
+      20
+    ),
+    labels = function(x) {
+      paste0(x, "%")
+    },
+    expand = c(0, 0)
+  ) +
+
+  labs(
+    title = "Total available SEN genomes",
+    subtitle = "Percentage composition by temporal sampling period and QR/FQR genotype",
+    x = "Temporal period",
+    y = "Percentage of genomes",
+    fill = NULL
+  ) +
+
+  theme_sen
+
+
+# ============================================================
+# 21. SELECTED GENOMES - COUNT PLOT
+# ============================================================
+
+p_selected_count <- ggplot(
+  SEL_count,
+  aes(
+    x = Period,
+    y = Count,
+    fill = Category
+  )
+) +
+
+  geom_col(
+    width = 0.72
+  ) +
+
+  scale_fill_manual(
+    values = marker_palette,
+    drop = FALSE
+  ) +
+
+  scale_y_continuous(
+    labels = comma,
+    expand = expansion(
+      mult = c(0, 0.08)
+    )
+  ) +
+
+  labs(
+    title = "Selected SEN genomes",
+    subtitle = "Counts by temporal sampling period and QR/FQR genotype",
+    x = "Temporal period",
+    y = "Number of genomes",
+    fill = NULL
+  ) +
+
+  theme_sen
+
+
+# ============================================================
+# 22. SELECTED GENOMES - PERCENTAGE PLOT
+# ============================================================
+
+p_selected_percent <- ggplot(
+  SEL_percent,
+  aes(
+    x = Period,
+    y = Percent,
+    fill = Category
+  )
+) +
+
+  geom_col(
+    width = 0.72
+  ) +
+
+  geom_text(
+    data = SEL_denominator,
+    aes(
+      x = Period,
+      y = 103,
+      label = paste0(
+        "N = ",
+        comma(Total_N)
+      )
+    ),
+    inherit.aes = FALSE,
+    size = 4,
+    fontface = "bold"
+  ) +
+
+  scale_fill_manual(
+    values = marker_palette,
+    drop = FALSE
+  ) +
+
+  scale_y_continuous(
+    limits = c(0, 108),
+    breaks = seq(
+      0,
+      100,
+      20
+    ),
+    labels = function(x) {
+      paste0(x, "%")
+    },
+    expand = c(0, 0)
+  ) +
+
+  labs(
+    title = "Selected SEN genomes",
+    subtitle = "Percentage composition by temporal sampling period and QR/FQR genotype",
+    x = "Temporal period",
+    y = "Percentage of genomes",
+    fill = NULL
+  ) +
+
+  theme_sen
+
+
+# ============================================================
+# 23. DISPLAY ALL FOUR PLOTS
+# ============================================================
+
+print(
+  p_total_count
+)
+
+print(
+  p_total_percent
+)
+
+print(
+  p_selected_count
+)
+
+print(
+  p_selected_percent
+)
+
+
+# ============================================================
+# 24. EXPORT PNG
+# ============================================================
+
+ggsave(
+  "SEN_Total_TemporalBlocks_QRFQR_Count.png",
+  p_total_count,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Total_TemporalBlocks_QRFQR_Percent.png",
+  p_total_percent,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Selected_TemporalBlocks_QRFQR_Count.png",
+  p_selected_count,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Selected_TemporalBlocks_QRFQR_Percent.png",
+  p_selected_percent,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  bg = "white"
+)
+
+
+# ============================================================
+# 25. EXPORT TIFF - PUBLICATION QUALITY
+# ============================================================
+
+ggsave(
+  "SEN_Total_TemporalBlocks_QRFQR_Count.tiff",
+  p_total_count,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  compression = "lzw",
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Total_TemporalBlocks_QRFQR_Percent.tiff",
+  p_total_percent,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  compression = "lzw",
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Selected_TemporalBlocks_QRFQR_Count.tiff",
+  p_selected_count,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  compression = "lzw",
+  bg = "white"
+)
+
+ggsave(
+  "SEN_Selected_TemporalBlocks_QRFQR_Percent.tiff",
+  p_selected_percent,
+  width = 8.5,
+  height = 6.5,
+  dpi = 600,
+  compression = "lzw",
+  bg = "white"
+)
+
+
+# ============================================================
+# 26. EXPORT DATA BEHIND FIGURES
+# ============================================================
+
+write.csv(
+  SEN_count,
+  "SEN_Total_TemporalBlocks_QRFQR_Count_Data.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  SEN_percent,
+  "SEN_Total_TemporalBlocks_QRFQR_Percent_Data.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  SEL_count,
+  "SEN_Selected_TemporalBlocks_QRFQR_Count_Data.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  SEL_percent,
+  "SEN_Selected_TemporalBlocks_QRFQR_Percent_Data.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  top5_table,
+  "SEN_Total_Top5_QRFQR_Markers.csv",
+  row.names = FALSE
+)
+
+
+# ============================================================
+# 27. FINAL SUMMARY TABLE
+#
+# Useful for manuscript / supplementary methods.
+# ============================================================
+
+sampling_summary <- bind_rows(
+
+  SEN_plot %>%
+    count(
+      Period,
+      QR_status,
+      name = "N"
+    ) %>%
+    mutate(
+      Dataset = "Total"
+    ),
+
+  SEL_plot %>%
+    count(
+      Period,
+      QR_status,
+      name = "N"
+    ) %>%
+    mutate(
+      Dataset = "Selected"
+    )
+
+) %>%
+
+  group_by(
+    Dataset,
+    Period
+  ) %>%
+
+  mutate(
+    Percent = 100 * N / sum(N)
+  ) %>%
+
+  ungroup() %>%
+
+  arrange(
+    Dataset,
+    Period,
+    QR_status
+  )
+
+
+cat("\n============================================\n")
+cat("FINAL SAMPLING SUMMARY\n")
+cat("============================================\n")
+
+print(
+  sampling_summary,
+  n = Inf
+)
+
+
+write.csv(
+  sampling_summary,
+  "SEN_Total_vs_Selected_Sampling_Summary.csv",
+  row.names = FALSE
+)
+
+
+cat("\n============================================\n")
+cat("DONE\n")
+cat("============================================\n")
+
+cat(
+  "Four plots created:\n",
+  "1. Total genomes - Count\n",
+  "2. Total genomes - Percentage\n",
+  "3. Selected genomes - Count\n",
+  "4. Selected genomes - Percentage\n\n"
+)
+
+cat(
+  "Top 5 QR/FQR markers were defined from the TOTAL population\n",
+  "and applied unchanged to the SELECTED population.\n"
+)
+
+
+
+```
+
+
 
 #Getting the Finalupdated_SEN_Genomes.csv
 
