@@ -87,13 +87,18 @@ cat("[INFO] Undefined percentages (N=0) and weights (n=0) exported blank; missin
 cat("[OUTPUT] ",out,"\n",sep="")
 
 
-# SECOND OUTPUT: mutually exclusive periods matching the original selection plan.
-# 2018-2020 and 2021-2025 must not overlap.
+# SECOND OUTPUT: mutually exclusive periods, restricted to 1990-2025 plus missing year.
+# Exclude the 18 pre-1990 isolates from this period-level sampling table.
 period_specs <- tibble::tibble(
   Period=c("Pre-2018","2018-2020","2021-2025","Missing year"),
-  Start=c(-Inf,2018L,2021L,NA_real_),
+  Start=c(1990L,2018L,2021L,NA_real_),
   End=c(2017L,2020L,2025L,NA_real_)
 )
+excluded_pre1990 <- master %>% dplyr::filter(!is.na(Year_of_isolation), Year_of_isolation < 1990L)
+stopifnot(nrow(excluded_pre1990)==18L)
+cat("[INFO] Excluded pre-1990 isolates from period table: ", nrow(excluded_pre1990),
+    " (selected: ",sum(excluded_pre1990$Selected_pre_QC),
+    "; analyzed: ",sum(excluded_pre1990$Analyzed_post_QC),").\\n",sep="")
 period_input <- purrr::pmap_dfr(period_specs, function(Period,Start,End) {
   master %>%
     dplyr::filter(if (is.na(Start)) is.na(Year_of_isolation) else
@@ -131,7 +136,7 @@ period_tab <- period_input %>%
     "N/n"=Weight_N_div_n)
 
 # Check each period against its independently filtered source records;
-# mutually exclusive periods must partition all 33,831 master genomes.
+# mutually exclusive periods must partition the included 1990-2025 and missing-year genomes.
 for (p in period_specs$Period) {
   observed <- period_tab[period_tab$Year==p,,drop=FALSE]
   expected <- period_input[period_input$Period==p,,drop=FALSE]
@@ -139,12 +144,12 @@ for (p in period_specs$Period) {
     sum(observed[["Selected genomes (pre-QC)"]])==sum(expected$Selected_pre_QC),
     sum(observed$n)==sum(expected$Analyzed_post_QC))
 }
-stopifnot(sum(period_tab$N)==33831L,
-          sum(period_tab[["Selected genomes (pre-QC)"]])==3434L,
-          sum(period_tab$n)==3306L)
+stopifnot(sum(period_tab$N)==33831L-nrow(excluded_pre1990),
+          sum(period_tab[["Selected genomes (pre-QC)"]])==3434L-sum(excluded_pre1990$Selected_pre_QC),
+          sum(period_tab$n)==3306L-sum(excluded_pre1990$Analyzed_post_QC))
 readr::write_csv(period_tab,
   file.path(out,"period_source_marker_selection_QC_weights.csv"),na="")
 writexl::write_xlsx(list(Period_source_marker=period_tab),
   file.path(out,"period_source_marker_selection_QC_weights.xlsx"))
 cat("[PASS] Period grouping table: ",nrow(period_tab),
-  " strata (Pre-2018, 2018-2020, 2021-2025, Missing year); non-overlapping totals verified.\\n",sep="")
+  " strata (1990-2017, 2018-2020, 2021-2025, Missing year); pre-1990 excluded and totals verified.\\n",sep="")
