@@ -87,13 +87,12 @@ cat("[INFO] Undefined percentages (N=0) and weights (n=0) exported blank; missin
 cat("[OUTPUT] ",out,"\n",sep="")
 
 
-# SECOND OUTPUT: the three user-requested period definitions.
-# IMPORTANT: 2018-2022 and 2021-2025 intentionally OVERLAP in 2021-2022.
-# Do not sum counts across these periods: those years are repeated by design.
+# SECOND OUTPUT: mutually exclusive periods matching the original selection plan.
+# 2018-2020 and 2021-2025 must not overlap.
 period_specs <- tibble::tibble(
-  Period=c("Pre-2018","2018-2022","2021-2025","Missing year"),
+  Period=c("Pre-2018","2018-2020","2021-2025","Missing year"),
   Start=c(-Inf,2018L,2021L,NA_real_),
-  End=c(2017L,2022L,2025L,NA_real_)
+  End=c(2017L,2020L,2025L,NA_real_)
 )
 period_input <- purrr::pmap_dfr(period_specs, function(Period,Start,End) {
   master %>%
@@ -132,7 +131,7 @@ period_tab <- period_input %>%
     "N/n"=Weight_N_div_n)
 
 # Check each period against its independently filtered source records;
-# NEVER assert sum of periods equals 33,831 because overlap is intentional.
+# mutually exclusive periods must partition all 33,831 master genomes.
 for (p in period_specs$Period) {
   observed <- period_tab[period_tab$Year==p,,drop=FALSE]
   expected <- period_input[period_input$Period==p,,drop=FALSE]
@@ -140,10 +139,12 @@ for (p in period_specs$Period) {
     sum(observed[["Selected genomes (pre-QC)"]])==sum(expected$Selected_pre_QC),
     sum(observed$n)==sum(expected$Analyzed_post_QC))
 }
+stopifnot(sum(period_tab$N)==33831L,
+          sum(period_tab[["Selected genomes (pre-QC)"]])==3434L,
+          sum(period_tab$n)==3306L)
 readr::write_csv(period_tab,
   file.path(out,"period_source_marker_selection_QC_weights.csv"),na="")
 writexl::write_xlsx(list(Period_source_marker=period_tab),
   file.path(out,"period_source_marker_selection_QC_weights.xlsx"))
 cat("[PASS] Period grouping table: ",nrow(period_tab),
-  " strata (Pre-2018, 2018-2022, 2021-2025, Missing year).\\n",sep="")
-cat("[CAUTION] Periods 2018-2022 and 2021-2025 overlap for 2021-2022; totals across periods must not be summed.\\n")
+  " strata (Pre-2018, 2018-2020, 2021-2025, Missing year); non-overlapping totals verified.\\n",sep="")
