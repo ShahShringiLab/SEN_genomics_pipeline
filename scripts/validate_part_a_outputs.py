@@ -50,6 +50,60 @@ def main() -> None:
     if len(unique_nonempty(rebuilt, "Run")) != 3434:
         raise AssertionError("Rebuilt cohort Run values are not unique/complete.")
 
+    # Full 69-column metadata must be preserved after adding QC audit,
+    # three QR corrections, clades and documented QC exceptions.
+    merged = read_rows(
+        RESULTS / "cohort/Finalupdated_SEN_Genomes1_QC_merged.csv"
+    )
+    if len(merged) != 3434:
+        raise AssertionError("QC-merged complete metadata must retain 3,434 genomes.")
+    if len(merged[0]) != 78:
+        raise AssertionError(
+            f"QC-merged metadata has {len(merged[0])} fields; expected 69 original + 9 QC."
+        )
+    selected_ids = {(r["Run"], r["Isolate"]) for r in rebuilt}
+    merged_ids = {(r["Run"], r["Isolate"]) for r in merged}
+    if merged_ids != selected_ids or len(merged_ids) != 3434:
+        raise AssertionError("QC merge added, dropped or duplicated selected isolates.")
+    rebuilt_by_id = {(r["Run"], r["Isolate"]): r for r in rebuilt}
+    corrections = []
+    qc_status = Counter()
+    for row in merged:
+        baseline = rebuilt_by_id[(row["Run"], row["Isolate"])]
+        if row["QR_genotype"] != baseline["QR_genotype"]:
+            raise AssertionError("Merged QC QR status conflicts with rebuilt core genotype.")
+        for col in ("Collection_year", "Source", "Origin_group", "Source_group"):
+            if row[col] != baseline[col]:
+                raise AssertionError(f"QC merge changed canonical field {col}.")
+        clade = baseline.get("Clade", "")
+        if clade in ("NA", "None"):
+            clade = ""
+        if row["Clade"] != clade:
+            raise AssertionError("QC merge differs from final 3,306 clade assignments.")
+        status = row["Final_phylogeny"]
+        qc_status[status] += 1
+        if (status == "Included") != bool(clade):
+            raise AssertionError("QC outcome disagrees with phylogeny inclusion.")
+        if status == "Included" and not row["AUDIT"].startswith("PASS"):
+            raise AssertionError("Included isolate lacks PASS audit.")
+        if status == "Excluded" and not row["AUDIT"].startswith("FAIL"):
+            raise AssertionError("Excluded isolate lacks FAIL audit.")
+        if row["QR_corrected"] == "YES":
+            corrections.append(row["Isolate"])
+            if row["QR_genotype_archived"] != "0" or row["QR_genotype"] != "1":
+                raise AssertionError("Unexpected QR correction direction.")
+    if qc_status != Counter({"Included": 3306, "Excluded": 128}):
+        raise AssertionError(f"Incorrect merged QC totals: {dict(qc_status)}")
+    if set(corrections) != {
+        "PDT001102834.1", "PDT001168391.1", "PDT001168656.1"
+    } or len(corrections) != 3:
+        raise AssertionError("Missing or unexpected QR genotype corrections.")
+    exceptions = [
+        r for r in merged if r["AUDIT"].startswith("PASS: Historical coverage exception")
+    ]
+    if len(exceptions) != 2:
+        raise AssertionError("Two historical QC-coverage exceptions must be preserved.")
+
     qr_counts = Counter(as_int(r["QR_genotype"]) for r in rebuilt)
     if qr_counts != Counter({1: 2288, 0: 1146}):
         raise AssertionError(f"Unexpected corrected QR genotype counts: {dict(qr_counts)}")
