@@ -10,12 +10,11 @@ echo "== SEN repository validation =="
 
 echo
 echo "[1/8] Hard-coded workstation paths"
-if grep -RInE \
-  --exclude='validate_repo.sh' \
-  --include='*.sh' --include='*.py' --include='*.R' \
-  --include='*.yaml' --include='*.yml' \
-  '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate' \
-  workflow config scripts; then
+# Enumerate input files explicitly; never scan this validator's own pattern.
+if find workflow config scripts -type f \
+  \( -name '*.sh' -o -name '*.py' -o -name '*.R' -o -name '*.yaml' -o -name '*.yml' \) \
+  ! -path 'scripts/validate_repo.sh' -print0 \
+  | xargs -0 -r grep -nHE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'; then
   echo "[FAIL] Hard-coded workstation references remain."
   fail=1
 else
