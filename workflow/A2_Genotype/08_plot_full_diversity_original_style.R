@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Faithful original SEN Rmd 3-panel layout; full-master 15,456-positive inputs.
 # Reads existing full-master diversity CSVs: does not rerun bootstrap/permutations.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 suppressPackageStartupMessages(library(patchwork))
 outdir <- sen_path("results/part_a/master_33831/diversity_full")
 div_sum <- readr::read_csv(file.path(outdir,"QR_diversity_q0_q1_q2_bySource_with95CI.csv"),show_col_types=FALSE)

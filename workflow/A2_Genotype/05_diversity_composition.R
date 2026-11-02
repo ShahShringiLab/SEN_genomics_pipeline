@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "workflow/A2_Genotype/lib/common.R"))
 
 if (!requireNamespace("patchwork", quietly=TRUE)) {
   stop("Missing R package patchwork in sen_stats environment.")

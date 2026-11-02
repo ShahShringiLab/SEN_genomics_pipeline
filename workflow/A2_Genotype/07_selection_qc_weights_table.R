@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Selection/QC accounting, independent of original Rmd figures and statistics.
 # Full 33,831 master -> 3,434 pre-QC selected -> 3,306 post-QC final phylogeny.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 infile <- sen_path("results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv")
 if (!file.exists(infile)) stop("First run Stage 0 master parser.")
 master <- readr::read_csv(infile, col_types=readr::cols(.default=readr::col_character()), show_col_types=FALSE)

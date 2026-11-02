@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Stage 0 of the original Part A2: normalized 33,831 x 51 raw-data snapshot.
 # No derived columns and no changes to data/part_a/genotype/US-SEN_12192025.csv.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 input <- sen_path("data/part_a/genotype/US-SEN_12192025.csv")
 out <- ensure_dir(sen_path("results/part_a/master_33831/00_parsed_raw"))
 if (!requireNamespace("writexl", quietly=TRUE)) {

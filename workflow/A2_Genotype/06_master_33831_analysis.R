@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
 # Original Part A2 master-population workflow: 33,831 records, NOT the 3,434 sample.
 # Stage 0 must run first and writes the only raw parsed 51-column snapshot.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 root <- Sys.getenv("SEN_ROOT", unset=getwd())
 raw_path <- sen_path("results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv")
-if (!file.exists(raw_path)) stop("Run analysis/part_a/00_parse_master_33831.R first.")
+if (!file.exists(raw_path)) stop("Run workflow/A2_Genotype/00_parse_master_33831.R first.")
 out <- ensure_dir(sen_path("results/part_a/master_33831"))
 raw <- readr::read_csv(raw_path,col_types=readr::cols(.default=readr::col_character()),show_col_types=FALSE,progress=FALSE)
 stopifnot(nrow(raw)==33831L,ncol(raw)==51L,dplyr::n_distinct(raw$Run)==33831L)
