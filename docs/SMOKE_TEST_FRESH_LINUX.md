@@ -125,7 +125,7 @@ SRA download
 -> analysis/snps
 ```
 
-The R files `analysis/snps/FGA.R` and `FGA2.R` are syntax-parsed during the
+The R files `workflow/B3_Phylogenomics/FGA.R` and `FGA2.R` are syntax-parsed during the
 smoke test. Their full COG analyses require external EggNOG outputs and are
 therefore part of the full manuscript workflow rather than four-genome
 biological inference.
