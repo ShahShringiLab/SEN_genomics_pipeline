@@ -10,7 +10,7 @@ echo "== SEN repository validation =="
 
 echo
 echo "[1/8] Hard-coded workstation paths"
-if grep -RInE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'   workflow analysis config scripts   --include='*.sh' --include='*.py' --include='*.R'   --include='*.yaml' --include='*.yml'; then
+if grep -RInE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'   workflow config scripts   --include='*.sh' --include='*.py' --include='*.R'   --include='*.yaml' --include='*.yml'; then
   echo "[FAIL] Hard-coded workstation references remain."
   fail=1
 else
@@ -54,7 +54,7 @@ while IFS= read -r f; do
     echo "[FAIL] $f"
     fail=1
   fi
-done < <(find workflow analysis scripts -type f -name '*.py' | sort)
+done < <(find workflow scripts -type f -name '*.py' | sort)
 
 echo
 echo "[5/8] R syntax"
@@ -76,7 +76,7 @@ else
       echo "[FAIL] $f"
       fail=1
     fi
-  done < <(find analysis -type f -name '*.R' | sort)
+  done < <(find workflow -type f -name '*.R' | sort)
 fi
 
 echo
@@ -121,7 +121,7 @@ echo
 echo "[7/8] Runtime dependency installation guards"
 runtime_install_fail=0
 if grep -RInE 'install\.packages\(|BiocManager::install\(|pip[[:space:]]+install|conda[[:space:]]+install' \
-  analysis workflow \
+  workflow \
   --include='*.R' --include='*.py' --include='*.sh'; then
   echo "[FAIL] Runtime dependency installation found in analysis/workflow code."
   runtime_install_fail=1
