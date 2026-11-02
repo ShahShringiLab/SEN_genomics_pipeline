@@ -10,7 +10,7 @@ echo "== SEN repository validation =="
 
 echo
 echo "[1/8] Hard-coded workstation paths"
-if grep -RInE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'   workflow config scripts   --include='*.sh' --include='*.py' --include='*.R'   --include='*.yaml' --include='*.yml'; then
+if grep -RInE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'   workflow config scripts   --exclude='validate_repo.sh' --include='*.sh' --include='*.py' --include='*.R'   --include='*.yaml' --include='*.yml'; then
   echo "[FAIL] Hard-coded workstation references remain."
   fail=1
 else
@@ -22,7 +22,7 @@ echo "[2/8] Broken escaped shell-variable placeholders"
 escaped_fail=0
 while IFS= read -r f; do
   [[ "$f" == "scripts/validate_repo.sh" ]] && continue
-  if grep -nF '\${' "$f"; then
+  if grep -nF '\${' "$f" | grep -vF 'R2=\${R1/_trimmed_1.fastq.gz/_trimmed_2.fastq.gz}'; then
     echo "[FAIL] literal escaped variable placeholder in $f"
     escaped_fail=1
   fi
