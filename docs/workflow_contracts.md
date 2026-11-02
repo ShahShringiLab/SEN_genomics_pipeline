@@ -4,7 +4,7 @@ This document defines the publication-facing handoff between stages. Paths are d
 
 ## Part A1. Phenotype resistance trends
 
-**Script:** `analysis/part_a/01_phenotype_trends.R`  
+**Script:** `workflow/A1_Phenotype/01_phenotype_trends.R`  
 **Environment:** `environments/12_stats.yaml`  
 **Input:** `data/part_a/phenotype/FDASEN_AMRPhenotype2.csv`  
 **Output:** phenotype trend table and Human-versus-Chicken figures under `results/part_a/phenotype/`  
@@ -12,7 +12,7 @@ This document defines the publication-facing handoff between stages. Paths are d
 
 ## Part A2. Genotype epidemiology and final cohort
 
-**Scripts:** `analysis/part_a/02_build_final_cohort.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, `05_diversity_composition.R`  
+**Scripts:** `workflow/A2_Genotype/02_build_final_cohort.R`, `03_genotype_marker_summary.R`, `04_source_profiles.R`, `05_diversity_composition.R`  
 **Environment:** `environments/12_stats.yaml`  
 **Inputs:** master genotype/metadata table, final 3,434-isolate selection key, and committed final 3,434-genome cohort under `data/part_a/`  
 **Outputs:** rebuilt/validated final cohort, QR/FQR marker summaries, temporal/source tables, source/origin profiles, Hill-number diversity estimates, bootstrap confidence intervals and permutation tests under `results/part_a/`  
@@ -20,7 +20,7 @@ This document defines the publication-facing handoff between stages. Paths are d
 
 ## 1. Read retrieval
 
-**Script:** `workflow/01_reads/01_download_fastq.sh`  
+**Script:** `workflow/B1_Reads_QC/01_download_fastq.sh`  
 **Environment:** `environments/01_reads_qc.yaml`  
 **Input:** accession list (`SEN_SRR_LIST`)  
 **Output:** paired compressed FASTQs under `SEN_RAW_READS`  
@@ -127,7 +127,7 @@ screening.
 
 ## 10. Downstream clade/SNP statistics
 
-**Scripts:** `analysis/clades/*`, `analysis/snps/*`  
+**Scripts:** `workflow/B3_Phylogenomics/*`, `workflow/B3_Phylogenomics/*`  
 **Environment:** `12_stats.yaml`  
 **Input:** canonical clade assignments and stage-specific SNP/gene/element
 tables  
