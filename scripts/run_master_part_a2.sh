@@ -26,6 +26,6 @@ python3 scripts/audit_full_temporal_counts.py
 echo "[4/4] Generate manuscript Table SS1: 2018-2025 by QR/FQR marker genotype, including QS/FQS"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
   Rscript workflow/A2_Genotype/08_table_ss1_post2018_genotype.R
-echo "[READY] analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
+echo "[READY] workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 echo "[NOTE] Full-master Rmd statistics are unchanged. Only input paths, temporal eligibility/facet N, and Top-100 axis are adjusted."
 echo "[NOTE] To execute the complete original notebook and QC followups, run bash scripts/run_part_a.sh."

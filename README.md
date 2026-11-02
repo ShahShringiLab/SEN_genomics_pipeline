@@ -286,7 +286,7 @@ The original Part A exploratory analysis notebook is retained as:
 
     provenance/SEN_Genomes2.Rmd
 
-The notebook is preserved for analytical provenance. The production workflow should be run from the modular scripts under analysis/part_a/, not by executing the exploratory notebook top-to-bottom.
+The notebook is preserved for analytical provenance. The production workflow should be run from the modular scripts under workflow/A1_Phenotype/ and workflow/A2_Genotype/, not by executing the exploratory notebook top-to-bottom.
 
 ## Release status
 
