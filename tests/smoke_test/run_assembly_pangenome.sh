@@ -101,29 +101,29 @@ echo
 echo "--------------------------------------------------"
 echo "[STAGE] 1/3 Shovill assemblies"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "shovill" validate_shovill     "$REPO_ROOT/workflow/06_assembly_pangenome/21_shovill.sh" "$SHOVILL_YAML" "$SRR_LIST"; then
+if ! checkpoint_should_skip "shovill" validate_shovill     "$REPO_ROOT/workflow/B4_Pangenome/21_shovill.sh" "$SHOVILL_YAML" "$SRR_LIST"; then
   ensure_env "$SHOVILL_ENV" "$SHOVILL_YAML" shovill
-  conda run --no-capture-output -n "$SHOVILL_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_KRAKEN_CLEAN_DIR="$SEN_KRAKEN_CLEAN_DIR"       SEN_SHOVILL_OUT="$SEN_SHOVILL_OUT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_SHOVILL_JOBS="$SEN_SHOVILL_JOBS"       SEN_SHOVILL_CPUS_PER_JOB="$SEN_SHOVILL_CPUS_PER_JOB"       SEN_SHOVILL_RAM_PER_JOB_GB="$SEN_SHOVILL_RAM_PER_JOB_GB"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/06_assembly_pangenome/21_shovill.sh"
+  conda run --no-capture-output -n "$SHOVILL_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_KRAKEN_CLEAN_DIR="$SEN_KRAKEN_CLEAN_DIR"       SEN_SHOVILL_OUT="$SEN_SHOVILL_OUT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_SHOVILL_JOBS="$SEN_SHOVILL_JOBS"       SEN_SHOVILL_CPUS_PER_JOB="$SEN_SHOVILL_CPUS_PER_JOB"       SEN_SHOVILL_RAM_PER_JOB_GB="$SEN_SHOVILL_RAM_PER_JOB_GB"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B4_Pangenome/21_shovill.sh"
   checkpoint_require_valid "shovill" validate_shovill
-  checkpoint_mark "shovill"     "$REPO_ROOT/workflow/06_assembly_pangenome/21_shovill.sh" "$SHOVILL_YAML" "$SRR_LIST"
+  checkpoint_mark "shovill"     "$REPO_ROOT/workflow/B4_Pangenome/21_shovill.sh" "$SHOVILL_YAML" "$SRR_LIST"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 2/3 Prokka annotation"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "prokka" validate_prokka     "$REPO_ROOT/workflow/06_assembly_pangenome/22_prokka.py" "$PROKKA_YAML" "$SRR_LIST"; then
+if ! checkpoint_should_skip "prokka" validate_prokka     "$REPO_ROOT/workflow/B4_Pangenome/22_prokka.py" "$PROKKA_YAML" "$SRR_LIST"; then
   ensure_env "$PROKKA_ENV" "$PROKKA_YAML" prokka
-  conda run --no-capture-output -n "$PROKKA_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_PROKKA_OUT="$SEN_PROKKA_OUT"       SEN_PROKKA_JOBS="$SEN_PROKKA_JOBS"       SEN_PROKKA_CPUS_PER_JOB="$SEN_PROKKA_CPUS_PER_JOB"       TMPDIR="$TMPDIR"       python "$REPO_ROOT/workflow/06_assembly_pangenome/22_prokka.py"
+  conda run --no-capture-output -n "$PROKKA_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_PROKKA_OUT="$SEN_PROKKA_OUT"       SEN_PROKKA_JOBS="$SEN_PROKKA_JOBS"       SEN_PROKKA_CPUS_PER_JOB="$SEN_PROKKA_CPUS_PER_JOB"       TMPDIR="$TMPDIR"       python "$REPO_ROOT/workflow/B4_Pangenome/22_prokka.py"
   checkpoint_require_valid "prokka" validate_prokka
-  checkpoint_mark "prokka"     "$REPO_ROOT/workflow/06_assembly_pangenome/22_prokka.py" "$PROKKA_YAML" "$SRR_LIST"
+  checkpoint_mark "prokka"     "$REPO_ROOT/workflow/B4_Pangenome/22_prokka.py" "$PROKKA_YAML" "$SRR_LIST"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 3/3 Panaroo"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "panaroo" validate_panaroo     "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo.sh" "$PANAROO_YAML" "$SRR_LIST"; then
+if ! checkpoint_should_skip "panaroo" validate_panaroo     "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo.sh" "$PANAROO_YAML" "$SRR_LIST"; then
   ensure_env "$PANAROO_ENV" "$PANAROO_YAML" panaroo
 
   # Panaroo 1.6.0 parses Prokka-derived temporary FASTA with SeqIO format
@@ -140,9 +140,9 @@ assert Bio.__version__ == "1.86"
   fi
 
   rm -rf "$SEN_PANAROO_OUT"
-  conda run --no-capture-output -n "$PANAROO_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_PROKKA_OUT="$SEN_PROKKA_OUT"       SEN_PANAROO_OUT="$SEN_PANAROO_OUT" SEN_PANAROO_THREADS="$SEN_PANAROO_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo.sh"
+  conda run --no-capture-output -n "$PANAROO_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_PROKKA_OUT="$SEN_PROKKA_OUT"       SEN_PANAROO_OUT="$SEN_PANAROO_OUT" SEN_PANAROO_THREADS="$SEN_PANAROO_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo.sh"
   checkpoint_require_valid "panaroo" validate_panaroo
-  checkpoint_mark "panaroo"     "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo.sh" "$PANAROO_YAML" "$SRR_LIST"
+  checkpoint_mark "panaroo"     "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo.sh" "$PANAROO_YAML" "$SRR_LIST"
 fi
 
 echo

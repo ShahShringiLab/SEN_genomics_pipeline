@@ -141,24 +141,24 @@ run_stage() {
 }
 
 run_stage "1/5" "reads_download" validate_download \
-  "$REPO_ROOT/workflow/01_reads/01_download_fastq.sh" \
-  "$REPO_ROOT/workflow/01_reads/01_download_fastq.sh" "$ENV_YAML" "$SRR_LIST"
+  "$REPO_ROOT/workflow/B1_Reads_QC/01_download_fastq.sh" \
+  "$REPO_ROOT/workflow/B1_Reads_QC/01_download_fastq.sh" "$ENV_YAML" "$SRR_LIST"
 
 run_stage "2/5" "raw_fastqc" validate_raw_qc \
-  "$REPO_ROOT/workflow/02_qc/02_fastqc_raw.sh" \
-  "$REPO_ROOT/workflow/02_qc/02_fastqc_raw.sh" "$ENV_YAML" "$SRR_LIST"
+  "$REPO_ROOT/workflow/B1_Reads_QC/02_fastqc_raw.sh" \
+  "$REPO_ROOT/workflow/B1_Reads_QC/02_fastqc_raw.sh" "$ENV_YAML" "$SRR_LIST"
 
 run_stage "3/5" "fastp_trim" validate_trim \
-  "$REPO_ROOT/workflow/03_typing/09_trim_fastp.sh" \
-  "$REPO_ROOT/workflow/03_typing/09_trim_fastp.sh" "$ENV_YAML" "$SRR_LIST"
+  "$REPO_ROOT/workflow/B1_Reads_QC/09_trim_fastp.sh" \
+  "$REPO_ROOT/workflow/B1_Reads_QC/09_trim_fastp.sh" "$ENV_YAML" "$SRR_LIST"
 
 run_stage "4/5" "trimmed_fastqc" validate_trimmed_qc \
-  "$REPO_ROOT/workflow/02_qc/03_fastqc_trimmed.sh" \
-  "$REPO_ROOT/workflow/02_qc/03_fastqc_trimmed.sh" "$ENV_YAML" "$SRR_LIST"
+  "$REPO_ROOT/workflow/B1_Reads_QC/03_fastqc_trimmed.sh" \
+  "$REPO_ROOT/workflow/B1_Reads_QC/03_fastqc_trimmed.sh" "$ENV_YAML" "$SRR_LIST"
 
 run_stage "5/5" "coverage_estimate" validate_coverage \
-  "$REPO_ROOT/workflow/02_qc/04_estimate_coverage.sh" \
-  "$REPO_ROOT/workflow/02_qc/04_estimate_coverage.sh" "$ENV_YAML" "$SRR_LIST"
+  "$REPO_ROOT/workflow/B1_Reads_QC/04_estimate_coverage.sh" \
+  "$REPO_ROOT/workflow/B1_Reads_QC/04_estimate_coverage.sh" "$ENV_YAML" "$SRR_LIST"
 
 raw_count="$(find "$WORKDIR/fastq" -type f -name '*.fastq.gz' -size +0c 2>/dev/null | wc -l)"
 trim_count="$(find "$WORKDIR/trimmed_fastq" -type f -name '*_trimmed_*.fastq.gz' -size +0c 2>/dev/null | wc -l)"

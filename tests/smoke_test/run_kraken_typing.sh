@@ -154,7 +154,7 @@ echo "--------------------------------------------------"
 echo "[STAGE] 1/4 Kraken2 filtering + Enterobacteriaceae extraction"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "kraken_filter" validate_kraken \
-    "$REPO_ROOT/workflow/02_qc/06_kraken_cleanup.sh" "$KRAKEN_YAML" \
+    "$REPO_ROOT/workflow/B1_Reads_QC/06_kraken_cleanup.sh" "$KRAKEN_YAML" \
     "$REPO_ROOT/config/database_sources.env" "$SRR_LIST"; then
   ensure_env "$KRAKEN_ENV" "$KRAKEN_YAML" kraken2
   bootstrap_kraken_db
@@ -166,10 +166,10 @@ if ! checkpoint_should_skip "kraken_filter" validate_kraken \
       SEN_KRAKEN_THREADS="${SEN_KRAKEN_THREADS:-4}" \
       SEN_PIGZ_THREADS="${SEN_PIGZ_THREADS:-2}" \
       TMPDIR="$TMPDIR" \
-      bash "$REPO_ROOT/workflow/02_qc/06_kraken_cleanup.sh"
+      bash "$REPO_ROOT/workflow/B1_Reads_QC/06_kraken_cleanup.sh"
   checkpoint_require_valid "kraken_filter" validate_kraken
   checkpoint_mark "kraken_filter" \
-    "$REPO_ROOT/workflow/02_qc/06_kraken_cleanup.sh" "$KRAKEN_YAML" \
+    "$REPO_ROOT/workflow/B1_Reads_QC/06_kraken_cleanup.sh" "$KRAKEN_YAML" \
     "$REPO_ROOT/config/database_sources.env" "$SRR_LIST"
 fi
 
@@ -178,14 +178,14 @@ echo "--------------------------------------------------"
 echo "[STAGE] 2/4 SeqSero2"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "seqsero2" validate_seqsero \
-    "$REPO_ROOT/workflow/03_typing/10_seqsero2.sh" "$SEQSERO_YAML" "$SRR_LIST"; then
+    "$REPO_ROOT/workflow/B2_Typing/10_seqsero2.sh" "$SEQSERO_YAML" "$SRR_LIST"; then
   ensure_env "$SEQSERO_ENV" "$SEQSERO_YAML" SeqSero2_package.py
   conda run --no-capture-output -n "$SEQSERO_ENV" \
     env SEN_ROOT="$SEN_ROOT" SEN_SEQSERO2_JOBS="${SEN_SEQSERO2_JOBS:-2}" TMPDIR="$TMPDIR" \
-    bash "$REPO_ROOT/workflow/03_typing/10_seqsero2.sh"
+    bash "$REPO_ROOT/workflow/B2_Typing/10_seqsero2.sh"
   checkpoint_require_valid "seqsero2" validate_seqsero
   checkpoint_mark "seqsero2" \
-    "$REPO_ROOT/workflow/03_typing/10_seqsero2.sh" "$SEQSERO_YAML" "$SRR_LIST"
+    "$REPO_ROOT/workflow/B2_Typing/10_seqsero2.sh" "$SEQSERO_YAML" "$SRR_LIST"
 fi
 
 echo
@@ -193,7 +193,7 @@ echo "--------------------------------------------------"
 echo "[STAGE] 3/4 SKESA + SISTR"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "sistr_skesa" validate_sistr \
-    "$REPO_ROOT/workflow/03_typing/11_sistr.sh" "$SISTR_YAML" "$SRR_LIST"; then
+    "$REPO_ROOT/workflow/B2_Typing/11_sistr.sh" "$SISTR_YAML" "$SRR_LIST"; then
   ensure_env "$SISTR_ENV" "$SISTR_YAML" skesa
   if ! conda run -n "$SISTR_ENV" command -v sistr >/dev/null 2>&1 || \
      ! conda run -n "$SISTR_ENV" python -c 'import pkg_resources' >/dev/null 2>&1 || \
@@ -210,10 +210,10 @@ if ! checkpoint_should_skip "sistr_skesa" validate_sistr \
       SEN_SKESA_CORES="${SEN_SKESA_CORES:-4}" \
       SEN_SKESA_MEMORY_GB="${SEN_SKESA_MEMORY_GB:-4}" \
       TMPDIR="$TMPDIR" \
-      bash "$REPO_ROOT/workflow/03_typing/11_sistr.sh"
+      bash "$REPO_ROOT/workflow/B2_Typing/11_sistr.sh"
   checkpoint_require_valid "sistr_skesa" validate_sistr
   checkpoint_mark "sistr_skesa" \
-    "$REPO_ROOT/workflow/03_typing/11_sistr.sh" "$SISTR_YAML" "$SRR_LIST"
+    "$REPO_ROOT/workflow/B2_Typing/11_sistr.sh" "$SISTR_YAML" "$SRR_LIST"
 fi
 
 echo
@@ -221,14 +221,14 @@ echo "--------------------------------------------------"
 echo "[STAGE] 4/4 MLST"
 echo "--------------------------------------------------"
 if ! checkpoint_should_skip "mlst" validate_mlst \
-    "$REPO_ROOT/workflow/03_typing/12_mlst.sh" "$MLST_YAML" "$SRR_LIST"; then
+    "$REPO_ROOT/workflow/B2_Typing/12_mlst.sh" "$MLST_YAML" "$SRR_LIST"; then
   ensure_env "$MLST_ENV" "$MLST_YAML" mlst
   conda run --no-capture-output -n "$MLST_ENV" \
     env SEN_ROOT="$SEN_ROOT" SEN_MLST_JOBS="${SEN_MLST_JOBS:-4}" TMPDIR="$TMPDIR" \
-    bash "$REPO_ROOT/workflow/03_typing/12_mlst.sh"
+    bash "$REPO_ROOT/workflow/B2_Typing/12_mlst.sh"
   checkpoint_require_valid "mlst" validate_mlst
   checkpoint_mark "mlst" \
-    "$REPO_ROOT/workflow/03_typing/12_mlst.sh" "$MLST_YAML" "$SRR_LIST"
+    "$REPO_ROOT/workflow/B2_Typing/12_mlst.sh" "$MLST_YAML" "$SRR_LIST"
 fi
 
 post30="$(awk -F',' 'NR>1 && $3>=30 {n++} END{print n+0}' "$KRAKEN_LOG")"

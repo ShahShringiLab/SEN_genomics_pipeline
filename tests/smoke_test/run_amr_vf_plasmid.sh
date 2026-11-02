@@ -130,20 +130,20 @@ echo
 echo "--------------------------------------------------"
 echo "[STAGE] 2/3 AMRFinderPlus"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "amrfinderplus" validate_amrfinder     "$REPO_ROOT/workflow/07_amr_vf_plasmid/24_amrfinderplus.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/amrfinderplus.tsv" "$SRR_LIST"; then
-  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_AMR_ASSEMBLY_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_AMRFINDER_OUT="$SEN_AMRFINDER_OUT" SEN_AMRFINDER_DB="$SEN_AMRFINDER_DB"       SEN_AMRFINDER_JOBS="$SEN_AMRFINDER_JOBS"       SEN_AMRFINDER_THREADS="$SEN_AMRFINDER_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/07_amr_vf_plasmid/24_amrfinderplus.sh"
+if ! checkpoint_should_skip "amrfinderplus" validate_amrfinder     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/24_amrfinderplus.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/amrfinderplus.tsv" "$SRR_LIST"; then
+  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_AMR_ASSEMBLY_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_AMRFINDER_OUT="$SEN_AMRFINDER_OUT" SEN_AMRFINDER_DB="$SEN_AMRFINDER_DB"       SEN_AMRFINDER_JOBS="$SEN_AMRFINDER_JOBS"       SEN_AMRFINDER_THREADS="$SEN_AMRFINDER_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/24_amrfinderplus.sh"
   checkpoint_require_valid "amrfinderplus" validate_amrfinder
-  checkpoint_mark "amrfinderplus"     "$REPO_ROOT/workflow/07_amr_vf_plasmid/24_amrfinderplus.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/amrfinderplus.tsv" "$SRR_LIST"
+  checkpoint_mark "amrfinderplus"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/24_amrfinderplus.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/amrfinderplus.tsv" "$SRR_LIST"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 3/3 ABRicate ResFinder/VFDB/PlasmidFinder"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "abricate" validate_abricate     "$REPO_ROOT/workflow/07_amr_vf_plasmid/25_abricate.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/abricate_databases.tsv" "$SRR_LIST"; then
-  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_ABRICATE_ASSEMBLY_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_ABRICATE_OUT="$SEN_ABRICATE_OUT"       SEN_ABRICATE_JOBS="$SEN_ABRICATE_JOBS"       SEN_ABRICATE_THREADS="$SEN_ABRICATE_THREADS"       SEN_ABRICATE_MINCOV="$SEN_ABRICATE_MINCOV"       SEN_ABRICATE_MINID="$SEN_ABRICATE_MINID"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/07_amr_vf_plasmid/25_abricate.sh"
+if ! checkpoint_should_skip "abricate" validate_abricate     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/25_abricate.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/abricate_databases.tsv" "$SRR_LIST"; then
+  conda run --no-capture-output -n "$ENV_NAME"     env       SEN_ROOT="$SEN_ROOT" SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_ABRICATE_ASSEMBLY_DIR="$SEN_FINAL_CONTIGS_DIR"       SEN_ABRICATE_OUT="$SEN_ABRICATE_OUT"       SEN_ABRICATE_JOBS="$SEN_ABRICATE_JOBS"       SEN_ABRICATE_THREADS="$SEN_ABRICATE_THREADS"       SEN_ABRICATE_MINCOV="$SEN_ABRICATE_MINCOV"       SEN_ABRICATE_MINID="$SEN_ABRICATE_MINID"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/25_abricate.sh"
   checkpoint_require_valid "abricate" validate_abricate
-  checkpoint_mark "abricate"     "$REPO_ROOT/workflow/07_amr_vf_plasmid/25_abricate.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/abricate_databases.tsv" "$SRR_LIST"
+  checkpoint_mark "abricate"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/25_abricate.sh" "$ENV_YAML"     "$SEN_AMR_PROVENANCE_DIR/abricate_databases.tsv" "$SRR_LIST"
 fi
 
 echo

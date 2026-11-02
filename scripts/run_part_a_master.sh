@@ -25,14 +25,14 @@ fi
 
 echo "[RUN] Stage 0: 33,831-row corrected parse; 51 raw columns; XLSX + CSV"
 conda run --no-capture-output -n sen_stats \
-  env SEN_ROOT="$ROOT" Rscript analysis/part_a/00_parse_master_33831.R
+  env SEN_ROOT="$ROOT" Rscript workflow/A2_Genotype/00_parse_master_33831.R
 
 echo "[RUN] Existing Part A1 and selected-cohort A2 + input/output validation"
 bash scripts/run_part_a.sh
 
 echo "[RUN] Master-population original Part A2: 33,831 rows"
 conda run --no-capture-output -n sen_stats \
-  env SEN_ROOT="$ROOT" Rscript analysis/part_a/06_master_33831_analysis.R
+  env SEN_ROOT="$ROOT" Rscript workflow/A2_Genotype/06_master_33831_analysis.R
 
 echo "[PASS] MASTER PART A2 + EXISTING PART A VALIDATED"
 echo "Raw XLSX: results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.xlsx"

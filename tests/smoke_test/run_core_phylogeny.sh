@@ -127,7 +127,7 @@ echo
 echo "--------------------------------------------------"
 echo "[STAGE] 2/5 Snippy + snippy-core"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "snippy_core" validate_snippy     "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"; then
+if ! checkpoint_should_skip "snippy_core" validate_snippy     "$REPO_ROOT/workflow/B3_Phylogenomics/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"; then
   ensure_env "$SNIPPY_ENV" "$SNIPPY_YAML" snippy
 
   if ! conda run -n "$SNIPPY_ENV" bash -lc '
@@ -140,41 +140,41 @@ if ! checkpoint_should_skip "snippy_core" validate_snippy     "$REPO_ROOT/workfl
     create_env "$SNIPPY_ENV" "$SNIPPY_YAML"
   fi
 
-  conda run --no-capture-output -n "$SNIPPY_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_REFERENCE_DIR="$SEN_REFERENCE_DIR"       SEN_REFERENCE_FNA="$SEN_REFERENCE_FNA" SEN_KRAKEN_CLEAN_DIR="$SEN_KRAKEN_CLEAN_DIR"       SEN_PASS_LIST="$SEN_PASS_LIST" SEN_SNIPPY_OUT="$SEN_SNIPPY_OUT"       SEN_SNIPPY_JOBS="$SEN_SNIPPY_JOBS"       SEN_SNIPPY_THREADS_PER_JOB="$SEN_SNIPPY_THREADS_PER_JOB"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh"
+  conda run --no-capture-output -n "$SNIPPY_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_REFERENCE_DIR="$SEN_REFERENCE_DIR"       SEN_REFERENCE_FNA="$SEN_REFERENCE_FNA" SEN_KRAKEN_CLEAN_DIR="$SEN_KRAKEN_CLEAN_DIR"       SEN_PASS_LIST="$SEN_PASS_LIST" SEN_SNIPPY_OUT="$SEN_SNIPPY_OUT"       SEN_SNIPPY_JOBS="$SEN_SNIPPY_JOBS"       SEN_SNIPPY_THREADS_PER_JOB="$SEN_SNIPPY_THREADS_PER_JOB"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B3_Phylogenomics/13_snippy.sh"
   checkpoint_require_valid "snippy_core" validate_snippy
-  checkpoint_mark "snippy_core"     "$REPO_ROOT/workflow/04_core_snp/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"
+  checkpoint_mark "snippy_core"     "$REPO_ROOT/workflow/B3_Phylogenomics/13_snippy.sh" "$SNIPPY_YAML" "$PASS_LIST"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 3/5 Gubbins"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "gubbins" validate_gubbins     "$REPO_ROOT/workflow/05_phylogeny/17_gubbins.sh" "$GUBBINS_YAML"     "$SEN_SNIPPY_OUT/senbio_core.full.aln"; then
+if ! checkpoint_should_skip "gubbins" validate_gubbins     "$REPO_ROOT/workflow/B3_Phylogenomics/17_gubbins.sh" "$GUBBINS_YAML"     "$SEN_SNIPPY_OUT/senbio_core.full.aln"; then
   ensure_env "$GUBBINS_ENV" "$GUBBINS_YAML" run_gubbins.py
-  conda run --no-capture-output -n "$GUBBINS_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_CORE_ALIGNMENT="$SEN_SNIPPY_OUT/senbio_core.full.aln"       SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT" SEN_GUBBINS_THREADS="$SEN_GUBBINS_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/05_phylogeny/17_gubbins.sh"
+  conda run --no-capture-output -n "$GUBBINS_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_CORE_ALIGNMENT="$SEN_SNIPPY_OUT/senbio_core.full.aln"       SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT" SEN_GUBBINS_THREADS="$SEN_GUBBINS_THREADS"       TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B3_Phylogenomics/17_gubbins.sh"
   checkpoint_require_valid "gubbins" validate_gubbins
-  checkpoint_mark "gubbins"     "$REPO_ROOT/workflow/05_phylogeny/17_gubbins.sh" "$GUBBINS_YAML"     "$SEN_SNIPPY_OUT/senbio_core.full.aln"
+  checkpoint_mark "gubbins"     "$REPO_ROOT/workflow/B3_Phylogenomics/17_gubbins.sh" "$GUBBINS_YAML"     "$SEN_SNIPPY_OUT/senbio_core.full.aln"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 4/5 Final-tree cleanup"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "gubbins_cleanup" validate_cleanup     "$REPO_ROOT/workflow/05_phylogeny/18_gubbins_cleanup.sh"     "$REPO_ROOT/config/final_tree_exclusions.txt" "$GUBBINS_FILTERED"; then
-  bash "$REPO_ROOT/workflow/05_phylogeny/18_gubbins_cleanup.sh"
+if ! checkpoint_should_skip "gubbins_cleanup" validate_cleanup     "$REPO_ROOT/workflow/B3_Phylogenomics/18_gubbins_cleanup.sh"     "$REPO_ROOT/config/final_tree_exclusions.txt" "$GUBBINS_FILTERED"; then
+  bash "$REPO_ROOT/workflow/B3_Phylogenomics/18_gubbins_cleanup.sh"
   checkpoint_require_valid "gubbins_cleanup" validate_cleanup
-  checkpoint_mark "gubbins_cleanup"     "$REPO_ROOT/workflow/05_phylogeny/18_gubbins_cleanup.sh"     "$REPO_ROOT/config/final_tree_exclusions.txt" "$GUBBINS_FILTERED"
+  checkpoint_mark "gubbins_cleanup"     "$REPO_ROOT/workflow/B3_Phylogenomics/18_gubbins_cleanup.sh"     "$REPO_ROOT/config/final_tree_exclusions.txt" "$GUBBINS_FILTERED"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 5/5 IQ-TREE"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "iqtree" validate_iqtree     "$REPO_ROOT/workflow/05_phylogeny/19_iqtree.sh" "$IQTREE_YAML" "$CLEAN_ALN"; then
+if ! checkpoint_should_skip "iqtree" validate_iqtree     "$REPO_ROOT/workflow/B3_Phylogenomics/19_iqtree.sh" "$IQTREE_YAML" "$CLEAN_ALN"; then
   ensure_env "$IQTREE_ENV" "$IQTREE_YAML" iqtree2
-  conda run --no-capture-output -n "$IQTREE_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT"       SEN_IQTREE_INPUT="$CLEAN_ALN" SEN_IQTREE_OUT="$SEN_IQTREE_OUT"       SEN_IQTREE_THREADS="$SEN_IQTREE_THREADS" SEN_IQTREE_MEMORY="$SEN_IQTREE_MEMORY"       SEN_IQTREE_BOOTSTRAPS="$SEN_IQTREE_BOOTSTRAPS" TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/05_phylogeny/19_iqtree.sh"
+  conda run --no-capture-output -n "$IQTREE_ENV"     env       SEN_ROOT="$SEN_ROOT" SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT"       SEN_IQTREE_INPUT="$CLEAN_ALN" SEN_IQTREE_OUT="$SEN_IQTREE_OUT"       SEN_IQTREE_THREADS="$SEN_IQTREE_THREADS" SEN_IQTREE_MEMORY="$SEN_IQTREE_MEMORY"       SEN_IQTREE_BOOTSTRAPS="$SEN_IQTREE_BOOTSTRAPS" TMPDIR="$TMPDIR"       bash "$REPO_ROOT/workflow/B3_Phylogenomics/19_iqtree.sh"
   checkpoint_require_valid "iqtree" validate_iqtree
-  checkpoint_mark "iqtree"     "$REPO_ROOT/workflow/05_phylogeny/19_iqtree.sh" "$IQTREE_YAML" "$CLEAN_ALN"
+  checkpoint_mark "iqtree"     "$REPO_ROOT/workflow/B3_Phylogenomics/19_iqtree.sh" "$IQTREE_YAML" "$CLEAN_ALN"
 fi
 
 echo
