@@ -14,10 +14,6 @@ The original exploratory Part A notebook is preserved under provenance/. Linux-e
     SEN_genomics_pipeline/
     ├── README.md
     ├── CITATION.cff
-    ├── analysis/
-    │   ├── part_a/
-    │   ├── clades/
-    │   └── snps/
     ├── config/
     ├── data/
     │   └── part_a/
@@ -29,6 +25,14 @@ The original exploratory Part A notebook is preserved under provenance/. Linux-e
     ├── scripts/
     ├── tests/
     └── workflow/
+        ├── A1_Phenotype/
+        ├── A2_Genotype/
+        ├── B1_Reads_QC/
+        ├── B2_Typing/
+        ├── B3_Phylogenomics/
+        ├── B4_Pangenome/
+        ├── B5_AMR_Virulence_Plasmids/
+        └── lib/
 
 ## Study workflow
 
