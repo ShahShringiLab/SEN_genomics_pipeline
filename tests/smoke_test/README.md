@@ -228,18 +228,18 @@ bash tests/smoke_test/run_analysis_layer.sh
 It constructs smoke-only analysis fixtures from the four validated isolates,
 then exercises:
 
-- `analysis/clades/14_clademetadata.py`
-- `analysis/clades/14b_cladesummary.py`
-- `analysis/clades/15_amr_byclade.py`
-- `analysis/clades/16_plasmid_byclade.py`
-- `analysis/clades/17_resfinder_byclade.py`
-- `analysis/clades/18_vfdb_byclade.py`
-- `workflow/06_assembly_pangenome/23_panaroo_byclade.py`
-- `analysis/snps/19b_snps_byclade.py`
-- `analysis/snps/19c_snps_proteinseq_fetch.py`
-- `analysis/snps/19d_snps_unmatched_query_rescue.py`
-- `analysis/snps/19e_snps_fga.py`
-- `analysis/snps/19f_snps_bysource.py`
+- `workflow/B3_Phylogenomics/14_clademetadata.py`
+- `workflow/B3_Phylogenomics/14b_cladesummary.py`
+- `workflow/B5_AMR_Virulence_Plasmids/15_amr_byclade.py`
+- `workflow/B5_AMR_Virulence_Plasmids/16_plasmid_byclade.py`
+- `workflow/B5_AMR_Virulence_Plasmids/17_resfinder_byclade.py`
+- `workflow/B5_AMR_Virulence_Plasmids/18_vfdb_byclade.py`
+- `workflow/B4_Pangenome/23_panaroo_byclade.py`
+- `workflow/B3_Phylogenomics/19b_snps_byclade.py`
+- `workflow/B3_Phylogenomics/19c_snps_proteinseq_fetch.py`
+- `workflow/B3_Phylogenomics/19d_snps_unmatched_query_rescue.py`
+- `workflow/B3_Phylogenomics/19e_snps_fga.py`
+- `workflow/B3_Phylogenomics/19f_snps_bysource.py`
 
 The two R scripts in `analysis/snps` (`FGA.R` and `FGA2.R`) are parsed
 during the smoke run to catch syntax/load failures. Their full biological
