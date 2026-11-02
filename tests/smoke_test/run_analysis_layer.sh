@@ -102,12 +102,12 @@ echo "[STAGE] 1/5 Build smoke analysis inputs"
 echo "--------------------------------------------------"
 conda run --no-capture-output -n "$STATS_ENV"   env SEN_SMOKE_ROOT="$WORKDIR"   python "$REPO_ROOT/tests/smoke_test/build_analysis_inputs.py"
 
-# Syntax/load coverage for every source file in analysis/clades and analysis/snps.
+# Syntax/load coverage for every source file in the unified Part B analysis directories.
 echo
 echo "--------------------------------------------------"
-echo "[STAGE] 2/5 Static load check: analysis/clades + analysis/snps"
+echo "[STAGE] 2/5 Static load check: unified Part B analysis"
 echo "--------------------------------------------------"
-conda run --no-capture-output -n "$STATS_ENV"   python -m compileall -q "$REPO_ROOT/analysis/clades" "$REPO_ROOT/analysis/snps"
+conda run --no-capture-output -n "$STATS_ENV"   python -m compileall -q "$REPO_ROOT/workflow/B3_Phylogenomics" "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids"
 conda run --no-capture-output -n "$STATS_ENV"   Rscript -e 'parse(file="workflow/B3_Phylogenomics/FGA.R"); parse(file="workflow/B3_Phylogenomics/FGA2.R"); cat("[PASS] R analysis scripts parse\n")'
 
 echo
@@ -118,8 +118,8 @@ if ! checkpoint_should_skip "analysis_clades" validate_clades     "$REPO_ROOT/wo
 
   conda run --no-capture-output -n "$STATS_ENV"     env SEN_ROOT="$SEN_ROOT"     python "$REPO_ROOT/workflow/B3_Phylogenomics/14_clademetadata.py"
 
-  for script in     14b_cladesummary.py     15_amr_byclade.py     16_plasmid_byclade.py     17_resfinder_byclade.py     18_vfdb_byclade.py; do
-    conda run --no-capture-output -n "$STATS_ENV"       env         SEN_ROOT="$SEN_ROOT"         SEN_METADATA_FILE="$SEN_METADATA_FILE"         SEN_CLADE_METADATA="$SEN_CLADE_METADATA"         SEN_COLLECTION_YEAR_ITOL="$SEN_COLLECTION_YEAR_ITOL"         TMPDIR="$TMPDIR"       python "$REPO_ROOT/analysis/clades/$script"
+  for script_path in     workflow/B3_Phylogenomics/14b_cladesummary.py     workflow/B5_AMR_Virulence_Plasmids/15_amr_byclade.py     workflow/B5_AMR_Virulence_Plasmids/16_plasmid_byclade.py     workflow/B5_AMR_Virulence_Plasmids/17_resfinder_byclade.py     workflow/B5_AMR_Virulence_Plasmids/18_vfdb_byclade.py; do
+    conda run --no-capture-output -n "$STATS_ENV"       env         SEN_ROOT="$SEN_ROOT"         SEN_METADATA_FILE="$SEN_METADATA_FILE"         SEN_CLADE_METADATA="$SEN_CLADE_METADATA"         SEN_COLLECTION_YEAR_ITOL="$SEN_COLLECTION_YEAR_ITOL"         TMPDIR="$TMPDIR"       python "$REPO_ROOT/$script_path"
   done
 
   checkpoint_require_valid "analysis_clades" validate_clades
