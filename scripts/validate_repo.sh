@@ -122,7 +122,7 @@ echo "[7/8] Runtime dependency installation guards"
 runtime_install_fail=0
 if grep -RInE 'install\.packages\(|BiocManager::install\(|pip[[:space:]]+install|conda[[:space:]]+install' \
   workflow \
-  --include='*.R' --include='*.py' --include='*.sh'; then
+  --include='*.R' --include='*.py' --include='*.sh' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*stop\("Package .* missing\. Run:'; then
   echo "[FAIL] Runtime dependency installation found in analysis/workflow code."
   runtime_install_fail=1
 else
