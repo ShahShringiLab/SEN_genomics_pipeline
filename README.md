@@ -34,6 +34,11 @@ The original exploratory Part A notebook is preserved under provenance/. Linux-e
 
 ### Part A1 — phenotype resistance trends
 
+**Existing script filenames (unchanged):**
+
+- `analysis/part_a/01_phenotype_trends.R`
+
+
 Input:
 
     data/part_a/phenotype/FDASEN_AMRPhenotype2.csv
@@ -47,6 +52,22 @@ Run:
       Rscript analysis/part_a/01_phenotype_trends.R
 
 ### Part A2 — genotype epidemiology and cohort construction
+
+**Existing script filenames (unchanged):**
+
+- `analysis/part_a/00_parse_master_33831.R`
+- `analysis/part_a/02_build_final_cohort.R`
+- `analysis/part_a/03_genotype_marker_summary.R`
+- `analysis/part_a/04_source_profiles.R`
+- `analysis/part_a/05_diversity_composition.R`
+- `analysis/part_a/06_master_33831_analysis.R`
+- `analysis/part_a/07_master_full_diversity.R`
+- `analysis/part_a/07_selection_qc_weights_table.R`
+- `analysis/part_a/08_plot_full_diversity_original_style.R`
+- `analysis/part_a/08_table_ss1_post2018_genotype.R`
+- `analysis/part_a/09_temporal_top5_and_enriched_metadata.R`
+- `analysis/part_a/10_international_animal_source_plot.R`
+
 
 Inputs:
 
@@ -88,6 +109,19 @@ Fresh-Linux instructions: docs/PART_A_FRESH_LINUX.md.
 
 ### Part B1 — read retrieval, trimming and quality control
 
+**Existing script filenames (unchanged):**
+
+- `workflow/01_reads/01_download_fastq.sh`
+- `workflow/02_qc/02_fastqc_raw.sh`
+- `workflow/02_qc/03_fastqc_trimmed.sh`
+- `workflow/02_qc/04_estimate_coverage.sh`
+- `workflow/02_qc/05_two_step_filter.sh`
+- `workflow/02_qc/06_kraken_cleanup.sh`
+- `workflow/02_qc/07_presnippy_qc.py`
+- `workflow/02_qc/08_qc_filter.py`
+- `workflow/03_typing/09_trim_fastp.sh`
+
+
 The final Part A cohort provides the 3,434 selected accessions entering Part B.
 
 1. Download Illumina reads with SRA Toolkit.
@@ -98,6 +132,13 @@ The final Part A cohort provides the 3,434 selected accessions entering Part B.
 
 ### Part B2 — species confirmation and typing
 
+**Existing script filenames (unchanged):**
+
+- `workflow/03_typing/10_seqsero2.sh`
+- `workflow/03_typing/11_sistr.sh`
+- `workflow/03_typing/12_mlst.sh`
+
+
 1. SeqSero2 k-mer serotyping.
 2. Rapid SKESA assembly followed by SISTR.
 3. Retain genomes confirmed as *Salmonella* Enteritidis by both workflows.
@@ -106,6 +147,25 @@ The final Part A cohort provides the 3,434 selected accessions entering Part B.
 The final confirmed study cohort contains 3,306 study isolates.
 
 ### Part B3 — core-genome SNP and phylogenetic analysis
+
+**Existing script filenames (unchanged):**
+
+- `workflow/04_core_snp/13_snippy.sh`
+- `workflow/04_core_snp/14_snpeff.sh`
+- `workflow/04_core_snp/15_snpeff_parse.py`
+- `workflow/04_core_snp/16_genome_audit.py`
+- `workflow/05_phylogeny/17_gubbins.sh`
+- `workflow/05_phylogeny/18_gubbins_cleanup.sh`
+- `workflow/05_phylogeny/19_iqtree.sh`
+- `workflow/05_phylogeny/20_tree_clades.sh`
+- `analysis/clades/14_clademetadata.py`
+- `analysis/clades/14b_cladesummary.py`
+- `analysis/snps/19b_snps_byclade.py`
+- `analysis/snps/19c_snps_proteinseq_fetch.py`
+- `analysis/snps/19d_snps_unmatched_query_rescue.py`
+- `analysis/snps/19e_snps_fga.py`
+- `analysis/snps/19f_snps_bysource.py`
+
 
 1. Map reads to SEN reference P125109 (NC_011294.1) with Snippy.
 2. Generate the core-genome alignment with snippy-core.
@@ -117,6 +177,14 @@ The final confirmed study cohort contains 3,306 study isolates.
 
 ### Part B4 — assembly, annotation and pangenome analysis
 
+**Existing script filenames (unchanged):**
+
+- `workflow/06_assembly_pangenome/21_shovill.sh`
+- `workflow/06_assembly_pangenome/22_prokka.py`
+- `workflow/06_assembly_pangenome/23_panaroo.sh`
+- `workflow/06_assembly_pangenome/23_panaroo_byclade.py`
+
+
 1. Generate de novo draft assemblies with Shovill/SPAdes.
 2. Annotate assemblies with Prokka.
 3. Reconstruct the pangenome with Panaroo in strict mode using MAFFT.
@@ -124,6 +192,16 @@ The final confirmed study cohort contains 3,306 study isolates.
 5. Define clade-associated accessory genes as >=90% within clade and <=5% outside clade.
 
 ### Part B5 — AMR, virulence and plasmid analysis
+
+**Existing script filenames (unchanged):**
+
+- `workflow/07_amr_vf_plasmid/24_amrfinderplus.sh`
+- `workflow/07_amr_vf_plasmid/25_abricate.sh`
+- `analysis/clades/15_amr_byclade.py`
+- `analysis/clades/16_plasmid_byclade.py`
+- `analysis/clades/17_resfinder_byclade.py`
+- `analysis/clades/18_vfdb_byclade.py`
+
 
 1. AMRFinderPlus with --plus --organism Salmonella.
 2. ResFinder, VFDB and PlasmidFinder through ABRicate.
