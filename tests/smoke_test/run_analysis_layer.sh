@@ -108,47 +108,47 @@ echo "--------------------------------------------------"
 echo "[STAGE] 2/5 Static load check: analysis/clades + analysis/snps"
 echo "--------------------------------------------------"
 conda run --no-capture-output -n "$STATS_ENV"   python -m compileall -q "$REPO_ROOT/analysis/clades" "$REPO_ROOT/analysis/snps"
-conda run --no-capture-output -n "$STATS_ENV"   Rscript -e 'parse(file="analysis/snps/FGA.R"); parse(file="analysis/snps/FGA2.R"); cat("[PASS] R analysis scripts parse\n")'
+conda run --no-capture-output -n "$STATS_ENV"   Rscript -e 'parse(file="workflow/B3_Phylogenomics/FGA.R"); parse(file="workflow/B3_Phylogenomics/FGA2.R"); cat("[PASS] R analysis scripts parse\n")'
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 3/5 Clade analysis runtime"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "analysis_clades" validate_clades     "$REPO_ROOT/analysis/clades/14_clademetadata.py"     "$REPO_ROOT/analysis/clades/14b_cladesummary.py"     "$REPO_ROOT/analysis/clades/15_amr_byclade.py"     "$REPO_ROOT/analysis/clades/16_plasmid_byclade.py"     "$REPO_ROOT/analysis/clades/17_resfinder_byclade.py"     "$REPO_ROOT/analysis/clades/18_vfdb_byclade.py"     "$STATS_YAML"; then
+if ! checkpoint_should_skip "analysis_clades" validate_clades     "$REPO_ROOT/workflow/B3_Phylogenomics/14_clademetadata.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/14b_cladesummary.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/15_amr_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/16_plasmid_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/17_resfinder_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/18_vfdb_byclade.py"     "$STATS_YAML"; then
 
-  conda run --no-capture-output -n "$STATS_ENV"     env SEN_ROOT="$SEN_ROOT"     python "$REPO_ROOT/analysis/clades/14_clademetadata.py"
+  conda run --no-capture-output -n "$STATS_ENV"     env SEN_ROOT="$SEN_ROOT"     python "$REPO_ROOT/workflow/B3_Phylogenomics/14_clademetadata.py"
 
   for script in     14b_cladesummary.py     15_amr_byclade.py     16_plasmid_byclade.py     17_resfinder_byclade.py     18_vfdb_byclade.py; do
     conda run --no-capture-output -n "$STATS_ENV"       env         SEN_ROOT="$SEN_ROOT"         SEN_METADATA_FILE="$SEN_METADATA_FILE"         SEN_CLADE_METADATA="$SEN_CLADE_METADATA"         SEN_COLLECTION_YEAR_ITOL="$SEN_COLLECTION_YEAR_ITOL"         TMPDIR="$TMPDIR"       python "$REPO_ROOT/analysis/clades/$script"
   done
 
   checkpoint_require_valid "analysis_clades" validate_clades
-  checkpoint_mark "analysis_clades"     "$REPO_ROOT/analysis/clades/14b_cladesummary.py"     "$REPO_ROOT/analysis/clades/15_amr_byclade.py"     "$REPO_ROOT/analysis/clades/16_plasmid_byclade.py"     "$REPO_ROOT/analysis/clades/17_resfinder_byclade.py"     "$REPO_ROOT/analysis/clades/18_vfdb_byclade.py"     "$STATS_YAML"
+  checkpoint_mark "analysis_clades"     "$REPO_ROOT/workflow/B3_Phylogenomics/14b_cladesummary.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/15_amr_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/16_plasmid_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/17_resfinder_byclade.py"     "$REPO_ROOT/workflow/B5_AMR_Virulence_Plasmids/18_vfdb_byclade.py"     "$STATS_YAML"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 4/5 Panaroo clade/accessory analysis runtime"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "analysis_panaroo_clade" validate_panaroo_clade     "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo_byclade.py"     "$PANAROO_YAML" "$SEN_CLADE_METADATA"; then
-  conda run --no-capture-output -n "$PANAROO_ENV"     env       SEN_ROOT="$SEN_ROOT"       SEN_CLADE_METADATA="$SEN_CLADE_METADATA"       SEN_PANAROO_MATRIX="$SEN_PANAROO_MATRIX"       SEN_PANAROO_GENE_DATA="$SEN_PANAROO_GENE_DATA"       SEN_PANAROO_CLADE_OUT="$SEN_PANAROO_CLADE_OUT"       TMPDIR="$TMPDIR"     python "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo_byclade.py"
+if ! checkpoint_should_skip "analysis_panaroo_clade" validate_panaroo_clade     "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo_byclade.py"     "$PANAROO_YAML" "$SEN_CLADE_METADATA"; then
+  conda run --no-capture-output -n "$PANAROO_ENV"     env       SEN_ROOT="$SEN_ROOT"       SEN_CLADE_METADATA="$SEN_CLADE_METADATA"       SEN_PANAROO_MATRIX="$SEN_PANAROO_MATRIX"       SEN_PANAROO_GENE_DATA="$SEN_PANAROO_GENE_DATA"       SEN_PANAROO_CLADE_OUT="$SEN_PANAROO_CLADE_OUT"       TMPDIR="$TMPDIR"     python "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo_byclade.py"
 
   checkpoint_require_valid "analysis_panaroo_clade" validate_panaroo_clade
-  checkpoint_mark "analysis_panaroo_clade"     "$REPO_ROOT/workflow/06_assembly_pangenome/23_panaroo_byclade.py"     "$PANAROO_YAML" "$SEN_CLADE_METADATA"
+  checkpoint_mark "analysis_panaroo_clade"     "$REPO_ROOT/workflow/B4_Pangenome/23_panaroo_byclade.py"     "$PANAROO_YAML" "$SEN_CLADE_METADATA"
 fi
 
 echo
 echo "--------------------------------------------------"
 echo "[STAGE] 5/5 SNP analysis runtime"
 echo "--------------------------------------------------"
-if ! checkpoint_should_skip "analysis_snps" validate_snps     "$REPO_ROOT/analysis/snps/19b_snps_byclade.py"     "$REPO_ROOT/analysis/snps/19c_snps_proteinseq_fetch.py"     "$REPO_ROOT/analysis/snps/19d_snps_unmatched_query_rescue.py"     "$REPO_ROOT/analysis/snps/19e_snps_fga.py"     "$REPO_ROOT/analysis/snps/19f_snps_bysource.py"     "$STATS_YAML"; then
+if ! checkpoint_should_skip "analysis_snps" validate_snps     "$REPO_ROOT/workflow/B3_Phylogenomics/19b_snps_byclade.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19c_snps_proteinseq_fetch.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19d_snps_unmatched_query_rescue.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19e_snps_fga.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19f_snps_bysource.py"     "$STATS_YAML"; then
 
   for script in     19b_snps_byclade.py     19c_snps_proteinseq_fetch.py     19d_snps_unmatched_query_rescue.py     19e_snps_fga.py     19f_snps_bysource.py; do
-    conda run --no-capture-output -n "$STATS_ENV"       env         SEN_ROOT="$SEN_ROOT"         SEN_CLADE_METADATA="$SEN_CLADE_METADATA"         SEN_REFERENCE_GBK="$SEN_REFERENCE_GBK"         SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"         SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT"         SEN_GUBBINS_RECOMB_GFF="$SEN_GUBBINS_RECOMB_GFF"         SEN_SNP_MASTER_REPORT="$SEN_SNP_MASTER_REPORT"         SEN_SNP_INTEGRATED_ROOT="$SEN_SNP_INTEGRATED_ROOT"         SEN_SNP_CLADE_OUT="$SEN_SNP_CLADE_OUT"         SEN_SOURCE_ITOL="$SEN_SOURCE_ITOL"         SEN_SNP_SOURCE_OUT="$SEN_SNP_SOURCE_OUT"         TMPDIR="$TMPDIR"       python "$REPO_ROOT/analysis/snps/$script"
+    conda run --no-capture-output -n "$STATS_ENV"       env         SEN_ROOT="$SEN_ROOT"         SEN_CLADE_METADATA="$SEN_CLADE_METADATA"         SEN_REFERENCE_GBK="$SEN_REFERENCE_GBK"         SEN_FINAL_CONTIGS_DIR="$SEN_FINAL_CONTIGS_DIR"         SEN_GUBBINS_OUT="$SEN_GUBBINS_OUT"         SEN_GUBBINS_RECOMB_GFF="$SEN_GUBBINS_RECOMB_GFF"         SEN_SNP_MASTER_REPORT="$SEN_SNP_MASTER_REPORT"         SEN_SNP_INTEGRATED_ROOT="$SEN_SNP_INTEGRATED_ROOT"         SEN_SNP_CLADE_OUT="$SEN_SNP_CLADE_OUT"         SEN_SOURCE_ITOL="$SEN_SOURCE_ITOL"         SEN_SNP_SOURCE_OUT="$SEN_SNP_SOURCE_OUT"         TMPDIR="$TMPDIR"       python "$REPO_ROOT/workflow/B3_Phylogenomics/$script"
   done
 
   checkpoint_require_valid "analysis_snps" validate_snps
-  checkpoint_mark "analysis_snps"     "$REPO_ROOT/analysis/snps/19b_snps_byclade.py"     "$REPO_ROOT/analysis/snps/19c_snps_proteinseq_fetch.py"     "$REPO_ROOT/analysis/snps/19d_snps_unmatched_query_rescue.py"     "$REPO_ROOT/analysis/snps/19e_snps_fga.py"     "$REPO_ROOT/analysis/snps/19f_snps_bysource.py"     "$STATS_YAML"
+  checkpoint_mark "analysis_snps"     "$REPO_ROOT/workflow/B3_Phylogenomics/19b_snps_byclade.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19c_snps_proteinseq_fetch.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19d_snps_unmatched_query_rescue.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19e_snps_fga.py"     "$REPO_ROOT/workflow/B3_Phylogenomics/19f_snps_bysource.py"     "$STATS_YAML"
 fi
 
 echo
