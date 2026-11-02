@@ -1,25 +1,17 @@
-# Publication archive status (2026-11-02)
+# Public code and data availability
 
 ## Repository
 
-Public URL: https://github.com/ShahShringiLab/SEN_genomics_pipeline
-Default branch: main
-This repository includes SEN Part A1 phenotype and Part A2 genome-selection/genotype analyses. The original historical R Markdown remains at `provenance/SEN_Genomes2_uploaded_original_20261021.Rmd`; the documented working notebook is `provenance/SEN_Genomes2.Rmd`.
+Public GitHub repository: https://github.com/ShahShringiLab/SEN_genomics_pipeline
 
-**Caution:** The moving `main` branch is not a fixed archive. Cite a frozen Git commit/tag or a Zenodo DOI assigned to a release. No DOI should be stated until a Zenodo record exists.
+The repository contains the SEN Part A1 phenotype analysis and Part A2 genomic analysis workflows, selection code, and reproducibility documentation. The historical selection script is preserved at `provenance/SEN_Genomes2_uploaded_original_20261021.Rmd`; the documented working script is `provenance/SEN_Genomes2.Rmd`.
+
+The repository is publicly accessible. GitHub maintains commit history so a specific code version can be identified through its commit identifier. No DOI is claimed.
 
 ## Supplementary raw data
 
-The supplementary raw data files have already been verified for the manuscript. This repository archiving record does not require another supplementary-data audit.
+The supplementary raw data files accompanying the manuscript have been verified.
 
-## DOI archive procedure
+## Data Availability Statement
 
-1. Confirm the final analysis code revision intended for release.
-2. Connect the public organization repository through https://zenodo.org/account/settings/github/ (organization owner may need to authorize Zenodo).
-3. **After the connection is enabled**, publish a GitHub release on the final commit/tag.
-4. Verify Zenodo ingested the release and use the exact DOI from Zenodo. A GitHub release alone does not provide a DOI.
-5. If supplementary files are not included in the GitHub release, deposit them separately and cite their archived record, rather than claiming they are inside the code release.
-
-## Data Availability Statement (before DOI issuance)
-
-The analysis code and repository-hosted datasets are publicly accessible at https://github.com/ShahShringiLab/SEN_genomics_pipeline. A fixed revision is available through the repository's commit history. [Insert the final versioned release URL and DOI only after publication of the release and successful archival.] Supplementary raw data files have been verified and accompany the manuscript.
+The genomic metadata analyzed in this study were obtained from the NCBI Pathogen Detection Isolates Browser. The analysis code, repository-hosted datasets, and reproducibility documentation are publicly available at https://github.com/ShahShringiLab/SEN_genomics_pipeline. The repository's commit history provides access to identifiable versions of the code. Verified supplementary raw data files accompany the manuscript.
