@@ -33,7 +33,7 @@ subprocess.run([sys.executable, str(root / "scripts/prepare_original_part_a2.py"
                 str(original)], cwd=root, check=True)
 subprocess.run([sys.executable, str(root / "scripts/build_original_a2_master_execution.py")],
                cwd=root, check=True)
-working = (root / "analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd").read_text()
+working = (root / "workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd").read_text()
 master = (root / "results/part_a/master_33831/original_execution/run_original_A2_master.R").read_text()
 combined = (root / "results/part_a/master_33831/original_execution/run_original_A2_all.R").read_text()
 checks = [
