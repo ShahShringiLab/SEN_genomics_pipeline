@@ -7,7 +7,7 @@ The repository implements the complete study workflow in two connected parts:
 - **Part A** — phenotype resistance trends, QR/FQR genotype epidemiology, source/origin classification, marker diversity, and construction/validation of the final 3,434-genome cohort.
 - **Part B** — read retrieval and QC, Enteritidis confirmation, core-SNP phylogenomics, recombination filtering, clade analysis, assembly/pangenome analysis, and AMR/virulence/plasmid analyses.
 
-The original exploratory Part A notebook is preserved under provenance/. Linux-executable production scripts live under analysis/part_a/.
+The original exploratory Part A notebook is preserved under provenance/. Linux-executable Part A and Part B scripts are organized together under workflow/.
 
 ## Repository structure
 
