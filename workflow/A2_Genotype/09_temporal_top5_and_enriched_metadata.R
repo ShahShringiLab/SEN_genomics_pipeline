@@ -2,7 +2,7 @@
 # ADDITIVE outputs only: same seven-category temporal stacks for master/selected,
 # complete enriched metadata for all 33,831 and fixed 3,434 selected isolates.
 # The original Rmd's statistics, plots, selection and source logic are unchanged.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 # Attach patchwork so its ggplot2 S7 composition methods are registered before
 # combining the independent full-master and selected panels.
 suppressPackageStartupMessages(library(patchwork))

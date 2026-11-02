@@ -19,7 +19,7 @@ require("workflow/04_core_snp/13_snippy.sh", [
     "--minfrac 0",
 ])
 
-require("analysis/snps/19b_snps_byclade.py", [
+require("workflow/B3_Phylogenomics/19b_snps_byclade.py", [
     "FDR_ALPHA        = 0.05",
     "MIN_TOTAL_PRESENT = 10",
     "DEF_IN_CLADE     = 40.0",
@@ -39,10 +39,10 @@ require("workflow/06_assembly_pangenome/23_panaroo_byclade.py", [
 ])
 
 for path in [
-    "analysis/clades/15_amr_byclade.py",
-    "analysis/clades/16_plasmid_byclade.py",
-    "analysis/clades/17_resfinder_byclade.py",
-    "analysis/clades/18_vfdb_byclade.py",
+    "workflow/B3_Phylogenomics/15_amr_byclade.py",
+    "workflow/B3_Phylogenomics/16_plasmid_byclade.py",
+    "workflow/B3_Phylogenomics/17_resfinder_byclade.py",
+    "workflow/B3_Phylogenomics/18_vfdb_byclade.py",
 ]:
     require(path, [
         "MIN_COVERAGE = 80.0",

@@ -31,7 +31,7 @@ The **SHA-locked uploaded 30-chunk original** remains unchanged; `scripts/prepar
 
 ### Additional reconciled metadata and matched temporal stacks (October 22)
 
-The **original Rmd and prior manuscripts' figures remain unmodified** by this additive deliverable. The complete original full-master analysis now exports every Rmd-created non-raw field (`SEN_33831_original_Rmd_derived.csv`) after original chunk 22. `analysis/part_a/09_temporal_top5_and_enriched_metadata.R` then creates:
+The **original Rmd and prior manuscripts' figures remain unmodified** by this additive deliverable. The complete original full-master analysis now exports every Rmd-created non-raw field (`SEN_33831_original_Rmd_derived.csv`) after original chunk 22. `workflow/A2_Genotype/09_temporal_top5_and_enriched_metadata.R` then creates:
 
 - `results/part_a/reconciled_metadata/SEN_33831_full_enriched_metadata.csv`: **33,831 genomes**; preserves each of the 51 corrected original metadata columns, appends all `Rmd_` fields (primary/final source, year, marker variables, etc.), consistent `Audit_` columns and `QC_` status for selected genomes; QC entries remain blank for unselected genomes.
 - `results/part_a/reconciled_metadata/SEN_3434_selected_enriched_QC_metadata.csv`: **3,434 selected genomes**; preserves all 69 original selection columns and all 9 appended QC columns (78 total), then joins exactly the same `Rmd_` and `Audit_` columns from its 33,831-genome master counterpart by `Run + Isolate`. The 3 corrected QR calls remain traceable through archived and corrected fields.
@@ -44,7 +44,7 @@ No sampling is repeated, no original code is rewritten and no biological source 
 
 ### International animal/decomposed-source figure (N = 71)
 
-`analysis/part_a/10_international_animal_source_plot.R` reads the original full-master
+`workflow/A2_Genotype/10_international_animal_source_plot.R` reads the original full-master
 `SEN_TableS1_final_source_decomposition.csv` and independently exports a dedicated
 International decomposed animal-source bar chart, rather than reusing the QR/FQR
 stacked source plot. It shows **Others = 67 (94.4%)** and **Chicken = 4 (5.6%)**,
@@ -62,7 +62,7 @@ To regenerate **these figures and the Excel workbook only**, using existing full
 cd ~/SEN_PartA_clean
 git pull --ff-only origin feature/part-a2-master-33831-parsed-snapshot-20261021
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$PWD" \
-  Rscript analysis/part_a/10_international_animal_source_plot.R
+  Rscript workflow/A2_Genotype/10_international_animal_source_plot.R
 ```
 
 The normal full and selected-resume runners also regenerate this figure.

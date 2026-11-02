@@ -7,7 +7,7 @@ import argparse,csv,re
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 ap=argparse.ArgumentParser()
-ap.add_argument("--notebook",type=Path,default=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd")
+ap.add_argument("--notebook",type=Path,default=root/"workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd")
 ap.add_argument("--instrument",action="store_true",help="Generate a separate guarded notebook copy")
 args=ap.parse_args()
 lines=args.notebook.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -50,6 +50,6 @@ if (nrow(SEN) != 33831L || dplyr::n_distinct(SEN$Run) != 33831L)
     for i,line in enumerate(lines,1):
         result.append(line)
         if i in inserts:result.append("\n"+inserts[i])
-    target=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER_GUARDED.Rmd"
+    target=root/"workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER_GUARDED.Rmd"
     target.write_text("".join(result),encoding="utf-8")
     print(f"[READY] Separate guarded copy: {target}")
