@@ -176,24 +176,29 @@ add_common_fields <- function(df, is_selected) {
       if (!(nm %in% names(df))) df[[nm]] <- field_from(df,c(paste0("Rmd_",nm)))
     }
   }
-  # Canonical fields derived identically across both sets.
-  df$Collection_year <- as.integer(df$Audit_Collection_year)
-  df$Source <- as.character(df$Audit_Source)
-  df$Origin_group <- field_from(df,c("Rmd_Origin_group"))
-  df$Source_group <- field_from(df,c("Rmd_Source_group"))
-  df$Collection_date_raw <- field_from(df,c("Rmd_Collection_date_raw","Collection date"))
-  df$Collection_date_clean <- field_from(df,c("Rmd_Collection_date_clean"))
-  df$Collection_date_parsed <- field_from(df,c("Rmd_Collection_date_parsed"))
-  df$row_id <- as.integer(match(df$Run,raw$Run))
-  df$Year <- as.integer(df$Collection_year)
-  df$Source_raw <- field_from(df,c("Rmd_Source_raw","Rmd_Source"))
-  df$Source3 <- dplyr::case_when(df$Source=="Human"~"Human",
-    df$Source=="Chicken-US"~"Chicken", TRUE~"Other")
-  df$NonUS <- df$Source=="International"
-  df$QR_group <- ifelse(as.integer(df$QR_genotype)==1L,"QR","NON-QR")
-  df$Outbreak_clean <- stringr::str_squish(field_from(df,c("Outbreak_clean","Outbreak")))
-  df$Location_clean <- stringr::str_squish(field_from(df,c("Location_clean","Location")))
-  df$AMR_pattern <- assign_amr_pattern(df[["AMR genotypes core"]])
+  # Full master fields are derived from the audited master. For the selected
+  # cohort, existing 78 archival/QC columns are authoritative: calculate only
+  # fields that are absent. Audited Rmd_/Audit_ columns remain separate.
+  put_common <- function(name, value) {
+    if (!is_selected || !(name %in% names(df))) df[[name]] <<- value
+  }
+  put_common("Collection_year", as.integer(df$Audit_Collection_year))
+  put_common("Source", as.character(df$Audit_Source))
+  put_common("Origin_group", field_from(df,c("Rmd_Origin_group")))
+  put_common("Source_group", field_from(df,c("Rmd_Source_group")))
+  put_common("Collection_date_raw", field_from(df,c("Rmd_Collection_date_raw","Collection date")))
+  put_common("Collection_date_clean", field_from(df,c("Rmd_Collection_date_clean")))
+  put_common("Collection_date_parsed", field_from(df,c("Rmd_Collection_date_parsed")))
+  put_common("row_id", as.integer(match(df$Run,raw$Run)))
+  put_common("Year", as.integer(df$Audit_Collection_year))
+  put_common("Source_raw", field_from(df,c("Rmd_Source_raw","Rmd_Source")))
+  put_common("Source3", dplyr::case_when(as.character(df$Audit_Source)=="Human"~"Human",
+    as.character(df$Audit_Source)=="Chicken-US"~"Chicken", TRUE~"Other"))
+  put_common("NonUS", as.character(df$Audit_Source)=="International")
+  put_common("QR_group", ifelse(as.integer(df$QR_genotype)==1L,"QR","NON-QR"))
+  put_common("Outbreak_clean", stringr::str_squish(field_from(df,c("Outbreak_clean","Outbreak"))))
+  put_common("Location_clean", stringr::str_squish(field_from(df,c("Location_clean","Location"))))
+  put_common("AMR_pattern", assign_amr_pattern(df[["AMR genotypes core"]]))
   stopifnot(all(common_fields %in% names(df)),!anyDuplicated(df$Run))
   df
 }
