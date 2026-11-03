@@ -204,6 +204,12 @@ add_common_fields <- function(df, is_selected) {
 }
 full <- add_common_fields(full,FALSE)
 sel_aug <- add_common_fields(sel_aug,TRUE)
+# Recheck after common-field enrichment: never alter the 78 archived/QC fields.
+original_field_changes <- names(sel)[!vapply(names(sel), function(nm)
+  identical(as.character(sel[[nm]]), as.character(sel_aug[[nm]])), logical(1))]
+if (length(original_field_changes))
+  stop("Enrichment changed selected archival/QC columns: ",
+       paste(original_field_changes,collapse=", "))
 # Full file cannot acquire selected-only QC/clade columns (including prefixed
 # copies) merely because 3,434 selected records were joined for auditing.
 full <- full[,!names(full) %in%
