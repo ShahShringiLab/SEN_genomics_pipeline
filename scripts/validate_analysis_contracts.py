@@ -11,7 +11,7 @@ def require(path, tokens):
     for token in tokens:
         checks.append((f"{path}: {token}", token in text))
 
-require("workflow/04_core_snp/13_snippy.sh", [
+require("workflow/B3_Phylogenomics/13_snippy.sh", [
     "--mincov 10",
     "--minqual 100",
     "--mapqual 60",
@@ -19,7 +19,7 @@ require("workflow/04_core_snp/13_snippy.sh", [
     "--minfrac 0",
 ])
 
-require("analysis/snps/19b_snps_byclade.py", [
+require("workflow/B3_Phylogenomics/19b_snps_byclade.py", [
     "FDR_ALPHA        = 0.05",
     "MIN_TOTAL_PRESENT = 10",
     "DEF_IN_CLADE     = 40.0",
@@ -29,7 +29,7 @@ require("analysis/snps/19b_snps_byclade.py", [
     'method="fdr_bh"',
 ])
 
-require("workflow/06_assembly_pangenome/23_panaroo_byclade.py", [
+require("workflow/B4_Pangenome/23_panaroo_byclade.py", [
     "ACCESSORY_MIN_FREQ = 0.01",
     "ACCESSORY_MAX_FREQ = 0.99",
     "MIN_TOTAL_PRESENT  = 10",
@@ -39,10 +39,10 @@ require("workflow/06_assembly_pangenome/23_panaroo_byclade.py", [
 ])
 
 for path in [
-    "analysis/clades/15_amr_byclade.py",
-    "analysis/clades/16_plasmid_byclade.py",
-    "analysis/clades/17_resfinder_byclade.py",
-    "analysis/clades/18_vfdb_byclade.py",
+    "workflow/B5_AMR_Virulence_Plasmids/15_amr_byclade.py",
+    "workflow/B5_AMR_Virulence_Plasmids/16_plasmid_byclade.py",
+    "workflow/B5_AMR_Virulence_Plasmids/17_resfinder_byclade.py",
+    "workflow/B5_AMR_Virulence_Plasmids/18_vfdb_byclade.py",
 ]:
     require(path, [
         "MIN_COVERAGE = 80.0",
@@ -56,7 +56,7 @@ for path in [
         "fisher_exact",
     ])
 
-require("workflow/07_amr_vf_plasmid/25_abricate.sh", [
+require("workflow/B5_AMR_Virulence_Plasmids/25_abricate.sh", [
     'SEN_ABRICATE_MINCOV:-80',
     'SEN_ABRICATE_MINID:-90',
 ])

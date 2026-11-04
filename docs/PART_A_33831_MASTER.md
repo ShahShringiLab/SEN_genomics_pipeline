@@ -21,10 +21,10 @@ If `sen_stats` already exists, **skip the environment creation** and install `r-
 
 ## Workflow and provenance
 
-1. `analysis/part_a/00_parse_master_33831.R` reads `data/part_a/genotype/US-SEN_12192025.csv` through the original `read_sen_master_csv()`. That function normalizes 24 literal escaped commas and one malformed quoted field **in memory**. It strictly checks 33,831 records × 51 original columns, unique Isolate/Run, and a basic BioProject/BioSample/Run field-alignment audit.
+1. `workflow/A2_Genotype/00_parse_master_33831.R` reads `data/part_a/genotype/US-SEN_12192025.csv` through the original `read_sen_master_csv()`. That function normalizes 24 literal escaped commas and one malformed quoted field **in memory**. It strictly checks 33,831 records × 51 original columns, unique Isolate/Run, and a basic BioProject/BioSample/Run field-alignment audit.
 2. Before any new variables are added, it saves `results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.xlsx` and `.csv`, plus alignment audit and file checksums. The original tracked CSV remains unchanged.
 3. `scripts/run_part_a.sh` executes original A1 FDA phenotype trends and the 3,434-isolate cohort A2 analysis, including input/output validators. `scripts/validate_part_a_outputs.py` correctly recognizes the 128 missing/NA clade labels as excluded.
-4. `analysis/part_a/06_master_33831_analysis.R` reads **only the saved parsed 51-column CSV** before adding year, source, origin and QR-marker fields. The QR call comes from `AMR genotypes core`. It audits selection (3,434), final phylogeny (3,306), missing/out-of-window years, and (when available) compares the 3,434 overlapping rows with the rebuilt selected cohort.
+4. `workflow/A2_Genotype/06_master_33831_analysis.R` reads **only the saved parsed 51-column CSV** before adding year, source, origin and QR-marker fields. The QR call comes from `AMR genotypes core`. It audits selection (3,434), final phylogeny (3,306), missing/out-of-window years, and (when available) compares the 3,434 overlapping rows with the rebuilt selected cohort.
 
 ## Output locations
 

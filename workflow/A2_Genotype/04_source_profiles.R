@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 source(file.path(
   Sys.getenv("SEN_ROOT", unset = getwd()),
-  "analysis/part_a/lib/common.R"
+  "workflow/A2_Genotype/lib/common.R"
 ))
 
 input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")

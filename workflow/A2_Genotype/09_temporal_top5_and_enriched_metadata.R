@@ -2,7 +2,7 @@
 # ADDITIVE outputs only: same seven-category temporal stacks for master/selected,
 # complete enriched metadata for all 33,831 and fixed 3,434 selected isolates.
 # The original Rmd's statistics, plots, selection and source logic are unchanged.
-source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/lib/common.R"))
 # Attach patchwork so its ggplot2 S7 composition methods are registered before
 # combining the independent full-master and selected panels.
 suppressPackageStartupMessages(library(patchwork))
@@ -176,29 +176,40 @@ add_common_fields <- function(df, is_selected) {
       if (!(nm %in% names(df))) df[[nm]] <- field_from(df,c(paste0("Rmd_",nm)))
     }
   }
-  # Canonical fields derived identically across both sets.
-  df$Collection_year <- as.integer(df$Audit_Collection_year)
-  df$Source <- as.character(df$Audit_Source)
-  df$Origin_group <- field_from(df,c("Rmd_Origin_group"))
-  df$Source_group <- field_from(df,c("Rmd_Source_group"))
-  df$Collection_date_raw <- field_from(df,c("Rmd_Collection_date_raw","Collection date"))
-  df$Collection_date_clean <- field_from(df,c("Rmd_Collection_date_clean"))
-  df$Collection_date_parsed <- field_from(df,c("Rmd_Collection_date_parsed"))
-  df$row_id <- as.integer(match(df$Run,raw$Run))
-  df$Year <- as.integer(df$Collection_year)
-  df$Source_raw <- field_from(df,c("Rmd_Source_raw","Rmd_Source"))
-  df$Source3 <- dplyr::case_when(df$Source=="Human"~"Human",
-    df$Source=="Chicken-US"~"Chicken", TRUE~"Other")
-  df$NonUS <- df$Source=="International"
-  df$QR_group <- ifelse(as.integer(df$QR_genotype)==1L,"QR","NON-QR")
-  df$Outbreak_clean <- stringr::str_squish(field_from(df,c("Outbreak_clean","Outbreak")))
-  df$Location_clean <- stringr::str_squish(field_from(df,c("Location_clean","Location")))
-  df$AMR_pattern <- assign_amr_pattern(df[["AMR genotypes core"]])
+  # Full master fields are derived from the audited master. For the selected
+  # cohort, existing 78 archival/QC columns are authoritative: calculate only
+  # fields that are absent. Audited Rmd_/Audit_ columns remain separate.
+  put_common <- function(name, value) {
+    if (!is_selected || !(name %in% names(df))) df[[name]] <<- value
+  }
+  put_common("Collection_year", as.integer(df$Audit_Collection_year))
+  put_common("Source", as.character(df$Audit_Source))
+  put_common("Origin_group", field_from(df,c("Rmd_Origin_group")))
+  put_common("Source_group", field_from(df,c("Rmd_Source_group")))
+  put_common("Collection_date_raw", field_from(df,c("Rmd_Collection_date_raw","Collection date")))
+  put_common("Collection_date_clean", field_from(df,c("Rmd_Collection_date_clean")))
+  put_common("Collection_date_parsed", field_from(df,c("Rmd_Collection_date_parsed")))
+  put_common("row_id", as.integer(match(df$Run,raw$Run)))
+  put_common("Year", as.integer(df$Audit_Collection_year))
+  put_common("Source_raw", field_from(df,c("Rmd_Source_raw","Rmd_Source")))
+  put_common("Source3", dplyr::case_when(as.character(df$Audit_Source)=="Human"~"Human",
+    as.character(df$Audit_Source)=="Chicken-US"~"Chicken", TRUE~"Other"))
+  put_common("NonUS", as.character(df$Audit_Source)=="International")
+  put_common("QR_group", ifelse(as.integer(df$QR_genotype)==1L,"QR","NON-QR"))
+  put_common("Outbreak_clean", stringr::str_squish(field_from(df,c("Outbreak_clean","Outbreak"))))
+  put_common("Location_clean", stringr::str_squish(field_from(df,c("Location_clean","Location"))))
+  put_common("AMR_pattern", assign_amr_pattern(df[["AMR genotypes core"]]))
   stopifnot(all(common_fields %in% names(df)),!anyDuplicated(df$Run))
   df
 }
 full <- add_common_fields(full,FALSE)
 sel_aug <- add_common_fields(sel_aug,TRUE)
+# Recheck after common-field enrichment: never alter the 78 archived/QC fields.
+original_field_changes <- names(sel)[!vapply(names(sel), function(nm)
+  identical(as.character(sel[[nm]]), as.character(sel_aug[[nm]])), logical(1))]
+if (length(original_field_changes))
+  stop("Enrichment changed selected archival/QC columns: ",
+       paste(original_field_changes,collapse=", "))
 # Full file cannot acquire selected-only QC/clade columns (including prefixed
 # copies) merely because 3,434 selected records were joined for auditing.
 full <- full[,!names(full) %in%

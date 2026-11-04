@@ -32,7 +32,7 @@ bash scripts/run_master_part_a2.sh
 
 echo "[3/6] Reconcile fixed 3,434 selected metadata with core genotypes and clades"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/02_build_final_cohort.R
+  Rscript workflow/A2_Genotype/02_build_final_cohort.R
 
 echo "[4/6] Merge verified QC edits onto complete 3,434 metadata (never 33,831)"
 python3 scripts/merge_qc_full_metadata.py
@@ -53,12 +53,12 @@ python3 scripts/validate_full_master_repro.py
 
 echo "[ADD-ON] Seven-bucket Top-5 temporal charts and reconciled master/selected metadata"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
+  Rscript workflow/A2_Genotype/09_temporal_top5_and_enriched_metadata.R
 python3 scripts/validate_enriched_metadata_outputs.py
 
 echo "[ADD-ON] International n=71 exact-source plots and complete QC-enriched Excel workbook"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/10_international_animal_source_plot.R
+  Rscript workflow/A2_Genotype/10_international_animal_source_plot.R
 
 grep -F "[PASS] Temporal dot plot:" "$MASTER_DIR/run.log"
 grep -F "[PASS] All original full-master Rmd chunks" "$MASTER_DIR/run.log"
