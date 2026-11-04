@@ -29,6 +29,9 @@ assert len(raw_cols)==51
 assert len(qc_cols)==78
 assert all(c in full_cols for c in raw_cols)
 assert all(c in sel_cols for c in qc_cols)
+# Selected-only QC/clade labels must not be copied into the complete master.
+assert "QC_Final_phylogeny" not in full_cols
+assert "Final_phylogeny" not in full_cols
 for col in ("Rmd_Final_source","Rmd_Primary_source",
             "Audit_Collection_year","Audit_Source","Audit_Temporal_block",
             "Audit_QR_status","Audit_QR_marker_tokens","Audit_QR_marker_count",
@@ -52,7 +55,7 @@ for r in full:
         s=selected_by_run[r["Run"]]
         assert r["Audit_Top5_bucket"]==s["Audit_Top5_bucket"]
         assert r["Audit_Source"]==s["Audit_Source"]
-        assert r["QC_Final_phylogeny"]==s["Final_phylogeny"]
+        assert r["Audit_Analyzed_post_QC"] == ("TRUE" if s["Final_phylogeny"] == "Included" else "FALSE"), (r["Run"], r["Audit_Analyzed_post_QC"], s["Final_phylogeny"])
 assert Counter(r["Audit_Source"] for r in full)==Counter(
     {"Human":26541,"Chicken-US":6637,"Other-US":582,"International":71})
 valid_cats={"QS/FQS","gyrA_D87Y","gyrA_D87N","gyrA_S83Y","gyrA_D87G","qnrB19","Others"}
