@@ -10,7 +10,7 @@ import hashlib
 import re
 
 root = Path(__file__).resolve().parents[1]
-src_file = root / "analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
+src_file = root / "workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 if not src_file.is_file():
     raise SystemExit("Run bash scripts/run_master_part_a2.sh first")
 src = src_file.read_text(encoding="utf-8")

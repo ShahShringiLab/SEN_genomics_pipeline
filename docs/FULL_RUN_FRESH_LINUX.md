@@ -143,7 +143,7 @@ from the immutable canonical metadata.
 ```bash
 conda run --no-capture-output -n sen_reads_qc \
   env SEN_ROOT="$SEN_ROOT" SEN_SRR_LIST="$SEN_ROOT/SRR_list.clean.txt" TMPDIR="$TMPDIR" \
-  bash workflow/01_reads/01_download_fastq.sh
+  bash workflow/B1_Reads_QC/01_download_fastq.sh
 ```
 
 The downloader uses parallel `prefetch`, `fasterq-dump`, and `pigz`.
@@ -155,7 +155,7 @@ Tune concurrency using `SEN_PREFETCH_JOBS`, `SEN_DUMP_JOBS`, and
 ```bash
 conda run --no-capture-output -n sen_reads_qc \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/02_qc/02_fastqc_raw.sh
+  bash workflow/B1_Reads_QC/02_fastqc_raw.sh
 ```
 
 ## 10. fastp trimming
@@ -163,7 +163,7 @@ conda run --no-capture-output -n sen_reads_qc \
 ```bash
 conda run --no-capture-output -n sen_reads_qc \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/03_typing/09_trim_fastp.sh
+  bash workflow/B1_Reads_QC/09_trim_fastp.sh
 ```
 
 ## 11. Trimmed-read QC and preliminary depth
@@ -171,11 +171,11 @@ conda run --no-capture-output -n sen_reads_qc \
 ```bash
 conda run --no-capture-output -n sen_reads_qc \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/02_qc/03_fastqc_trimmed.sh
+  bash workflow/B1_Reads_QC/03_fastqc_trimmed.sh
 
 conda run --no-capture-output -n sen_reads_qc \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/02_qc/04_estimate_coverage.sh
+  bash workflow/B1_Reads_QC/04_estimate_coverage.sh
 ```
 
 The manuscript inclusion contract uses the post-Kraken filtered data for the
@@ -199,7 +199,7 @@ The repository verifies the pinned 2026-06-26 Standard database snapshot.
 ```bash
 conda run --no-capture-output -n sen_kraken \
   env SEN_ROOT="$SEN_ROOT" SEN_KRAKEN_DB="$SEN_KRAKEN_DB" TMPDIR="$TMPDIR" \
-  bash workflow/02_qc/06_kraken_cleanup.sh
+  bash workflow/B1_Reads_QC/06_kraken_cleanup.sh
 ```
 
 Primary outputs include:
@@ -217,7 +217,7 @@ The `Final_Depth` field in `full_db_results.csv` is the post-filter depth.
 ```bash
 conda run --no-capture-output -n sen_seqsero2 \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/03_typing/10_seqsero2.sh
+  bash workflow/B2_Typing/10_seqsero2.sh
 ```
 
 ## 15. SKESA + SISTR
@@ -225,7 +225,7 @@ conda run --no-capture-output -n sen_seqsero2 \
 ```bash
 conda run --no-capture-output -n sen_sistr \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/03_typing/11_sistr.sh
+  bash workflow/B2_Typing/11_sistr.sh
 ```
 
 ## 16. MLST
@@ -233,7 +233,7 @@ conda run --no-capture-output -n sen_sistr \
 ```bash
 conda run --no-capture-output -n sen_mlst \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/03_typing/12_mlst.sh
+  bash workflow/B2_Typing/12_mlst.sh
 ```
 
 ## 17. QC cohort audit
@@ -243,11 +243,11 @@ The non-destructive QC audit is:
 ```bash
 conda run --no-capture-output -n sen_stats \
   env SEN_ROOT="$SEN_ROOT" SEN_METADATA_FILE="$SEN_ROOT/metadata/SEN_Genomes.csv" \
-  python workflow/02_qc/08_qc_filter.py
+  python workflow/B1_Reads_QC/08_qc_filter.py
 ```
 
 For manuscript reproduction, use the non-destructive QC audit above rather than
-`workflow/02_qc/05_two_step_filter.sh`, which moves files and rewrites the
+`workflow/B1_Reads_QC/05_two_step_filter.sh`, which moves files and rewrites the
 metadata file.
 
 The canonical final cohort in `metadata/final_clade_metadata.tsv` is the
@@ -312,7 +312,7 @@ conda run --no-capture-output -n sen_snippy \
     SEN_PASS_LIST="$SEN_ROOT/confirmed_enteritidis_list.txt" \
     SEN_REFERENCE_FNA="$SEN_ROOT/reference/reference.fna" \
     TMPDIR="$TMPDIR" \
-  bash workflow/04_core_snp/13_snippy.sh
+  bash workflow/B3_Phylogenomics/13_snippy.sh
 ```
 
 The publication thresholds are explicit in the command contract:
@@ -330,11 +330,11 @@ minfrac = 0  (Snippy AUTO)
 ```bash
 conda run --no-capture-output -n sen_snippy \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/04_core_snp/14_snpeff.sh
+  bash workflow/B3_Phylogenomics/14_snpeff.sh
 
 conda run --no-capture-output -n sen_stats \
   env SEN_ROOT="$SEN_ROOT" \
-  python workflow/04_core_snp/15_snpeff_parse.py
+  python workflow/B3_Phylogenomics/15_snpeff_parse.py
 ```
 
 The SnpEff database is built locally from the exact bootstrapped P125109
@@ -346,7 +346,7 @@ a separate reference GFF is not required.
 ```bash
 conda run --no-capture-output -n sen_gubbins \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/05_phylogeny/17_gubbins.sh
+  bash workflow/B3_Phylogenomics/17_gubbins.sh
 ```
 
 Then apply the final-alignment exclusion contract:
@@ -354,7 +354,7 @@ Then apply the final-alignment exclusion contract:
 ```bash
 conda run --no-capture-output -n sen_gubbins \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/05_phylogeny/18_gubbins_cleanup.sh
+  bash workflow/B3_Phylogenomics/18_gubbins_cleanup.sh
 ```
 
 The final exclusion IDs are stored in
@@ -367,7 +367,7 @@ upstream alignment.
 ```bash
 conda run --no-capture-output -n sen_iqtree \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/05_phylogeny/19_iqtree.sh
+  bash workflow/B3_Phylogenomics/19_iqtree.sh
 ```
 
 The workflow runs ModelFinder with ascertainment-bias correction, 1,000
@@ -378,7 +378,7 @@ full-study `SSLAB_FINAL.iqtree` report as part of full-study verification.
 Validate tree membership:
 
 ```bash
-bash workflow/05_phylogeny/20_tree_clades.sh
+bash workflow/B3_Phylogenomics/20_tree_clades.sh
 ```
 
 Expected final tree composition:
@@ -392,7 +392,7 @@ Expected final tree composition:
 ```bash
 conda run --no-capture-output -n sen_shovill \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/06_assembly_pangenome/21_shovill.sh
+  bash workflow/B4_Pangenome/21_shovill.sh
 ```
 
 ## 25. Prokka
@@ -400,7 +400,7 @@ conda run --no-capture-output -n sen_shovill \
 ```bash
 conda run --no-capture-output -n sen_prokka \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  python workflow/06_assembly_pangenome/22_prokka.py
+  python workflow/B4_Pangenome/22_prokka.py
 ```
 
 ## 26. Panaroo
@@ -408,7 +408,7 @@ conda run --no-capture-output -n sen_prokka \
 ```bash
 conda run --no-capture-output -n sen_panaroo \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/06_assembly_pangenome/23_panaroo.sh
+  bash workflow/B4_Pangenome/23_panaroo.sh
 ```
 
 ## 27. Panaroo clade/accessory-gene analysis
@@ -416,7 +416,7 @@ conda run --no-capture-output -n sen_panaroo \
 ```bash
 conda run --no-capture-output -n sen_panaroo \
   env SEN_ROOT="$SEN_ROOT" \
-  python workflow/06_assembly_pangenome/23_panaroo_byclade.py
+  python workflow/B4_Pangenome/23_panaroo_byclade.py
 ```
 
 Publication-facing rules include:
@@ -441,7 +441,7 @@ export SEN_AMRFINDER_DB="$SEN_ROOT/databases/amrfinderplus/2026-08-07.1"
 ```bash
 conda run --no-capture-output -n sen_amr_abricate \
   env SEN_ROOT="$SEN_ROOT" SEN_AMRFINDER_DB="$SEN_AMRFINDER_DB" TMPDIR="$TMPDIR" \
-  bash workflow/07_amr_vf_plasmid/24_amrfinderplus.sh
+  bash workflow/B5_AMR_Virulence_Plasmids/24_amrfinderplus.sh
 ```
 
 ## 30. ABRicate: ResFinder, VFDB, PlasmidFinder
@@ -449,7 +449,7 @@ conda run --no-capture-output -n sen_amr_abricate \
 ```bash
 conda run --no-capture-output -n sen_amr_abricate \
   env SEN_ROOT="$SEN_ROOT" TMPDIR="$TMPDIR" \
-  bash workflow/07_amr_vf_plasmid/25_abricate.sh
+  bash workflow/B5_AMR_Virulence_Plasmids/25_abricate.sh
 ```
 
 Binary presence requires:
@@ -482,7 +482,7 @@ for script in \
 do
   conda run --no-capture-output -n sen_stats \
     env SEN_ROOT="$SEN_ROOT" \
-    python "analysis/clades/$script"
+    python "workflow/B3_Phylogenomics/$script"
 done
 ```
 
@@ -502,7 +502,7 @@ for script in \
 do
   conda run --no-capture-output -n sen_stats \
     env SEN_ROOT="$SEN_ROOT" \
-    python "analysis/snps/$script"
+    python "workflow/B3_Phylogenomics/$script"
 done
 ```
 
@@ -533,11 +533,11 @@ the expected `iqtree_final/FGA/` names before running:
 ```bash
 conda run --no-capture-output -n sen_stats \
   env SEN_ROOT="$SEN_ROOT" \
-  Rscript analysis/snps/FGA.R
+  Rscript workflow/B3_Phylogenomics/FGA.R
 
 conda run --no-capture-output -n sen_stats \
   env SEN_ROOT="$SEN_ROOT" \
-  Rscript analysis/snps/FGA2.R
+  Rscript workflow/B3_Phylogenomics/FGA2.R
 ```
 
 Record the EggNOG output and service/database provenance with the corresponding

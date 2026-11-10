@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "workflow/A2_Genotype/lib/common.R"))
 
 if (!requireNamespace("patchwork", quietly=TRUE)) {
   stop("Missing R package patchwork in sen_stats environment.")
@@ -7,7 +7,7 @@ if (!requireNamespace("patchwork", quietly=TRUE)) {
 suppressPackageStartupMessages(library(patchwork))
 
 input <- sen_path("results/part_a/master_33831/SEN_33831_DERIVED_ANALYSIS_READY.csv")
-if (!file.exists(input)) stop("Run analysis/part_a/06_master_33831_analysis.R first.")
+if (!file.exists(input)) stop("Run workflow/A2_Genotype/06_master_33831_analysis.R first.")
 outdir <- ensure_dir(sen_path("results/part_a/master_33831/diversity_full"))
 
 sen <- read_csv(input, show_col_types=FALSE)

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "workflow/A2_Genotype/lib/common.R"))
 
 input <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")
 if (!file.exists(input)) stop("Run python3 scripts/merge_qc_full_metadata.py first.")

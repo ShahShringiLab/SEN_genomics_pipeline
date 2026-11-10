@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Validate temporal dot-plot eligibility from the independently generated annual table.
+"""Validate the 1990-2025 sampling audit and reconcile it with full-master plot totals.
 
-A valid collection year <= 2025 is plotted; all years <= 2000 use the <=2000 bin.
-Only undated genomes are excluded. This check never modifies the original data.
+The sampling/QC table deliberately excludes 18 pre-1990 records; full-master
+plots retain these genomes in the <=2000 bin. Do not equate the denominators.
 """
 import csv
 from collections import defaultdict
@@ -34,9 +34,9 @@ with file.open(encoding="utf-8-sig", newline="") as stream:
             counts[source]["historical"] += n
 
 expected = {
-    "Human": (26541, 245, 25, 26296),
+    "Human": (26525, 245, 9, 26280),
     "Chicken-US": (6637, 49, 1, 6588),
-    "Other-US": (582, 29, 11, 553),
+    "Other-US": (580, 29, 9, 551),
     "International": (71, 0, 1, 71),
 }
 # Verify expected total, missing and eligible counts. Report but do not constrain
@@ -47,9 +47,18 @@ for src, (total, missing, historical, plotted) in expected.items():
         raise SystemExit(f"[FAIL] Temporal counts for {src}: {got}")
 totals = {k: sum(v[k] for v in counts.values()) for k in
           ("total", "missing", "historical", "plotted")}
-if totals != {"total": 33831, "missing": 323, "historical": 38, "plotted": 33508}:
+if totals != {"total": 33813, "missing": 323, "historical": 20, "plotted": 33490}:
     raise SystemExit(f"[FAIL] Unexpected temporal totals: {totals}")
-print("[PASS] Master total: 33,831; missing year: 323; plotted: 33,508")
-print("[PASS] <=2000 plot bin: 38 genomes; 2001-2025: 33,470 genomes")
+print("[PASS] Sampling audit (1990-2025 plus undated): 33,813; missing year: 323; eligible dated: 33,490")
+print("[PASS] Sampling-table <=2000 bin: 20 genomes; 2001-2025: 33,470")
+# Separate documented master-population plot scope: add the 18 pre-1990
+# genomes excluded from the sampling table (Human=16, Other-US=2).
+pre_1990_by_source = {"Human": 16, "Chicken-US": 0, "Other-US": 2, "International": 0}
+full_master_total = totals["total"] + sum(pre_1990_by_source.values())
+full_master_dated = totals["plotted"] + sum(pre_1990_by_source.values())
+full_master_historical = totals["historical"] + sum(pre_1990_by_source.values())
+if (full_master_total, full_master_dated, full_master_historical) != (33831, 33508, 38):
+    raise SystemExit("[FAIL] Sampling-to-master denominator reconciliation failed")
+print("[PASS] Full-master plot reconciliation: 33,831 total; 33,508 dated; <=2000 bin 38")
 for src, vals in counts.items():
     print(f"[AUDIT] {src}: {vals['plotted']:,} dated genomes")

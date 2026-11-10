@@ -85,7 +85,7 @@ expected = text.replace(old, new, 1).replace(phenotype_old, phenotype_new, 1).re
 expected, expected_n = re.subn(lower_cutoff, "", expected)
 expected = expected.replace("SEN3", "SEN")
 assert expected_n == n_dropped and rendered == expected
-out=root/"analysis/part_a/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
+out=root/"workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
 out.parent.mkdir(parents=True,exist_ok=True)
 out.write_text(rendered,encoding="utf-8")
 sha=hashlib.sha256(original.read_bytes()).hexdigest()

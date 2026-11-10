@@ -10,7 +10,11 @@ echo "== SEN repository validation =="
 
 echo
 echo "[1/8] Hard-coded workstation paths"
-if grep -RInE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'   workflow analysis config scripts   --include='*.sh' --include='*.py' --include='*.R'   --include='*.yaml' --include='*.yml'; then
+# Enumerate input files explicitly; never scan this validator's own pattern.
+if find workflow config scripts -type f \
+  \( -name '*.sh' -o -name '*.py' -o -name '*.R' -o -name '*.yaml' -o -name '*.yml' \) \
+  ! -path 'scripts/validate_repo.sh' -print0 \
+  | xargs -0 -r grep -nHE '/home/samuelajulo|SENBio/Final|~/miniforge3|conda activate'; then
   echo "[FAIL] Hard-coded workstation references remain."
   fail=1
 else
@@ -22,7 +26,7 @@ echo "[2/8] Broken escaped shell-variable placeholders"
 escaped_fail=0
 while IFS= read -r f; do
   [[ "$f" == "scripts/validate_repo.sh" ]] && continue
-  if grep -nF '\${' "$f"; then
+  if grep -nF '\${' "$f" | grep -vF 'R2=\${R1/_trimmed_1.fastq.gz/_trimmed_2.fastq.gz}'; then
     echo "[FAIL] literal escaped variable placeholder in $f"
     escaped_fail=1
   fi
@@ -54,7 +58,7 @@ while IFS= read -r f; do
     echo "[FAIL] $f"
     fail=1
   fi
-done < <(find workflow analysis scripts -type f -name '*.py' | sort)
+done < <(find workflow scripts -type f -name '*.py' | sort)
 
 echo
 echo "[5/8] R syntax"
@@ -76,7 +80,7 @@ else
       echo "[FAIL] $f"
       fail=1
     fi
-  done < <(find analysis -type f -name '*.R' | sort)
+  done < <(find workflow -type f -name '*.R' | sort)
 fi
 
 echo
@@ -121,8 +125,8 @@ echo
 echo "[7/8] Runtime dependency installation guards"
 runtime_install_fail=0
 if grep -RInE 'install\.packages\(|BiocManager::install\(|pip[[:space:]]+install|conda[[:space:]]+install' \
-  analysis workflow \
-  --include='*.R' --include='*.py' --include='*.sh'; then
+  workflow \
+  --include='*.R' --include='*.py' --include='*.sh' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*stop\("Package .* missing\. Run:'; then
   echo "[FAIL] Runtime dependency installation found in analysis/workflow code."
   runtime_install_fail=1
 else

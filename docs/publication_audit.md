@@ -27,7 +27,7 @@ Canonical study metadata:
   - Unassigned: 127
   - Reference: 1
 
-`workflow/05_phylogeny/20_tree_clades.sh` is now a validation stage. It no
+`workflow/B3_Phylogenomics/20_tree_clades.sh` is now a validation stage. It no
 longer re-derives clades from historical `Clade1.txt/Clade2.txt/Clade3.txt`
 lists. It requires the IQ-TREE SRR set to match the canonical final clade
 metadata exactly.

@@ -27,7 +27,7 @@ analyses or rerun the random selection.
 The full analysis is generated from the original Rmd, with specific documented
 working-copy compatibility changes:
 
-1. **Input parsing and provenance:** `analysis/part_a/00_parse_master_33831.R`
+1. **Input parsing and provenance:** `workflow/A2_Genotype/00_parse_master_33831.R`
    validates the full input as 33,831 records × 51 original fields, preserving
    original records and writing the parsed CSV and XLSX snapshot. The original
    uploaded 30-chunk source is never overwritten. `scripts/prepare_original_part_a2.py`
@@ -52,13 +52,13 @@ working-copy compatibility changes:
    `scripts/run_part_a_selected_resume.sh` resumes only from validated
    master and selected snapshots, restoring needed original plotting aliases
    without resampling. Three QR corrections remain individually auditable.
-7. **Additive epidemiological outputs:** `analysis/part_a/09_temporal_top5_and_enriched_metadata.R`
+7. **Additive epidemiological outputs:** `workflow/A2_Genotype/09_temporal_top5_and_enriched_metadata.R`
    generates separately scaled master/selected temporal count and percentage
    charts for Pre-2018, 2018–2020, and 2021–2025, with seven exclusive classes:
    QS/FQS, gyrA_D87Y, gyrA_D87N, gyrA_S83Y, gyrA_D87G, qnrB19, Others. It
    also writes full and selected enriched metadata with source and QC audit
    fields, preserving the original fields.
-8. **International source breakdown:** `analysis/part_a/10_international_animal_source_plot.R`
+8. **International source breakdown:** `workflow/A2_Genotype/10_international_animal_source_plot.R`
    produces the independent International **N=71** decomposed-source plots
    and isolate-level Excel audit with original isolation-source wording retained.
 9. **Within-scope tables:** Original Part A2 source-decomposition
@@ -138,7 +138,7 @@ The 22-genome Swine/Others difference was traced by manual isolate review to the
   code is the run target. A successful static GitHub check does **not** imply
   that the 33,831-genome biological analysis has been rerun on AjuloPC.
 
-**Scope boundary:** no `analysis/clades/verify_table_s5_*.py`,
+**Scope boundary:** no `workflow/B3_Phylogenomics/verify_table_s5_*.py`,
 `scripts/run_amrfinder_table_s5_audit.sh`, Table S5 count data, or Table S5
 validation results are included in this Part A2-only update. This distinction
 does not remove or overwrite that separate analysis on other branches.

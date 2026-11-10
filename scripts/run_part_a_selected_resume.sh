@@ -35,14 +35,14 @@ python3 scripts/validate_full_master_repro.py
 
 echo "[4/5] Generate matching Top-5 charts and enriched 33,831/3,434 metadata"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/09_temporal_top5_and_enriched_metadata.R
+  Rscript workflow/A2_Genotype/09_temporal_top5_and_enriched_metadata.R
 
 echo "[5/5] Validate enriched outputs and plot denominator contracts"
 python3 scripts/validate_enriched_metadata_outputs.py
 
 echo "[ADD-ON] International n=71 exact-source plots and complete QC-enriched Excel workbook"
 conda run --no-capture-output -n sen_stats env SEN_ROOT="$ROOT" \
-  Rscript analysis/part_a/10_international_animal_source_plot.R
+  Rscript workflow/A2_Genotype/10_international_animal_source_plot.R
 grep -F "[PASS] Original selected followups" "$WORK/selected_resume.log"
 echo "[PASS] Selected original chunks plus new Top-5/master+QC metadata completed."
 echo "[RESULTS] results/part_a/reconciled_metadata/"

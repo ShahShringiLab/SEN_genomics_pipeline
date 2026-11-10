@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 source(file.path(
   Sys.getenv("SEN_ROOT", unset = getwd()),
-  "analysis/part_a/lib/common.R"
+  "workflow/A2_Genotype/lib/common.R"
 ))
 
 master_file <- sen_path("data/part_a/genotype/US-SEN_12192025.csv")

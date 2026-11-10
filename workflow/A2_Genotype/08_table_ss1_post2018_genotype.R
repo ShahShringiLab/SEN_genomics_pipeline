@@ -2,7 +2,7 @@
 # Original SEN methods SS1 table: isolation year 2018-2025 x QR/FQR marker genotype.
 # Exactly one, mutually exclusive genotype category per genome; this avoids
 # double-counting genomes carrying multiple QR/FQR markers.
-source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "analysis/part_a/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "workflow/A2_Genotype/lib/common.R"))
 root <- Sys.getenv("SEN_ROOT", unset = getwd())
 master_path <- sen_path("results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv")
 if (!file.exists(master_path)) stop("Run scripts/run_master_part_a2.sh to generate parsed master first.")
