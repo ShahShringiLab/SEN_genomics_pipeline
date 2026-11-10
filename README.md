@@ -13,7 +13,6 @@ The original exploratory Part A notebook is preserved under provenance/. Linux-e
 
     SEN_genomics_pipeline/
     ├── README.md
-    ├── CITATION.cff
     ├── config/
     ├── data/
     │   └── part_a/
@@ -93,9 +92,9 @@ Run the complete Part A workflow with:
 
     bash scripts/run_part_a.sh
 
-A successful run ends with:
+A successful complete run ends with:
 
-    SEN PART A: PASS
+    [PASS] Original Part A analysis and QC completed.
 
 That PASS is emitted only after both the canonical-input/handoff validator and
 the generated-output validator succeed. The latter verifies the rebuilt
@@ -222,11 +221,11 @@ Run Part A:
 
     bash scripts/run_part_a.sh
 
-Run the Part B smoke test on a new machine before manuscript-scale execution:
+Optional representative workflow validation before manuscript-scale execution:
 
     bash tests/smoke_test/run_smoke_pipeline.sh
 
-The core end-to-end smoke workflow has been exercised through QC/typing, core-SNP/phylogeny, assembly/pangenome, and AMR/ABRicate stages. Downstream analysis scripts remain subject to their explicit publication-contract checks.
+The repository includes a representative four-isolate validation workflow spanning QC/typing, core-SNP phylogeny, assembly/pangenome, and AMR screening. This checks executable handoffs but does not replace full-study result reconciliation.
 
 For the complete manuscript-scale Part B run, see:
 
@@ -297,3 +296,7 @@ The notebook is preserved for analytical provenance. The production workflow sho
 This repository contains the complete manuscript-facing SEN workflow implementation spanning Part A and Part B.
 
 A fresh run uses the workflow code, canonical data/metadata, and pinned software/database definitions stored in this release.
+
+## Versioned publication archive
+
+The exact publication-source snapshot is identified by the GitHub tag `v1.0.0` and its associated release, once published. Release assets include a source archive and SHA-256 checksum; the same commit is available from GitHub's immutable commit-specific URLs. See [`docs/PUBLICATION_ARCHIVE_AND_SUPPLEMENTARY_DATA_STATUS.md`](docs/PUBLICATION_ARCHIVE_AND_SUPPLEMENTARY_DATA_STATUS.md) for the archive citation and scope. A versioned GitHub release is not, by itself, an independently preserved DOI-backed deposit.
