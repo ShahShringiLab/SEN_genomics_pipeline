@@ -1,0 +1,52 @@
+name: Publish SEN versioned source archive
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publication-release:
+    # Releases are intentional: the first SEN publication merge, or a manual dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Merge SEN publication workflow migration' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm publication analysis contracts
+        run: python3 scripts/validate_analysis_contracts.py
+      - name: Create exact source archive and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v1.0.0"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Release tag $TAG already exists: refusing to overwrite an immutable snapshot."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "SEN publication source snapshot v1.0.0"
+          git push origin "refs/tags/$TAG"
+          mkdir -p dist
+          ARCHIVE="SEN_genomics_pipeline-${TAG}.tar.gz"
+          git -c core.autocrlf=false archive --format=tar \
+            --prefix="SEN_genomics_pipeline-${TAG}/" "$TAG" | gzip -n > "dist/$ARCHIVE"
+          (cd dist && sha256sum "$ARCHIVE" > "$ARCHIVE.sha256")
+          echo "Release commit: $(git rev-parse HEAD)"
+      - name: Publish tagged GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.0 \
+            dist/SEN_genomics_pipeline-v1.0.0.tar.gz \
+            dist/SEN_genomics_pipeline-v1.0.0.tar.gz.sha256 \
+            --title "SEN genomics publication source v1.0.0" \
+            --notes "Frozen source, canonical metadata and reproducibility documentation for the Salmonella Enteritidis genomics analysis. Reference the exact tagged commit. Source archive includes SHA-256 checksum. Full manuscript-scale numerical results and external databases are not distributed in this release. This GitHub release does not constitute independent DOI-backed preservation."
