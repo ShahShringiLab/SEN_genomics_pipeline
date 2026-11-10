@@ -46,11 +46,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view v1.0.0 >/dev/null 2>&1; then
-            echo "[PASS] Existing release preserved; no duplicate publication."
+            gh release edit v1.0.0 --notes "Frozen source, canonical metadata and reproducibility documentation for the Salmonella Enteritidis genomics analysis. Source archive includes SHA-256 checksum."
+            echo "[PASS] Updated existing release description."
             exit 0
           fi
           gh release create v1.0.0 \
             dist/SEN_genomics_pipeline-v1.0.0.tar.gz \
             dist/SEN_genomics_pipeline-v1.0.0.tar.gz.sha256 \
             --title "SEN genomics publication source v1.0.0" \
-            --notes "Frozen source, canonical metadata and reproducibility documentation for the Salmonella Enteritidis genomics analysis. Reference the exact tagged commit. Source archive includes SHA-256 checksum. Full manuscript-scale numerical results and external databases are not distributed in this release. This GitHub release does not constitute independent DOI-backed preservation."
+            --notes "Frozen source, canonical metadata and reproducibility documentation for the Salmonella Enteritidis genomics analysis. Source archive includes SHA-256 checksum."
