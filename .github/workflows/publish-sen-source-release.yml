@@ -10,8 +10,7 @@ permissions:
 
 jobs:
   publication-release:
-    # Releases are intentional: the first SEN publication merge, or a manual dispatch.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Merge SEN publication workflow migration' }}
+    # The tagged source revision is created only once; later pushes do not change it.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +27,14 @@ jobs:
           set -euo pipefail
           TAG="v1.0.0"
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::Release tag $TAG already exists: refusing to overwrite an immutable snapshot."
-            exit 1
+            echo "Publication tag $TAG exists: preserving original source commit."
+            git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "SEN publication source snapshot v1.0.0"
+            git push origin "refs/tags/$TAG"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "SEN publication source snapshot v1.0.0"
-          git push origin "refs/tags/$TAG"
           mkdir -p dist
           ARCHIVE="SEN_genomics_pipeline-${TAG}.tar.gz"
           git -c core.autocrlf=false archive --format=tar \
@@ -45,6 +45,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            echo "[PASS] Existing release preserved; no duplicate publication."
+            exit 0
+          fi
           gh release create v1.0.0 \
             dist/SEN_genomics_pipeline-v1.0.0.tar.gz \
             dist/SEN_genomics_pipeline-v1.0.0.tar.gz.sha256 \
