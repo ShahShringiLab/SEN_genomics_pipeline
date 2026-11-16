@@ -86,10 +86,10 @@ def main():
     print(f"[PASS] Clade assignments: {len(clades)} including reference")
     members_full = tabulate(master, "Full 33,831-genome NCBI metadata")
 
-    selected = normalized_rows(
-        ROOT/"data/part_a/selection/Finalupdated_SEN_Genomes1.csv", 3434, 69
-    )
-    selected = [r for r in selected if r.get("Run") in clades and
+    # The canonical final phylogeny membership is defined by the 3,306 SRR
+    # accessions in clade metadata. Reuse cleaned full-master records, rather
+    # than relying on the selected 3,434 CSV's malformed quoted-field rows.
+    selected = [r for r in master if r.get("Run") in clades and
                 clades.get(r.get("Run")) != "Reference"]
     assert len(selected) == 3306, len(selected)
     members_selected = tabulate(selected, "Final selected 3,306-genome phylogeny")
@@ -105,15 +105,6 @@ def main():
           f"{1357-counts.get('Clade 3',0)}")
     unexpected = [r["Run"] for r in clade3 if cluster(r) != TARGET]
     print(f"Off-cluster Clade 3 SRRs ({len(unexpected)}): {', '.join(unexpected)}")
-
-    # All selected records must agree with the full master on SNP-cluster membership.
-    selected_full = {r["Run"]:r for r in master if r["Run"] in clades}
-    assert len(selected_full) == 3306
-    mismatches = [(r["Run"], cluster(r), cluster(selected_full[r["Run"]]))
-                  for r in selected if cluster(r) != cluster(selected_full[r["Run"]])]
-    print(f"SNP-cluster inconsistencies between corrected selected and full master: {len(mismatches)}")
-    if mismatches:
-        print(mismatches[:25])
 
 if __name__ == "__main__":
     main()
