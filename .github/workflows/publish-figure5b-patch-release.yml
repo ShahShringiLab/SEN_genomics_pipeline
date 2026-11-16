@@ -1,0 +1,87 @@
+name: Publish SEN Figure 5B correction v1.0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/phylogeny/SSLAB_FINAL.treefile'
+      - 'scripts/figure5b_violin_zero_bounded.R'
+      - 'scripts/run_figure5b.sh'
+      - 'environments/figure5b.yaml'
+      - 'docs/figure5b_zero_bounded.md'
+      - '.github/workflows/publish-figure5b-patch-release.yml'
+      - 'CITATION.cff'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-correction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Figure 5B correction source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s data/phylogeny/SSLAB_FINAL.treefile
+          test -s metadata/final_clade_metadata.tsv
+          test -s metadata/SEN_Genomes.csv
+          test -s scripts/figure5b_violin_zero_bounded.R
+          grep -Fq 'geom_violin(alpha = 0.8, trim = TRUE' scripts/figure5b_violin_zero_bounded.R
+          python3 - <<'PY'
+          import csv
+          import re
+          from pathlib import Path
+          newick = Path("data/phylogeny/SSLAB_FINAL.treefile").read_text()
+          tree_ids = set(re.findall(r"SRR\d+", newick))
+          with open("metadata/final_clade_metadata.tsv", newline="") as f:
+              rows = list(csv.DictReader(f, delimiter="\t"))
+          meta_ids = {x["Sample"] for x in rows if x["Sample"] != "Reference"}
+          assert len(tree_ids) == 3306, f"Tree has {len(tree_ids)} distinct SRR IDs"
+          assert tree_ids == meta_ids, "Tree and canonical clade IDs differ"
+          assert "Reference:" in newick
+          print("[PASS] Original SEN tree matches all 3,306 canonical SRR IDs.")
+          PY
+      - name: Create immutable v1.0.1 tag and archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=v1.0.1
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "[INFO] Existing tag $TAG preserved."
+            git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "SEN source correction: zero-bounded Figure 5B violin"
+            git push origin "refs/tags/$TAG"
+          fi
+          git cat-file -e "$TAG:data/phylogeny/SSLAB_FINAL.treefile"
+          git show "$TAG:scripts/figure5b_violin_zero_bounded.R" | grep -Fq 'geom_violin(alpha = 0.8, trim = TRUE'
+          mkdir -p dist
+          ARCHIVE="SEN_genomics_pipeline-${TAG}.tar.gz"
+          git -c core.autocrlf=false archive --format=tar \
+            --prefix="SEN_genomics_pipeline-${TAG}/" "$TAG" | gzip -n > "dist/$ARCHIVE"
+          (cd dist && sha256sum "$ARCHIVE" > "$ARCHIVE.sha256")
+          echo "[PASS] Release tag and SHA-256-checked source archive prepared."
+      - name: Publish new release without modifying v1.0.0
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.1 >/dev/null 2>&1; then
+            echo "[PASS] Existing v1.0.1 release preserved."
+            exit 0
+          fi
+          gh release create v1.0.1 \
+            dist/SEN_genomics_pipeline-v1.0.1.tar.gz \
+            dist/SEN_genomics_pipeline-v1.0.1.tar.gz.sha256 \
+            --verify-tag \
+            --title "SEN genomics publication source v1.0.1 (Figure 5B correction)" \
+            --notes "Corrected Figure 5B violin plotting with trim=TRUE (no negative-density tails). Includes the original 3,307-tip SEN tree, canonical clade assignments, a one-command WSL runner, dedicated R environment, and reproducibility documentation. The original v1.0.0 and v1.0.0-zenodo releases remain unchanged. Distances reproduce the historical patristic tree-distance × 67,736 approach."
+          echo "[PASS] New versioned GitHub release published; check Zenodo separately for DOI processing."

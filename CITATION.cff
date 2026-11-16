@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "Please cite the exact version of the SEN genomics pipeline used in your analysis."
+type: software
+title: "Salmonella Enteritidis Genomics Pipeline"
+authors:
+  - family-names: "Ajulo"
+    given-names: "Samuel"
+repository-code: "https://github.com/ShahShringiLab/SEN_genomics_pipeline"
+url: "https://github.com/ShahShringiLab/SEN_genomics_pipeline"
+version: "1.0.1"
+date-released: "2026-11-15"
+keywords:
+  - "Salmonella Enteritidis"
+  - "phylogenomics"
+  - "antimicrobial resistance"

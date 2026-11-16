@@ -300,3 +300,15 @@ A fresh run uses the workflow code, canonical data/metadata, and pinned software
 ## Versioned publication archive
 
 The exact publication-source snapshot is identified by the GitHub tag `v1.0.0` and its associated release, once published. Release assets include a source archive and SHA-256 checksum; the same commit is available from GitHub's immutable commit-specific URLs. See [`docs/PUBLICATION_ARCHIVE_AND_SUPPLEMENTARY_DATA_STATUS.md`](docs/PUBLICATION_ARCHIVE_AND_SUPPLEMENTARY_DATA_STATUS.md) for the archive citation and scope. A versioned GitHub release is not, by itself, an independently preserved DOI-backed deposit.
+
+## Figure 5B violin-plot correction (v1.0.1)
+
+The `v1.0.1` correction release adds the final IQ-TREE Newick tree to `data/phylogeny/SSLAB_FINAL.treefile` and provides a runnable reproduction of Figure 5B with nonnegative violin boundaries. The original historical analysis used `geom_violin(trim = FALSE)`; this version uses `trim = TRUE` while retaining the original tree-derived distance calculation and clade definitions.
+
+After cloning the `v1.0.1` release:
+
+```bash
+bash scripts/run_figure5b.sh
+```
+
+The script writes publication-quality TIFF, PDF and PNG files under `results/figure5b_zero_bounded/`. The historical `v1.0.0` and `v1.0.0-zenodo` releases are preserved unchanged. See [Figure 5B reproducibility details](docs/figure5b_zero_bounded.md) for inputs, outputs and methodological interpretation.
