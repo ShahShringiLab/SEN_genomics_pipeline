@@ -1,0 +1,22 @@
+name: Audit Clade 3 SNP cluster and gyrA D87Y claim
+
+on:
+  push:
+    branches: [audit-clade3-cluster-numbers]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen full cohort and selected-cohort claims
+        run: python3 scripts/audit_clade3_snp_cluster.py
+      - name: Upload counts for verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: clade3-cluster-counts
+          path: results/clade3_cluster_audit.json
