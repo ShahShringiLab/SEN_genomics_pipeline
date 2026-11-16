@@ -1,0 +1,7 @@
+name: sen_figure5b
+channels:
+  - conda-forge
+dependencies:
+  - r-base=4.5.2
+  - r-ape
+  - r-ggplot2
