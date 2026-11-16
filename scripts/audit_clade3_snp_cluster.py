@@ -69,7 +69,6 @@ def main():
     assert len(selected) == 3434
     assert "SNP cluster" in selected_columns
     assert "Run" in selected_columns
-    clade_rows, _ = read_csv(ROOT / "metadata/final_clade_metadata.tsv") if False else (None, None)
     with (ROOT / "metadata/final_clade_metadata.tsv").open(newline="") as f:
         clade_reader = csv.DictReader(f, delimiter="\t")
         clade_rows = list(clade_reader)
@@ -77,8 +76,13 @@ def main():
     assert len(clade_map) == 3306
     assert all(ISOLATE_ID.fullmatch(x) for x in clade_map)
 
-    selected_study = [r for r in selected if r["Run"] in clade_map]
+    # Use the normalized full master for SNP-cluster and genotype values.
+    # The 3,434-isolate selected CSV is used only to validate the membership
+    # of the final cohort, not as an independently parsed source of cluster calls.
+    selected_ids = {r["Run"] for r in selected}
+    selected_study = [r for r in full if r["Run"] in clade_map]
     assert len(selected_study) == 3306
+    assert all(r["Run"] in selected_ids for r in selected_study)
     clade3 = [r for r in selected_study if clade_map[r["Run"]] == "Clade 3"]
     target_c3 = [r for r in clade3 if canonical_cluster(r["SNP cluster"]) == TARGET]
     target_else = [r for r in selected_study
