@@ -1,0 +1,17 @@
+name: Audit PDS000065758 and gyrA D87Y counts
+
+on:
+  push:
+    branches: [audit-pds000065758-20261115]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-cluster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recalculate from exact 33,831 archive and final 3,306 clades
+        run: python3 scripts/audit_pds000065758.py
