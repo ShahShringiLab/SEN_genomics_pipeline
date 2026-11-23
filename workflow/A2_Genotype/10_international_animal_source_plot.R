@@ -10,6 +10,7 @@ suppressPackageStartupMessages({
 })
 
 root <- Sys.getenv("SEN_ROOT", unset=getwd())
+source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
 source_csv <- file.path(root, "results/part_a/full_master_original",
                         "SEN_TableS1_final_source_decomposition.csv")
 out_dir <- file.path(root, "results/part_a/full_master_original",
@@ -89,6 +90,7 @@ p <- ggplot2::ggplot(international,
     plot.margin=ggplot2::margin(12,34,12,12)
   )
 
+p <- sen_em_dash_plot(p)
 for (ext in c("png","tif","pdf")) {
   args <- list(filename=paste0(base,".",ext), plot=p,
                width=8.6, height=4.5, units="in", bg="white")
@@ -343,6 +345,7 @@ plot_breakdown <- function(df, category_col, count_col, denom, title,
       axis.text.y=ggplot2::element_text(size=small_font),
       plot.margin=ggplot2::margin(14,40,14,14)
     )
+  graph <- sen_em_dash_plot(graph)
   for(ext in c("png","tif","pdf")) {
     args <- list(filename=file.path(out_dir,paste0(outfile,".",ext)),
                  plot=graph,width=12,height=height,units="in",bg="white")
