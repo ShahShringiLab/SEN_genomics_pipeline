@@ -65,6 +65,8 @@ required = [
     "FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year",
     "FQ_QSFQS_TOP5_QRFQR_PERCENT_by_year",
     "FQ_QSFQS_TOP5_QRFQR_COUNT_by_year",
+    "QR_diversity_and_composition_side_by_side",
+    "selected_3434_QR_diversity_and_composition",
 ]
 corrected = out / "mdpi_label_corrections"
 missing = [name for name in required if not (corrected / (name + ".tif")).is_file()]
