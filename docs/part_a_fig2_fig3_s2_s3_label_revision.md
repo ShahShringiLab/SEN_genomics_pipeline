@@ -62,3 +62,22 @@ The four supplementary panels are exported independently using the original sour
 The original full run (`bash scripts/run_part_a.sh`) also applies the same display-only changes in the generated execution script; original analytical tables and source code are not rewritten. The focused runner avoids rerunning other Part A statistical analyses and never overwrites the previously exported `results/part_a/full_master_original/` figures.
 
 Run status: GitHub source changes are committed, but plots need to be rendered on the user's WSL computer; no local R execution is claimed.
+
+
+## Separate PDF exports
+
+The focused runner now also converts each saved TIFF into a corresponding PDF, producing **seven independent PDF files** alongside the original PNG/TIFF outputs. Figure 2 already has a native vector PDF from ggplot and that native PDF is preserved. The remaining PDFs are **raster-image PDFs** preserving their TIFF appearance (not editable vector plots).
+
+PDF export requires Pillow in the existing `sen_stats` environment. If not present:
+
+```bash
+conda install -n sen_stats pillow
+```
+
+After running the figure script, PDFs can be generated or regenerated from existing TIFFs independently:
+
+```bash
+conda run --no-capture-output -n sen_stats python scripts/export_part_a_figures_pdf.py results/part_a/mdpi_label_corrections
+```
+
+The runner honors `SEN_PARTA_SNAPSHOTS` in both the shell input check and the Python figure builder. No validated input snapshots need be copied into the new checkout.
