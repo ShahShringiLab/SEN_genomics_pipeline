@@ -13,8 +13,9 @@ from part_a_figure_presentation import patch_chunk
 
 root = Path(__file__).resolve().parents[1]
 prepared = root / "workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
-raw = root / "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"
-derived = root / "results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"
+snapshot_root = Path(__import__("os").environ.get("SEN_PARTA_SNAPSHOTS", str(root))).expanduser().resolve()
+raw = snapshot_root / "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"
+derived = snapshot_root / "results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"
 out = root / "results/part_a/mdpi_label_corrections"
 out.mkdir(parents=True, exist_ok=True)
 
