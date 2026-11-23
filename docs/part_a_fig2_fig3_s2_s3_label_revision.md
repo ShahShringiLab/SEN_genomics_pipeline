@@ -36,7 +36,7 @@ Only displayed axis labels are modified: `Q/FQ-susceptible` becomes `QS/FQS`; ge
 - `FQ_burden.png` / `FQ_burden.tif`
 - `FQ_burden_5yr.png` / `FQ_burden_5yr.tif` (related 5-year version)
 
-Source facet labels display: Human (*n* = 26,296), Chicken—US (*n* = 6,588), Other—US (*n* = 553), International (*n* = 71). Source names use em dash (U+2014). Gene symbols in marker rows are italic; mutation suffixes are upright. Percent legend range separators become en dash (U+2013); no numerical percent-bin boundary changes.
+Source facet labels display: Human (*n* = 26,296), Chicken—US (*n* = 6,588), Other—US (*n* = 553), International (*n* = 71). Source names use em dash (U+2014). Gene symbols in marker rows are italic; mutation suffixes are upright. Percent legend range separators become em dash (U+2014); no numerical percent-bin boundary changes.
 
 ## Supplementary Figure S2: two **separate** plots
 
@@ -64,24 +64,11 @@ The original full run (`bash scripts/run_part_a.sh`) also applies the same displ
 Run status: GitHub source changes are committed, but plots need to be rendered on the user's WSL computer; no local R execution is claimed.
 
 
-## Separate PDF exports
+## TIFF-only manuscript figure export
 
-The focused runner now also converts each saved TIFF into a corresponding PDF, producing **seven independent PDF files** alongside the original PNG/TIFF outputs. Figure 2 already has a native vector PDF from ggplot and that native PDF is preserved. The remaining PDFs are **raster-image PDFs** preserving their TIFF appearance (not editable vector plots).
-
-PDF export requires Pillow in the existing `sen_stats` environment. If not present:
-
-```bash
-conda install -n sen_stats pillow
-```
-
-After running the figure script, PDFs can be generated or regenerated from existing TIFFs independently:
-
-```bash
-conda run --no-capture-output -n sen_stats python scripts/export_part_a_figures_pdf.py results/part_a/mdpi_label_corrections
-```
-
-The runner honors `SEN_PARTA_SNAPSHOTS` in both the shell input check and the Python figure builder. No validated input snapshots need be copied into the new checkout.
-
+The focused runner retains seven independent TIFF files in
+`results/part_a/mdpi_label_corrections/` and removes PNG/PDF companions
+from this dedicated directory. No Pillow installation is required.
 
 ## Complete Part A figures — em dash and TIFF only
 
