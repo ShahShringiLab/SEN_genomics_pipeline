@@ -99,3 +99,28 @@ in the final folder. The historical scientific Rmd is never altered.
 depends on the canonical inputs and packages from `scripts/run_part_a.sh`.
 It must not be mistaken for the faster 7-figure-only runner. Re-rendering
 and checking its final outputs is performed on the user's WSL machine.
+
+## Diversity/composition three-panel figure typography
+
+The Hill diversity source figure `QR_diversity_and_composition_side_by_side.tif`
+combines exponential Shannon, inverse Simpson, and QR/FQR composition.
+The prior general plot export helper does **not** reliably reach labels
+inside a patchwork object; this branch now modifies the three constituent
+ggplots **before** combining them. Source axis labels display Chicken—US
+and Other—US, and the composition legend uses italic gene symbols with
+upright mutation suffixes. Diversity values, intervals, bootstrap estimates,
+permutation tests, layout widths, and palettes are unchanged.
+
+To rerender **only this TIFF** from the previously generated original
+`QR_diversity_q0_q1_q2_bySource_with95CI.csv` and
+`QR_composition_bySource.csv`:
+
+```bash
+cd ~/SEN_Figure_R2
+git pull origin figure2-figure3-s2-s3-labels-only
+SEN_PARTA_SNAPSHOTS="$HOME/SEN_PartA_clean" bash scripts/run_part_a_diversity_figure.sh
+```
+
+The TIFF is written to
+`results/part_a/mdpi_label_corrections/QR_diversity_and_composition_side_by_side.tif`.
+The complete Part A figure runner also includes this corrected output.
