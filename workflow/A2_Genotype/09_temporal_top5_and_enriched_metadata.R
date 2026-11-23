@@ -8,6 +8,7 @@ source(file.path(Sys.getenv("SEN_ROOT", unset=getwd()), "workflow/A2_Genotype/li
 suppressPackageStartupMessages(library(patchwork))
 
 root <- Sys.getenv("SEN_ROOT", unset=getwd())
+source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
 raw_file <- sen_path("results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv")
 rmd_file <- sen_path("results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv")
 selected_file <- sen_path("results/part_a/cohort/Finalupdated_SEN_Genomes1_QC_merged.csv")
@@ -308,7 +309,7 @@ make_plot <- function(df, cohort_label, y_key) {
 }
 save_plots <- function(df,prefix,label) {
   for (metric in c("Count","Percent")) {
-    p <- make_plot(df,label,metric)
+    p <- sen_em_dash_plot(make_plot(df,label,metric))
     ggplot2::ggsave(file.path(plot_out,paste0(prefix,"_",metric,".png")),p,
                     width=10,height=6.2,dpi=600,bg="white")
     ggplot2::ggsave(file.path(plot_out,paste0(prefix,"_",metric,".tif")),p,
@@ -357,6 +358,7 @@ save_side_by_side <- function(total_df, selected_df, metric, prefix) {
     )
   )
 
+  combined <- sen_em_dash_plot(combined)
   for (ext in c("png","tif","pdf")) {
     target <- file.path(plot_out,paste0(prefix,".",ext))
     args <- list(filename=target,plot=combined,
