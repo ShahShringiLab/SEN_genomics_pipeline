@@ -62,11 +62,28 @@ sen_em_dash_text <- function(x) {
   x
 }
 
+# Italicize a standalone sample-size n in plot titles and axis labels.
+# Numeric counts and source category values are not changed.
+sen_italic_n_text <- function(x) {
+  if (!is.character(x) || length(x) != 1L || is.na(x)) return(x)
+  match <- regexpr("\\bn\\b", x, perl = TRUE)
+  if (match[1L] < 0L) return(x)
+  left <- substr(x, 1L, match[1L] - 1L)
+  right <- substr(x, match[1L] + attr(match, "match.length"), nchar(x))
+  parse(text = paste0("paste(",
+                      encodeString(left, quote = '"'),
+                      ", italic(n), ",
+                      encodeString(right, quote = '"'), ")"))[[1L]]
+}
+
 sen_em_dash_plot <- function(plot) {
   if (!inherits(plot, "ggplot")) return(plot)
   if (!is.null(plot$labels)) {
     for (key in names(plot$labels)) {
       plot$labels[[key]] <- sen_em_dash_text(plot$labels[[key]])
+      if (key %in% c("title", "subtitle", "x", "y", "caption")) {
+        plot$labels[[key]] <- sen_italic_n_text(plot$labels[[key]])
+      }
     }
   }
   for (sc in plot$scales$scales) {
