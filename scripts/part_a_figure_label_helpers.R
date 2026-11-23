@@ -3,7 +3,7 @@
 #
 # Figure 2: mixed italic gene/roman mutation labels, and italic n.
 # Figure 3, S2, S3: italic n within source facet strips, em dash in
-# source names; numeric percentage-bin ranges use en dash.
+# source names; numeric percentage-bin ranges use em dash.
 
 sen_marker_plotmath <- function(labels, bold = FALSE) {
   vapply(as.character(labels), function(x) {
@@ -31,7 +31,7 @@ sen_marker_plotmath <- function(labels, bold = FALSE) {
 
 sen_pctbin_labels <- function(labels) {
   # Display-only; keep the original numeric cut() boundaries and factor levels.
-  gsub("([0-9])-([0-9])", "\\1\u2013\\2",
+  gsub("([0-9])-([0-9])", "\\1\u2014\\2",
        as.character(labels), perl = TRUE)
 }
 
