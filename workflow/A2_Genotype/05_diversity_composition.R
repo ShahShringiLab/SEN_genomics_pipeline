@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "workflow/A2_Genotype/lib/common.R"))
+source(file.path(Sys.getenv("SEN_ROOT", unset = getwd()), "scripts/part_a_figure_label_helpers.R"))
 
 if (!requireNamespace("patchwork", quietly=TRUE)) {
   stop("Missing R package patchwork in sen_stats environment.")
@@ -203,9 +204,13 @@ p_div <- ggplot(plot_div,aes(Source,value)) +
   theme_bw() +
   theme(axis.text.x=element_text(angle=45,hjust=1))
 
+p_div <- p_div + ggplot2::scale_x_discrete(labels=function(x) gsub("-", "\\u2014", x, fixed=TRUE))
+
 p_comp <- ggplot(comp,aes(Source,p,fill=marker_group)) +
   geom_col() +
   scale_y_continuous(labels=scales::percent) +
+  ggplot2::scale_x_discrete(labels=function(x) gsub("-", "\\u2014", x, fixed=TRUE)) +
+  ggplot2::scale_fill_discrete(labels=function(x) parse(text=sen_marker_plotmath(x))) +
   labs(x="Source",y="Normalized QR/FQR composition",fill="QR category") +
   theme_bw() +
   theme(axis.text.x=element_text(angle=45,hjust=1))
@@ -214,6 +219,11 @@ combo <- p_div | p_comp
 ggsave(
   file.path(outdir,"QR_diversity_and_composition.png"),
   combo,width=15,height=6,dpi=600
+)
+
+ggsave(
+  file.path(outdir,"QR_diversity_and_composition.tif"),
+  combo,width=15,height=6,dpi=600,compression="lzw"
 )
 
 cat("[PASS] Part A2 diversity/composition outputs written to",outdir,"\n")
