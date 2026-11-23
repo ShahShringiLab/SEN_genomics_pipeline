@@ -94,8 +94,10 @@ stopifnot(
     "FQ_QSFQS_TOP5_QRFQR_COUNT_by_year.tif"
   ))))
 )
-stopifnot(sum(src_N$N_total) == 33508L)
-cat("[PASS] Figure 2, Figure 3, the 5-year companion, and four independent S2/S3 files regenerated.\n")
+stopifnot(all(c("Human (N=26296)", "Chicken-US (N=6588)",
+                  "Other-US (N=553)", "International (N=71)") %in%
+              as.character(src_N$Source_lab)))
+cat("[PASS] Figure 2, Figure 3, the 5-year companion, and four independent S2/S3 files regenerated.\\n")
 ''')
 script = out / "run_figures_2_3_s2_s3.R"
 script.write_text("\n".join(code) + "\n", encoding="utf-8")
