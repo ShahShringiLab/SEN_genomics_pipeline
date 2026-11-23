@@ -58,7 +58,7 @@ sen_source_labeller <- ggplot2::labeller(
 # visible text in plot specifications, never on sample metadata, grouping,
 # breakpoints, factor levels, coordinates, or statistical results.
 sen_em_dash_text <- function(x) {
-  if (is.character(x)) return(gsub("\\u2013", "\\u2014", x, fixed = TRUE))
+  if (is.character(x)) return(gsub("\u2013", "\u2014", x, fixed = TRUE))
   x
 }
 
