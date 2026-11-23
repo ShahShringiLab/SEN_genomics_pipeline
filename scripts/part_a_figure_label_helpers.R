@@ -10,7 +10,7 @@ sen_marker_plotmath <- function(labels, bold = FALSE) {
     if (x %in% c("Q/FQ-susceptible", "Q/FQ-Susceptible", "QS/FQS")) {
       return(if (bold) 'bold("QS/FQS")' else '"QS/FQS"')
     }
-    if (x %in% c("others", "Others", "QR/FQR")) {
+    if (x %in% c("others", "Others", "QR/FQR", "QR/FQR marker", "QS/FQS (no marker)")) {
       return(sprintf('"%s"', x))
     }
     parts <- strsplit(x, "_", fixed = TRUE)[[1]]
