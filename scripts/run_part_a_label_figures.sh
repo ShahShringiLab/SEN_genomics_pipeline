@@ -19,8 +19,15 @@ if [[ -z "$CONDA_BIN" ]]; then
   exit 1
 fi
 
-raw="results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"
-derived="results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"
+snapshot_root="${SEN_PARTA_SNAPSHOTS:-$ROOT}"
+if [[ ! -d "$snapshot_root" ]]; then
+  echo "[ERROR] Snapshot directory not found: $snapshot_root" >&2
+  exit 1
+fi
+snapshot_root="$(cd "$snapshot_root" && pwd)"
+export SEN_PARTA_SNAPSHOTS="$snapshot_root"
+raw="$snapshot_root/results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"
+derived="$snapshot_root/results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"
 for file in "$raw" "$derived"; do
   if [[ ! -s "$file" ]]; then
     echo "[ERROR] Required validated original Part A snapshot missing: $file" >&2
@@ -39,7 +46,7 @@ python3 scripts/build_part_a_label_figures.py
 
 out="results/part_a/mdpi_label_corrections"
 mkdir -p "$out"
-echo "[INFO] Replotting only publication figures using existing 33,831 records."
+echo "[INFO] Replotting only publication figures using validated snapshots from $snapshot_root."
 "$CONDA_BIN" run --no-capture-output -n sen_stats \
   env SEN_ROOT="$ROOT" \
   Rscript "$out/run_figures_2_3_s2_s3.R" 2>&1 | tee "$out/run.log"
