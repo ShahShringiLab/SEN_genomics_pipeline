@@ -8,6 +8,7 @@ Historical selection-generation chunk 23 is not rerun.
 from pathlib import Path
 import hashlib
 import re
+from part_a_figure_presentation import patch_chunk
 
 root = Path(__file__).resolve().parents[1]
 src_file = root / "workflow/A2_Genotype/original_rmd/SEN_Genomes2_PARSED_MASTER.Rmd"
@@ -33,6 +34,7 @@ master = [
     'library(ggplot2); library(lubridate); library(purrr); library(patchwork)',
     'library(scales); library(forcats)',
     '})',
+    'source(file.path(Sys.getenv("SEN_ROOT"), "scripts/part_a_figure_label_helpers.R"))',
     'setwd(file.path(Sys.getenv("SEN_ROOT"), "results/part_a/full_master_original"))',
     f'cat("[INFO] Original Rmd working-copy SHA256: {hashlib.sha256(src.encode()).hexdigest()}\\n")',
 ]
@@ -60,6 +62,8 @@ for index in range(3, 23):
         actual_recode = '''    Group = Final_source,'''
         assert chunk.count(obsolete) == 1 and chunk.count(obsolete_recode) == 1
         chunk = chunk.replace(obsolete, actual, 1).replace(obsolete_recode, actual_recode, 1)
+    # Presentation-only patch of the execution copy; frozen Rmd is untouched.
+    chunk = patch_chunk(index, chunk)
     master.extend([f'\n# BEGIN USER ORIGINAL CHUNK {index}',
                    chunk,
                    f'# END USER ORIGINAL CHUNK {index}'])
