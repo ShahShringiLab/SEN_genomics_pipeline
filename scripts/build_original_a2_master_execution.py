@@ -35,6 +35,7 @@ master = [
     'library(scales); library(forcats)',
     '})',
     'source(file.path(Sys.getenv("SEN_ROOT"), "scripts/part_a_figure_label_helpers.R"))',
+    'ggsave <- sen_ggsave_part_a',
     'setwd(file.path(Sys.getenv("SEN_ROOT"), "results/part_a/full_master_original"))',
     f'cat("[INFO] Original Rmd working-copy SHA256: {hashlib.sha256(src.encode()).hexdigest()}\\n")',
 ]
