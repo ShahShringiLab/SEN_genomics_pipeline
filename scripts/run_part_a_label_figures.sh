@@ -51,9 +51,25 @@ echo "[INFO] Replotting only publication figures using validated snapshots from 
   env SEN_ROOT="$ROOT" \
   Rscript "$out/run_figures_2_3_s2_s3.R" 2>&1 | tee "$out/run.log"
 
-echo "[INFO] Exporting seven independent PDFs (retaining any native Figure 2 PDF)."
-"$CONDA_BIN" run --no-capture-output -n sen_stats \
-  python scripts/export_part_a_figures_pdf.py "$out" 2>&1 | tee -a "$out/run.log"
+# Keep only the requested independent TIFF figures in this dedicated folder.
+# The original Rmd saves PNG/PDF alongside TIFF; remove those companions
+# only here, never from the validated snapshot checkout.
+figure_names=(
+  FQR_marker_counts_top100
+  FQ_burden
+  FQ_burden_5yr
+  FQ_QRFQR_vs_QFQsusceptible_PERCENT_by_year
+  FQ_QRFQR_vs_QFQsusceptible_COUNT_by_year
+  FQ_QSFQS_TOP5_QRFQR_PERCENT_by_year
+  FQ_QSFQS_TOP5_QRFQR_COUNT_by_year
+)
+for name in "${figure_names[@]}"; do
+  if [[ ! -s "$out/$name.tif" ]]; then
+    echo "[ERROR] Missing required TIFF: $out/$name.tif" >&2
+    exit 1
+  fi
+  rm -f -- "$out/$name.png" "$out/$name.pdf"
+done
 
-echo "[PASS] Corrected Figure 2, Figure 3 and four supplementary panels; seven PDFs available."
+echo "[PASS] Seven independent TIFF figures retained; PDF/PNG companions removed."
 echo "[OUTPUT] $ROOT/$out/"
