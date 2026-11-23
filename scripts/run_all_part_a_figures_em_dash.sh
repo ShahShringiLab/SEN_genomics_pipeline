@@ -24,11 +24,18 @@ command -v conda >/dev/null 2>&1 || { echo "[ERROR] Conda not found" >&2; exit 1
 echo "[INFO] Running complete native Part A plotting workflow (not a 7-figure subset)."
 bash scripts/run_part_a.sh
 
+# Selected-cohort diversity is a separate workflow, not called by run_part_a.sh.
+echo "[INFO] Running selected 3,434-genome diversity and composition workflow."
+conda run --no-capture-output -n sen_stats \
+  Rscript workflow/A2_Genotype/05_diversity_composition.R
+
 echo "[INFO] Rebuilding manuscript Figure 2, 3, S2, S3 with focused label checks."
 SEN_PARTA_SNAPSHOTS="$ROOT" bash scripts/run_part_a_label_figures.sh
 
 # The three-panel diversity figure requires per-panel formatting before patchwork.
 SEN_PARTA_SNAPSHOTS="$ROOT" bash scripts/run_part_a_diversity_figure.sh
+conda run --no-capture-output -n sen_stats \
+  Rscript scripts/rerender_part_a_selected_diversity.R
 
 python3 - <<'PY'
 from pathlib import Path
