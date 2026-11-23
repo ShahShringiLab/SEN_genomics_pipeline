@@ -12,6 +12,14 @@ bash scripts/run_part_a_label_figures.sh
 
 The runner uses the already-generated, validated Part A **raw** and **Rmd-derived** 33,831-row metadata snapshots. If these snapshots are missing, it stops and tells you to run the full Part A workflow; it does not silently replace them or recalculate other analyses. It creates the prepared working Rmd if missing, without altering the source notebook.
 
+If the validated results are in a **different Part A checkout**, you can reuse them without copying the files:
+
+```bash
+SEN_PARTA_SNAPSHOTS="$HOME/SEN_PartA_clean" bash scripts/run_part_a_label_figures.sh
+```
+
+Replace `~/SEN_PartA_clean` with the path to the checkout that already contains the two validated full-master CSV snapshots. The outputs are still written under the current branch's `results/part_a/mdpi_label_corrections/`.
+
 The run writes to a **new output folder**:
 `results/part_a/mdpi_label_corrections/`
 
