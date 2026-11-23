@@ -63,7 +63,7 @@ print(p_tokens)''', where="Fig2 axis and two counts")
         chunk = one(
             chunk,
             "print(p_year_binned)\nprint(p_5_binned)",
-            """# Change only the display of percent-bin labels (1-5 => 1–5).
+            """# Change only the display of percent-bin labels (1-5 => 1—5).
 p_year_binned <- p_year_binned +
   ggplot2::scale_color_discrete(labels = sen_pctbin_labels)
 p_5_binned <- p_5_binned +
