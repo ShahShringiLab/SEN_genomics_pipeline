@@ -86,4 +86,29 @@ print(p_5_binned)""",
             count=2, where="S3 count and percent marker legends",
         )
 
+    if index == 22:
+        # Three-panel Hill diversity/composition figure. Apply only displayed
+        # labels, leaving the bootstrap/permutation calculations unchanged.
+        # Patch the three constituent ggplot objects before patchwork joins
+        # them; modifying the resulting patchwork object is insufficient.
+        chunk = one(
+            chunk,
+            "combo_side <- (",
+            """# Publication typography on each constituent plot.
+# Keep Source factor values and order unchanged; display em dash only.
+sen_source_display <- function(x) gsub("-", "\\u2014", x, fixed = TRUE)
+p_shannon <- p_shannon +
+  ggplot2::scale_x_discrete(labels = sen_source_display)
+p_simpson <- p_simpson +
+  ggplot2::scale_x_discrete(labels = sen_source_display)
+p_comp <- p_comp +
+  ggplot2::scale_x_discrete(labels = sen_source_display) +
+  ggplot2::scale_fill_discrete(
+    labels = function(x) parse(text = sen_marker_plotmath(x))
+  )
+combo_side <- (""",
+            where="Hill diversity and composition display labels",
+        )
+        return chunk
+
     return chunk
