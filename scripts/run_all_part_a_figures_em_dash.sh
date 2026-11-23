@@ -27,6 +27,9 @@ bash scripts/run_part_a.sh
 echo "[INFO] Rebuilding manuscript Figure 2, 3, S2, S3 with focused label checks."
 SEN_PARTA_SNAPSHOTS="$ROOT" bash scripts/run_part_a_label_figures.sh
 
+# The three-panel diversity figure requires per-panel formatting before patchwork.
+SEN_PARTA_SNAPSHOTS="$ROOT" bash scripts/run_part_a_diversity_figure.sh
+
 python3 - <<'PY'
 from pathlib import Path
 import shutil
