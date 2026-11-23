@@ -51,5 +51,9 @@ echo "[INFO] Replotting only publication figures using validated snapshots from 
   env SEN_ROOT="$ROOT" \
   Rscript "$out/run_figures_2_3_s2_s3.R" 2>&1 | tee "$out/run.log"
 
-echo "[PASS] Corrected Figure 2, Figure 3 and four supplementary panels."
+echo "[INFO] Exporting seven independent PDFs (retaining any native Figure 2 PDF)."
+"$CONDA_BIN" run --no-capture-output -n sen_stats \
+  python scripts/export_part_a_figures_pdf.py "$out" 2>&1 | tee -a "$out/run.log"
+
+echo "[PASS] Corrected Figure 2, Figure 3 and four supplementary panels; seven PDFs available."
 echo "[OUTPUT] $ROOT/$out/"
