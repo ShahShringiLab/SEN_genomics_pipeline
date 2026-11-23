@@ -81,3 +81,34 @@ conda run --no-capture-output -n sen_stats python scripts/export_part_a_figures_
 ```
 
 The runner honors `SEN_PARTA_SNAPSHOTS` in both the shell input check and the Python figure builder. No validated input snapshots need be copied into the new checkout.
+
+
+## Complete Part A figures — em dash and TIFF only
+
+Use the full-workflow runner when **all Part A plots**, not just Figure 2 / Figure 3 / S2 / S3, must be regenerated:
+
+```bash
+cd ~/SEN_Figure_R2
+git pull origin figure2-figure3-s2-s3-labels-only
+bash scripts/run_all_part_a_figures_em_dash.sh
+```
+
+This uses the existing frozen source and canonical cohorts, executes the existing Part A
+master, selected-genome, temporal Top-5, and International plotting workflows,
+and then regenerates the seven specially formatted manuscript figures.
+It retains all previous Figure 2/3/S2/S3 changes and converts **en dash (–) to em dash (—) in displayed plot labels** without recoding any underlying category or time period.
+Numeric percent-bin cutpoints remain the same.
+
+The consolidated TIFF-only output is:
+
+`results/part_a/all_figures_em_dash_tiff/`
+
+The subdirectories preserve each source figure's original filename and analysis
+location. `TIFF_MANIFEST.txt` lists the TIFFs. Some original scripts also create
+PNG/PDF files in their normal intermediate folders; **only TIFFs** are collected
+in the final folder. The historical scientific Rmd is never altered.
+
+**Important:** The complete runner performs the original Part A computations and
+depends on the canonical inputs and packages from `scripts/run_part_a.sh`.
+It must not be mistaken for the faster 7-figure-only runner. Re-rendering
+and checking its final outputs is performed on the user's WSL machine.
