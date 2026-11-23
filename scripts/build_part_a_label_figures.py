@@ -55,7 +55,7 @@ dir.create(out, recursive = TRUE, showWarnings = FALSE)
 source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
 # Fail before generating files if the requested typography cannot be parsed.
 stopifnot(identical(unname(sen_pctbin_labels(c("1-5", "20-40"))),
-                    c("1\u20135", "20\u201340")))
+                    c("1\u20145", "20\u201440")))
 stopifnot(identical(unname(sen_marker_plotmath(c("Q/FQ-susceptible"))),
                     c('"QS/FQS"')))
 stopifnot(identical(unname(sen_source_plotmath("Human (N=26296)")),
