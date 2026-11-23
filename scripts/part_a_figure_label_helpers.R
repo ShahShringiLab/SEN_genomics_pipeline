@@ -53,3 +53,53 @@ sen_source_labeller <- ggplot2::labeller(
     sen_source_plotmath, default = ggplot2::label_parsed
   )
 )
+
+# Apply publication punctuation at the export boundary. This operates only on
+# visible text in plot specifications, never on sample metadata, grouping,
+# breakpoints, factor levels, coordinates, or statistical results.
+sen_em_dash_text <- function(x) {
+  if (is.character(x)) return(gsub("\\u2013", "\\u2014", x, fixed = TRUE))
+  x
+}
+
+sen_em_dash_plot <- function(plot) {
+  if (!inherits(plot, "ggplot")) return(plot)
+  if (!is.null(plot$labels)) {
+    for (key in names(plot$labels)) {
+      plot$labels[[key]] <- sen_em_dash_text(plot$labels[[key]])
+    }
+  }
+  for (sc in plot$scales$scales) {
+    labels <- sc$labels
+    if (is.character(labels)) {
+      sc$labels <- sen_em_dash_text(labels)
+    } else if (is.function(labels)) {
+      original <- labels
+      sc$labels <- local({
+        fn <- original
+        function(...) sen_em_dash_text(fn(...))
+      })
+    }
+  }
+  plot
+}
+
+# Mask unqualified ggsave() in generated Part A R execution only. The TIFF
+# companion covers original plots historically exported as PNG/PDF alone.
+# The original explicit TIFF export is still used when present.
+sen_ggsave_part_a <- function(filename, plot = ggplot2::last_plot(), ...) {
+  displayed <- sen_em_dash_plot(plot)
+  result <- ggplot2::ggsave(filename = filename, plot = displayed, ...)
+  if (grepl("\\.(png|pdf)$", filename, ignore.case = TRUE)) {
+    target <- sub("\\.(png|pdf)$", ".tif", filename, ignore.case = TRUE)
+    if (!file.exists(target)) {
+      args <- list(...)
+      args$dpi <- 600
+      args$compression <- "lzw"
+      args$device <- "tiff"
+      do.call(ggplot2::ggsave,
+              c(list(filename = target, plot = displayed), args))
+    }
+  }
+  invisible(result)
+}
