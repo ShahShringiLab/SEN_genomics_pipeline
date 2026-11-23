@@ -48,16 +48,17 @@ suppressPackageStartupMessages({
 })
 root <- Sys.getenv("SEN_ROOT")
 if (!nzchar(root)) stop("SEN_ROOT must be provided.")
+snapshots_root <- Sys.getenv("SEN_PARTA_SNAPSHOTS", unset = root)
 out <- file.path(root, "results/part_a/mdpi_label_corrections")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
 master_raw <- readr::read_csv(
-  file.path(root, "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"),
+  file.path(snapshots_root, "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"),
   col_types = readr::cols(.default = readr::col_character()),
   show_col_types = FALSE
 )
 master_derived <- readr::read_csv(
-  file.path(root, "results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"),
+  file.path(snapshots_root, "results/part_a/full_master_original/SEN_33831_original_Rmd_derived.csv"),
   col_types = readr::cols(.default = readr::col_character()),
   show_col_types = FALSE
 )
