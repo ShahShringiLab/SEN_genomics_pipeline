@@ -124,3 +124,27 @@ SEN_PARTA_SNAPSHOTS="$HOME/SEN_PartA_clean" bash scripts/run_part_a_diversity_fi
 The TIFF is written to
 `results/part_a/mdpi_label_corrections/QR_diversity_and_composition_side_by_side.tif`.
 The complete Part A figure runner also includes this corrected output.
+
+## Selected-genome diversity figure (separate 3,434-genome analysis)
+
+The selected-cohort workflow `workflow/A2_Genotype/05_diversity_composition.R`
+previously had its own distinct diversity/composition plot. It is now also
+updated for displayed Chicken—US / Other—US source axis labels and italic
+gene symbols in the composition legend. The native selected workflow writes
+its original dimensions, now including a TIFF.
+
+If the selected diversity CSV summaries already exist in
+`$HOME/SEN_PartA_clean/results/part_a/diversity/`, quickly rerender the
+selected figure without recalculating any permutation or bootstrap statistics:
+
+```bash
+cd ~/SEN_Figure_R2
+SEN_PARTA_SNAPSHOTS="$HOME/SEN_PartA_clean" \
+  "$HOME/miniconda3/bin/conda" run --no-capture-output -n sen_stats \
+  env SEN_ROOT="$HOME/SEN_Figure_R2" \
+  Rscript scripts/rerender_part_a_selected_diversity.R
+```
+
+Output: `results/part_a/mdpi_label_corrections/selected_3434_QR_diversity_and_composition.tif`.
+The complete all-figures runner additionally regenerates the selected-cohort
+diversity summaries before plotting, and checks both cohort diversity TIFFs.
