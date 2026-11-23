@@ -53,6 +53,7 @@ snapshots_root <- Sys.getenv("SEN_PARTA_SNAPSHOTS", unset = root)
 out <- file.path(root, "results/part_a/mdpi_label_corrections")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
+ggsave <- sen_ggsave_part_a
 # Fail before generating files if the requested typography cannot be parsed.
 stopifnot(identical(unname(sen_pctbin_labels(c("1-5", "20-40"))),
                     c("1\u20145", "20\u201440")))
