@@ -52,6 +52,16 @@ snapshots_root <- Sys.getenv("SEN_PARTA_SNAPSHOTS", unset = root)
 out <- file.path(root, "results/part_a/mdpi_label_corrections")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 source(file.path(root, "scripts/part_a_figure_label_helpers.R"))
+# Fail before generating files if the requested typography cannot be parsed.
+stopifnot(identical(sen_pctbin_labels(c("1-5", "20-40")),
+                    c("1\u20135", "20\u201340")))
+stopifnot(identical(sen_marker_plotmath(c("Q/FQ-susceptible")),
+                    c('"QS/FQS"')))
+stopifnot(identical(sen_source_plotmath("Human (N=26296)"),
+                    'paste("Human (", italic(n), " = 26,296)")'))
+invisible(parse(text = sen_marker_plotmath(c("gyrA_D87Y", "qnrB19"))))
+invisible(parse(text = sen_source_plotmath("Chicken-US (N=6588)")))
+
 master_raw <- readr::read_csv(
   file.path(snapshots_root, "results/part_a/master_33831/00_parsed_raw/SEN_33831_PARSED_51COL.csv"),
   col_types = readr::cols(.default = readr::col_character()),
